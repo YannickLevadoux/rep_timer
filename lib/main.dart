@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'models/training.dart';
 import 'screens/training_editor.dart';
 import 'screens/training_history.dart';
 import 'screens/training_summary.dart';
 import 'services/training_storage.dart';
 
-void main() {
+Future<void> main() async {
+  // Verrouille l'orientation en portrait pour toute l'application : le
+  // paysage n'est jamais autorisé, y compris pendant l'exécution d'une
+  // séance. WidgetsFlutterBinding doit être initialisé avant tout appel
+  // à un canal de plateforme comme SystemChrome.
+  WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
   runApp(const MyApp());
 }
 

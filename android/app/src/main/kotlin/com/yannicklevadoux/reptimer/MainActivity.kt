@@ -1,4 +1,4 @@
-package com.example.rep_timer
+package com.yannicklevadoux.reptimer
 
 import io.flutter.embedding.android.FlutterActivity
 
