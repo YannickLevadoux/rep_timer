@@ -41,5 +41,14 @@ List<SessionStep> buildSessionSteps(Training training) {
     }
   }
 
+  // Si la toute dernière étape de la séance (dernier groupe, dernier tour,
+  // dernier item) est une pause, on l'ignore : la séance doit se terminer
+  // immédiatement après le dernier exercice, pas sur une pause inutile.
+  // Ne concerne que cette pause finale précise ; toutes les autres pauses
+  // (entre exercices, entre tours, entre groupes) restent inchangées.
+  if (steps.isNotEmpty && steps.last.item.type == ItemType.rest) {
+    steps.removeLast();
+  }
+
   return steps;
 }
