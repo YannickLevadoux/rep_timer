@@ -35,6 +35,7 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 ### Interface
 - Thème clair/sombre (suit le système, réglable manuellement).
 - Interface entièrement en français.
+- Interface uniquement en mode portrait pour conserver la lisibilité des écrans
 
 ## Stack technique
 
