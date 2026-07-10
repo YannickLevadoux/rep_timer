@@ -332,6 +332,38 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     );
   }
 
+  // Séparateur discret entre sections : ligne fine sur toute la largeur,
+  // avec le nom de la section légèrement décalé vers la gauche.
+  Widget _sectionDivider(BuildContext context, String label) {
+    final color = Theme.of(context).colorScheme.outlineVariant;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        children: [
+          SizedBox(width: 24, child: Divider(color: color, thickness: 1)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.outline,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+          Expanded(child: Divider(color: color, thickness: 1)),
+        ],
+      ),
+    );
+  }
+
+  // Prochain élément à exécuter après l'étape courante (ou null si la
+  // séance se termine juste après). Recalculé à chaque build : reste donc
+  // toujours à jour en temps réel, sans état séparé à synchroniser.
+  SessionStep? get _nextStep =>
+      _currentIndex + 1 < _steps.length ? _steps[_currentIndex + 1] : null;
+
   Widget _buildRunningBody(BuildContext context) {
     final step = _currentStep;
     final item = step.item;
@@ -339,13 +371,12 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     final isFreeDuration = item.isFreeDuration;
     final remaining =
         isDurationBased ? (item.duration! - _stepStopwatch.elapsed) : Duration.zero;
+    final nextStep = _nextStep;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Chronomètre global de la séance, avec navigation manuelle
-          // Précédent/Suivant de part et d'autre.
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -370,16 +401,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
               ),
             ],
           ),
-
-          const SizedBox(height: 12),
-
-          // Progression dans la séance
-          Text(
-            "${step.group.name} · répétition ${step.roundIndex}/${step.totalRounds}",
-            style: Theme.of(context).textTheme.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
@@ -387,8 +409,30 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
               minHeight: 6,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text("Exercice ${_currentIndex + 1} / ${_steps.length}"),
+
+          // ---- Section "Prochain" ----
+          _sectionDivider(context, "Prochain"),
+
+          Text(
+            nextStep == null
+                ? "Fin de la session"
+                : nextStep.item.type == ItemType.rest
+                    ? "Pause"
+                    : nextStep.item.name,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+
+          // ---- Section "En cours" ----
+          _sectionDivider(context, "En cours"),
+
+          Text(
+            "${step.group.name} — Répétition ${step.roundIndex} / ${step.totalRounds}",
+            style: Theme.of(context).textTheme.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
 
           const SizedBox(height: 32),
 
