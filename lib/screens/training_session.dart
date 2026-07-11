@@ -63,10 +63,8 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
   // car non créé si la séance ne contient aucune étape.
   AnimationController? _blinkController;
 
-  // Édition du commentaire de l'exercice en cours (pas de blocage sur les
-  // autres champs, uniquement le commentaire, comme demandé).
-  bool _editingComment = false;
-  TextEditingController? _commentController;
+  // Le commentaire s'édite désormais dans un Dialog dédié (voir
+  // _startEditComment), plus d'état d'édition inline à maintenir ici.
   final TrainingStorage _trainingStorage = TrainingStorage();
 
   Duration get _globalElapsed => _globalElapsedOffset + _globalStopwatch.elapsed;
@@ -153,7 +151,6 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
     _blinkController?.dispose();
-    _commentController?.dispose();
     WakelockPlus.disable();
     super.dispose();
   }
@@ -265,7 +262,6 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
 
       if (_currentIndex + 1 < _steps.length) {
         _currentIndex++;
-        _editingComment = false;
         _stepElapsedOffset = Duration.zero;
         _stepStopwatch
           ..stop()
@@ -339,7 +335,6 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
 
     setState(() {
       _currentIndex = index;
-      _editingComment = false; // on quitte l'exercice, on abandonne l'édition en cours
       _stepElapsedOffset = Duration.zero;
       _stepStopwatch
         ..stop()
@@ -354,26 +349,79 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
 
   void _goToNext() => _jumpToStep(_currentIndex + 1);
 
-  void _startEditComment() {
-    _commentController?.dispose();
-    _commentController = TextEditingController(
+  // Ouvre le commentaire dans un Dialog positionné en haut de l'écran :
+  // Valider/Annuler restent ainsi toujours visibles même quand le clavier
+  // Android est affiché, sans avoir besoin de faire défiler l'écran.
+  Future<void> _startEditComment() async {
+    final controller = TextEditingController(
       text: _currentStep.item.comment ?? '',
     );
-    setState(() => _editingComment = true);
-  }
+    final focusNode = FocusNode();
 
-  void _cancelEditComment() {
-    // Abandonne les modifications : on ne touche pas à item.comment,
-    // on referme simplement le mode édition.
-    setState(() => _editingComment = false);
-  }
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          alignment: Alignment.topCenter,
+          insetPadding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Commentaire",
+                  style: Theme.of(dialogContext).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  autofocus: true,
+                  maxLines: 3,
+                  minLines: 1,
+                  // Comportement par défaut d'un champ multiligne : la
+                  // touche Entrée insère un retour à la ligne, inchangé.
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: "Poids, intensité...",
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text("Annuler"),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: () =>
+                          Navigator.pop(dialogContext, controller.text),
+                      child: const Text("Valider"),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
 
-  Future<void> _saveComment() async {
-    final text = _commentController?.text.trim() ?? '';
+    controller.dispose();
+    focusNode.dispose();
+
+    // Annulé (bouton ou fermeture du dialogue) : on ne touche à rien, le
+    // commentaire précédent est conservé tel quel.
+    if (result == null) return;
+
+    final trimmed = result.trim();
 
     setState(() {
-      _currentStep.item.comment = text.isEmpty ? null : text;
-      _editingComment = false;
+      _currentStep.item.comment = trimmed.isEmpty ? null : trimmed;
     });
 
     // Même mécanisme de sauvegarde locale que le reste de l'application :
@@ -704,41 +752,6 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
   }
 
   Widget _buildCommentSection(BuildContext context, TrainingItem item) {
-    if (_editingComment) {
-      // Mode édition : ne clignote pas (formulaire statique), avec
-      // Valider / Annuler comme demandé.
-      return Column(
-        children: [
-          TextField(
-            controller: _commentController,
-            maxLines: 3,
-            minLines: 1,
-            textAlign: TextAlign.center,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              hintText: "Poids, intensité...",
-              isDense: true,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextButton(
-                onPressed: _cancelEditComment,
-                child: const Text("Annuler"),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: _saveComment,
-                child: const Text("Valider"),
-              ),
-            ],
-          ),
-        ],
-      );
-    }
-
     final comment = item.comment;
 
     if (comment == null || comment.isEmpty) {
