@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../models/session_checkpoint.dart';
 import '../models/session_step.dart';
 import '../models/training.dart';
 import '../models/training_history_entry.dart';
 import '../models/training_item.dart';
+import '../services/session_checkpoint_storage.dart';
 import '../services/training_history_storage.dart';
 import '../services/training_storage.dart';
 import '../utils/exercise_icons.dart';
@@ -19,16 +21,25 @@ import 'session_progress.dart';
 class TrainingSessionScreen extends StatefulWidget {
   final Training training;
 
-  const TrainingSessionScreen({super.key, required this.training});
+  // Si fourni, l'écran reprend la séance exactement là où elle en était
+  // plutôt que de repartir de la première étape (reprise après une mort
+  // de processus par le système).
+  final SessionCheckpoint? initialCheckpoint;
+
+  const TrainingSessionScreen({
+    super.key,
+    required this.training,
+    this.initialCheckpoint,
+  });
 
   @override
   State<TrainingSessionScreen> createState() => _TrainingSessionScreenState();
 }
 
 class _TrainingSessionScreenState extends State<TrainingSessionScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final List<SessionStep> _steps;
-  late final List<bool> _completed;
+  late List<bool> _completed;
 
   int _currentIndex = 0;
   bool _paused = false;
@@ -37,10 +48,16 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
 
   // Stopwatch gère nativement l'accumulation du temps écoulé pendant les
   // phases "start" et l'arrêt pendant les phases "stop" : parfait pour
-  // gérer pause/reprise sans recalcul manuel de timestamps.
+  // gérer pause/reprise sans recalcul manuel de timestamps. Les offsets
+  // permettent de "précharger" un temps déjà écoulé lors d'une reprise
+  // après redémarrage (Stopwatch ne peut pas être réglé directement).
   final Stopwatch _globalStopwatch = Stopwatch();
   final Stopwatch _stepStopwatch = Stopwatch();
+  Duration _globalElapsedOffset = Duration.zero;
+  Duration _stepElapsedOffset = Duration.zero;
   Timer? _ticker;
+
+  final SessionCheckpointStorage _checkpointStorage = SessionCheckpointStorage();
 
   // Anime le clignotement (nom + icône) de l'exercice en cours. Nullable
   // car non créé si la séance ne contient aucune étape.
@@ -52,12 +69,55 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
   TextEditingController? _commentController;
   final TrainingStorage _trainingStorage = TrainingStorage();
 
+  Duration get _globalElapsed => _globalElapsedOffset + _globalStopwatch.elapsed;
+  Duration get _stepElapsed => _stepElapsedOffset + _stepStopwatch.elapsed;
+
+  // Horodatage du dernier passage en arrière-plan (processus non tué) ;
+  // sert à calculer le temps réellement écoulé au retour, via l'heure
+  // système plutôt qu'un chronomètre qui peut se figer pendant la mise
+  // en veille du téléphone.
+  DateTime? _backgroundedAt;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _steps = buildSessionSteps(widget.training);
-    _completed = List.filled(_steps.length, false);
+
+    // Tente de reprendre depuis un checkpoint, uniquement s'il correspond
+    // bien à cette séance (nombre d'étapes inchangé depuis la sauvegarde ;
+    // sinon la séance a été modifiée entre-temps et on repart proprement
+    // de zéro plutôt que de risquer un état incohérent).
+    final checkpoint = widget.initialCheckpoint;
+    final canRestore = checkpoint != null &&
+        checkpoint.completed.length == _steps.length &&
+        checkpoint.currentIndex >= 0 &&
+        checkpoint.currentIndex < _steps.length;
+
+    if (canRestore) {
+      _currentIndex = checkpoint.currentIndex;
+      _completed = List.of(checkpoint.completed);
+      _globalElapsedOffset = checkpoint.globalElapsed;
+      _stepElapsedOffset = checkpoint.stepElapsed;
+      _paused = checkpoint.paused;
+
+      // Rattrape le temps réellement écoulé entre la sauvegarde du
+      // checkpoint et cette reprise (ex : processus tué par le système
+      // puis relancé), en se basant sur l'heure système (DateTime.now())
+      // et non sur un chronomètre qui n'a pas pu tourner entre-temps.
+      // Si la séance était en pause au moment de la sauvegarde, aucun
+      // temps ne doit être rattrapé.
+      if (!_paused) {
+        final backgroundGap = DateTime.now().difference(checkpoint.savedAt);
+        if (backgroundGap > Duration.zero) {
+          _globalElapsedOffset += backgroundGap;
+          _stepElapsedOffset += backgroundGap;
+        }
+      }
+    } else {
+      _completed = List.filled(_steps.length, false);
+    }
 
     if (_steps.isEmpty) {
       _finished = true;
@@ -66,23 +126,110 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
 
     WakelockPlus.enable();
 
-    _globalStopwatch.start();
-    _stepStopwatch.start();
+    if (!_paused) {
+      _globalStopwatch.start();
+      _stepStopwatch.start();
+    }
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
 
     _blinkController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
+    );
+    if (_paused) {
+      _blinkController!.value = 1;
+    } else {
+      _blinkController!.repeat(reverse: true);
+    }
+
+    // Assure qu'un checkpoint valide et à jour existe dès le début de
+    // l'écran (corrige aussi silencieusement un éventuel checkpoint
+    // invalide/obsolète en le remplaçant par l'état réellement démarré).
+    _saveCheckpoint();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
     _blinkController?.dispose();
     _commentController?.dispose();
     WakelockPlus.disable();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_finished) return;
+
+    if (state == AppLifecycleState.paused) {
+      _handleAppBackgrounded();
+    } else if (state == AppLifecycleState.resumed) {
+      _handleAppResumed();
+    }
+  }
+
+  // L'app quitte le premier plan : on fige les chronomètres tout de
+  // suite (on ne veut pas dépendre du comportement de l'horloge du
+  // système pendant la mise en veille), et on note l'heure système pour
+  // pouvoir rattraper l'écart réel au retour. On sauvegarde aussi le
+  // checkpoint immédiatement : le processus peut être tué à tout moment
+  // une fois en arrière-plan, sans autre avertissement.
+  void _handleAppBackgrounded() {
+    _backgroundedAt = DateTime.now();
+
+    if (!_paused) {
+      _globalElapsedOffset += _globalStopwatch.elapsed;
+      _stepElapsedOffset += _stepStopwatch.elapsed;
+      _globalStopwatch
+        ..stop()
+        ..reset();
+      _stepStopwatch
+        ..stop()
+        ..reset();
+    }
+
+    _saveCheckpoint();
+  }
+
+  // Retour au premier plan (processus jamais tué, contrairement au cas
+  // pris en charge dans initState) : on rattrape le temps réellement
+  // écoulé pendant l'arrière-plan via l'heure système, puis on relance
+  // les chronomètres.
+  void _handleAppResumed() {
+    final backgroundedAt = _backgroundedAt;
+    _backgroundedAt = null;
+
+    if (backgroundedAt == null || _paused) return;
+
+    final backgroundGap = DateTime.now().difference(backgroundedAt);
+
+    setState(() {
+      if (backgroundGap > Duration.zero) {
+        _globalElapsedOffset += backgroundGap;
+        _stepElapsedOffset += backgroundGap;
+      }
+      _globalStopwatch.start();
+      _stepStopwatch.start();
+    });
+
+    _saveCheckpoint();
+  }
+
+  Future<void> _saveCheckpoint() async {
+    if (_finished) return;
+
+    await _checkpointStorage.saveCheckpoint(
+      SessionCheckpoint(
+        trainingId: widget.training.id,
+        currentIndex: _currentIndex,
+        completed: List.of(_completed),
+        globalElapsed: _globalElapsed,
+        stepElapsed: _stepElapsed,
+        paused: _paused,
+        savedAt: DateTime.now(),
+      ),
+    );
   }
 
   SessionStep get _currentStep => _steps[_currentIndex];
@@ -102,7 +249,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
 
     final duration = _currentStep.item.duration;
 
-    if (duration != null && _stepStopwatch.elapsed >= duration) {
+    if (duration != null && _stepElapsed >= duration) {
       _completeCurrentStep();
     } else {
       // Rafraîchit l'affichage du chronomètre global / compte à rebours.
@@ -119,6 +266,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
       if (_currentIndex + 1 < _steps.length) {
         _currentIndex++;
         _editingComment = false;
+        _stepElapsedOffset = Duration.zero;
         _stepStopwatch
           ..stop()
           ..reset();
@@ -127,6 +275,8 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
         _finishSession();
       }
     });
+
+    if (!_finished) _saveCheckpoint();
   }
 
   Future<void> _finishSession({
@@ -148,12 +298,16 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
         trainingId: widget.training.id,
         trainingName: widget.training.name,
         date: DateTime.now(),
-        totalDuration: _globalStopwatch.elapsed,
+        totalDuration: _globalElapsed,
         status: status,
       );
 
       await TrainingHistoryStorage().addEntry(entry);
     }
+
+    // La séance est close (normalement ou de façon anticipée) : plus
+    // rien à reprendre, on supprime le checkpoint.
+    await _checkpointStorage.clearCheckpoint();
 
     if (!mounted) return;
     setState(() => _finished = true);
@@ -173,6 +327,8 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
         _blinkController?.repeat(reverse: true);
       }
     });
+
+    _saveCheckpoint();
   }
 
   // Navigation manuelle : ne modifie jamais le statut "terminé" des
@@ -184,11 +340,14 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     setState(() {
       _currentIndex = index;
       _editingComment = false; // on quitte l'exercice, on abandonne l'édition en cours
+      _stepElapsedOffset = Duration.zero;
       _stepStopwatch
         ..stop()
         ..reset();
       if (!_paused) _stepStopwatch.start();
     });
+
+    _saveCheckpoint();
   }
 
   void _goToPrevious() => _jumpToStep(_currentIndex - 1);
@@ -266,7 +425,10 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
         await _finishSession(status: TrainingSessionStatus.incomplete);
         break;
       case 'abandon':
-        // Quitte immédiatement, aucun enregistrement dans l'historique.
+        // Quitte immédiatement, aucun enregistrement dans l'historique,
+        // et aucune trace ne doit permettre de reprendre cette séance.
+        await _checkpointStorage.clearCheckpoint();
+        if (!mounted) return;
         Navigator.pop(context);
         break;
       case 'continue':
@@ -370,7 +532,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     final isDurationBased = item.duration != null;
     final isFreeDuration = item.isFreeDuration;
     final remaining =
-        isDurationBased ? (item.duration! - _stepStopwatch.elapsed) : Duration.zero;
+        isDurationBased ? (item.duration! - _stepElapsed) : Duration.zero;
     final nextStep = _nextStep;
 
     return SingleChildScrollView(
@@ -387,7 +549,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
               ),
               const SizedBox(width: 8),
               Text(
-                formatDuration(_globalStopwatch.elapsed),
+                formatDuration(_globalElapsed),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: Theme.of(context).colorScheme.outline,
                     ),
@@ -475,7 +637,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
             // (voir _stepStopwatch). Même présentation que le compte à
             // rebours du mode Temps pour rester cohérent visuellement.
             Text(
-              formatDuration(_stepStopwatch.elapsed),
+              formatDuration(_stepElapsed),
               style: const TextStyle(
                 fontSize: 72,
                 fontWeight: FontWeight.bold,
@@ -651,7 +813,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                "Durée totale : ${formatDuration(_globalStopwatch.elapsed)}",
+                "Durée totale : ${formatDuration(_globalElapsed)}",
               ),
               const SizedBox(height: 32),
               FilledButton(
