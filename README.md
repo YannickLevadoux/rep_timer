@@ -94,3 +94,5 @@ lib/
 ## Auteur
 
 [Yannick Levadoux](https://github.com/YannickLevadoux)
+
+Avec l'aimable contribution de [Claude](https://claude.ai/)
