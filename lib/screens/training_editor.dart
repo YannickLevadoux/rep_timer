@@ -37,6 +37,27 @@ class _TrainingEditorState extends State<TrainingEditor> {
 
   final List<ExerciseGroup> groups = [];
 
+  // Une GlobalKey stable par groupe (par id), pour pouvoir faire défiler
+  // la liste jusqu'à un groupe précis après sa création (Scrollable.
+  // ensureVisible a besoin d'un BuildContext identifiable).
+  final Map<String, GlobalKey> _groupKeys = {};
+
+  GlobalKey _keyForGroup(String groupId) =>
+      _groupKeys.putIfAbsent(groupId, () => GlobalKey());
+
+  void _scrollToGroup(String groupId) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _groupKeys[groupId]?.currentContext;
+      if (ctx == null) return;
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        alignment: 0.5,
+      );
+    });
+  }
+
   final TrainingStorage _storage = TrainingStorage();
 
   bool _saving = false;
@@ -189,6 +210,8 @@ class _TrainingEditorState extends State<TrainingEditor> {
   }
 
   Future<void> _confirmDeleteTraining() async {
+    FocusScope.of(context).unfocus();
+
     final training = widget.training;
     if (training == null) return;
 
@@ -264,6 +287,11 @@ class _TrainingEditorState extends State<TrainingEditor> {
 
   // Modification d'un exercice ou d'une pause existant(e)
   Future<void> _editItem(ExerciseGroup group, int index) async {
+    // Empêche Flutter de restaurer le focus (et donc le clavier) sur un
+    // champ de l'écran sous-jacent (ex : le titre de la séance) quand ce
+    // dialogue se refermera.
+    FocusScope.of(context).unfocus();
+
     final item = group.items[index];
 
     if (item.type == ItemType.rest) {
@@ -491,6 +519,8 @@ class _TrainingEditorState extends State<TrainingEditor> {
 
   // Méthode pour ajouter un nouvel exercice
   Future<void> _addExercise(ExerciseGroup group) async {
+  FocusScope.of(context).unfocus();
+
   // Préremplit uniquement une valeur par défaut, modifiable librement par
   // l'utilisateur ; n'affecte pas les exercices déjà créés.
   final nameController = TextEditingController(text: group.name);
@@ -661,10 +691,13 @@ class _TrainingEditorState extends State<TrainingEditor> {
     setState(() {
       group.items.add(result);
     });
+    _scrollToGroup(group.id);
   }
 }
 
   Future<void> _addGroup() async {
+  FocusScope.of(context).unfocus();
+
   final controller = TextEditingController();
   final roundsController = TextEditingController(text: "1");
 
@@ -713,17 +746,22 @@ class _TrainingEditorState extends State<TrainingEditor> {
 
   if (result != null && result["name"]!.trim().isNotEmpty) {
     final rounds = int.tryParse(result["rounds"] ?? "1") ?? 1;
+    final newGroupId = DateTime.now().microsecondsSinceEpoch.toString();
 
     setState(() {
       groups.add(
         ExerciseGroup(
-          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          id: newGroupId,
           name: result["name"]!.trim(),
           rounds: rounds < 1 ? 1 : rounds,
           items: [],
         ),
       );
     });
+
+    // Le focus reste sur le champ Titre uniquement si l'utilisateur y
+    // retape explicitement ; ici on l'amène plutôt vers le groupe créé.
+    _scrollToGroup(newGroupId);
   }
 }
 
@@ -735,9 +773,50 @@ class _TrainingEditorState extends State<TrainingEditor> {
     });
   }
 
+  Future<void> _renameGroup(ExerciseGroup group) async {
+    FocusScope.of(context).unfocus();
+
+    final controller = TextEditingController(text: group.name);
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Renommer le groupe"),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(hintText: "Ex : Échauffement"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Annuler"),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, controller.text),
+              child: const Text("Valider"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == null) return;
+
+    final trimmed = result.trim();
+    if (trimmed.isEmpty) return;
+
+    setState(() {
+      group.name = trimmed;
+    });
+  }
+
 // Add rest
 
   Future<void> _addRest(ExerciseGroup group) async {
+  FocusScope.of(context).unfocus();
+
   Duration selectedDuration = defaultExerciseDuration;
 
   final result = await showDialog<TrainingItem>(
@@ -784,6 +863,7 @@ class _TrainingEditorState extends State<TrainingEditor> {
     setState(() {
       group.items.add(result);
     });
+    _scrollToGroup(group.id);
   }
 }
 
@@ -857,7 +937,7 @@ class _TrainingEditorState extends State<TrainingEditor> {
                   final group = groups[index];
 
                   return ExerciseGroupCard(
-                    key: ValueKey(group.id),
+                    key: _keyForGroup(group.id),
 
                     group: group,
                     index: index,
@@ -872,9 +952,10 @@ class _TrainingEditorState extends State<TrainingEditor> {
                       setState(() {
                         groups.removeAt(index);
                       });
+                      _groupKeys.remove(group.id);
                     },
 
-                    onRename: () {},
+                    onRename: () => _renameGroup(group),
 
                     onRoundsChanged: (rounds) =>
                         _updateRounds(group, rounds),
