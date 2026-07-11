@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'models/training.dart';
 import 'screens/training_editor.dart';
 import 'screens/training_history.dart';
+import 'screens/training_session.dart';
 import 'screens/training_summary.dart';
+import 'services/session_checkpoint_storage.dart';
 import 'services/training_storage.dart';
 
 Future<void> main() async {
@@ -102,6 +104,59 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadTrainings();
+    // Vérifie, après le premier affichage, si une séance était en cours
+    // au moment où le processus a été tué par le système ; si oui, on
+    // reprend directement dessus (voir _resumePendingSessionIfAny).
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _resumePendingSessionIfAny(),
+    );
+  }
+
+  Future<void> _resumePendingSessionIfAny() async {
+    final checkpointStorage = SessionCheckpointStorage();
+    final checkpoint = await checkpointStorage.loadCheckpoint();
+    if (checkpoint == null) return;
+
+    // Un checkpoint de plus de 24h est considéré comme abandonné : on
+    // l'efface silencieusement plutôt que de proposer une reprise qui
+    // n'aurait plus de sens pour l'utilisateur.
+    final age = DateTime.now().difference(checkpoint.savedAt);
+    if (age > const Duration(hours: 24)) {
+      await checkpointStorage.clearCheckpoint();
+      return;
+    }
+
+    final trainings = await _storage.loadTrainings();
+    Training? training;
+    for (final t in trainings) {
+      if (t.id == checkpoint.trainingId) {
+        training = t;
+        break;
+      }
+    }
+
+    // La séance référencée n'existe plus (supprimée entre-temps) :
+    // checkpoint devenu invalide, on l'efface.
+    if (training == null) {
+      await checkpointStorage.clearCheckpoint();
+      return;
+    }
+
+    if (!mounted) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TrainingSessionScreen(
+          training: training!,
+          initialCheckpoint: checkpoint,
+        ),
+      ),
+    );
+
+    // Au retour (séance terminée ou abandonnée), la liste peut avoir
+    // changé (historique, suppression...).
+    if (mounted) _loadTrainings();
   }
 
   Future<void> _loadTrainings() async {
