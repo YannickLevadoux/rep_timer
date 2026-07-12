@@ -21,6 +21,7 @@ Future<({String name, String roundsText})?> showNewGroupDialog(
           children: [
             TextField(
               controller: nameController,
+              autofocus: true,
               decoration: const InputDecoration(
                 hintText: "Ex : Échauffement",
               ),

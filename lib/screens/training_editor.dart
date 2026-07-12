@@ -28,8 +28,10 @@ class _TrainingEditorState extends State<TrainingEditor> {
   final List<ExerciseGroup> groups = [];
 
   // Une GlobalKey stable par groupe (par id), pour pouvoir faire défiler
-  // la liste jusqu'à un groupe précis après sa création (Scrollable.
-  // ensureVisible a besoin d'un BuildContext identifiable).
+  // la liste jusqu'à un groupe précis après l'ajout d'un exercice/pause
+  // (le groupe est alors garanti déjà construit, puisque l'utilisateur
+  // vient d'y cliquer). Insuffisant pour un groupe tout juste créé : voir
+  // _groupsScrollController ci-dessous.
   final Map<String, GlobalKey> _groupKeys = {};
 
   GlobalKey _keyForGroup(String groupId) =>
@@ -44,6 +46,25 @@ class _TrainingEditorState extends State<TrainingEditor> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         alignment: 0.5,
+      );
+    });
+  }
+
+  // Contrôleur de la liste des groupes. Un nouveau groupe est toujours
+  // ajouté en dernière position : dans une longue liste, son widget n'est
+  // pas forcément déjà construit (ReorderableListView.builder virtualise
+  // le contenu hors écran), donc cibler sa GlobalKey échouerait
+  // silencieusement. On scrolle plutôt directement jusqu'à la fin de la
+  // liste, ce qui force sa construction au passage.
+  final ScrollController _groupsScrollController = ScrollController();
+
+  void _scrollGroupsListToEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_groupsScrollController.hasClients) return;
+      _groupsScrollController.animateTo(
+        _groupsScrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
       );
     });
   }
@@ -83,6 +104,7 @@ class _TrainingEditorState extends State<TrainingEditor> {
   void dispose() {
     _nameController.removeListener(_onNameChanged);
     _nameController.dispose();
+    _groupsScrollController.dispose();
     super.dispose();
   }
 
@@ -300,7 +322,7 @@ class _TrainingEditorState extends State<TrainingEditor> {
         );
       });
 
-      _scrollToGroup(newGroupId);
+      _scrollGroupsListToEnd();
     }
   }
 
@@ -393,6 +415,7 @@ class _TrainingEditorState extends State<TrainingEditor> {
 
               Expanded(
                 child: ReorderableListView.builder(
+                  scrollController: _groupsScrollController,
                   buildDefaultDragHandles: false,
                   itemCount: groups.length,
 
