@@ -307,6 +307,11 @@ class _TrainingEditorState extends State<TrainingEditor> {
 
     final result = await showNewGroupDialog(context);
 
+    // Sans ce second appel, le FocusScope de l'écran a tendance à
+    // redonner automatiquement la main au premier champ tappable (le
+    // Titre) à la fermeture du dialogue, rouvrant le clavier dessus.
+    FocusScope.of(context).unfocus();
+
     if (result != null && result.name.trim().isNotEmpty) {
       final rounds = int.tryParse(result.roundsText) ?? 1;
       final newGroupId = DateTime.now().microsecondsSinceEpoch.toString();
