@@ -24,14 +24,14 @@ class HistoryStepEntry {
   });
 
   Map<String, dynamic> toJson() => {
-        'groupId': groupId,
-        'groupName': groupName,
-        'itemType': itemType.name,
-        'itemName': itemName,
-        'comment': comment,
-        'actualDurationSeconds': actualDuration.inSeconds,
-        'completed': completed,
-      };
+    'groupId': groupId,
+    'groupName': groupName,
+    'itemType': itemType.name,
+    'itemName': itemName,
+    'comment': comment,
+    'actualDurationSeconds': actualDuration.inSeconds,
+    'completed': completed,
+  };
 
   factory HistoryStepEntry.fromJson(Map<String, dynamic> json) {
     return HistoryStepEntry(

@@ -21,11 +21,11 @@ class ExerciseGroup {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'rounds': rounds,
-        'items': items.map((item) => item.toJson()).toList(),
-      };
+    'id': id,
+    'name': name,
+    'rounds': rounds,
+    'items': items.map((item) => item.toJson()).toList(),
+  };
 
   factory ExerciseGroup.fromJson(Map<String, dynamic> json) {
     return ExerciseGroup(

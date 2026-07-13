@@ -17,23 +17,21 @@ class SettingsScreen extends StatelessWidget {
   // Logique de changement de thème réutilisée telle quelle depuis
   // l'écran d'accueil (même icône, même cycle Auto -> Clair -> Sombre).
   IconData get _themeIcon => switch (themeMode) {
-        ThemeMode.system => Icons.brightness_auto,
-        ThemeMode.light => Icons.light_mode,
-        ThemeMode.dark => Icons.dark_mode,
-      };
+    ThemeMode.system => Icons.brightness_auto,
+    ThemeMode.light => Icons.light_mode,
+    ThemeMode.dark => Icons.dark_mode,
+  };
 
   String get _themeLabel => switch (themeMode) {
-        ThemeMode.system => "Auto",
-        ThemeMode.light => "Clair",
-        ThemeMode.dark => "Sombre",
-      };
+    ThemeMode.system => "Auto",
+    ThemeMode.light => "Clair",
+    ThemeMode.dark => "Sombre",
+  };
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Paramètres"),
-      ),
+      appBar: AppBar(title: const Text("Paramètres")),
       body: ListView(
         children: [
           SettingsSection(

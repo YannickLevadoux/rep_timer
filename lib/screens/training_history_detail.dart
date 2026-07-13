@@ -67,8 +67,9 @@ class _TrainingHistoryDetailScreenState
     final isCompleted = entry.status == TrainingSessionStatus.completed;
     final steps = entry.steps;
 
-    final exerciseSteps =
-        steps.where((s) => s.itemType == ItemType.exercise).toList();
+    final exerciseSteps = steps
+        .where((s) => s.itemType == ItemType.exercise)
+        .toList();
     final doneExercises = exerciseSteps.where((s) => s.completed).length;
 
     final workDuration = steps
@@ -92,10 +93,7 @@ class _TrainingHistoryDetailScreenState
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                entry.trainingName,
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(entry.trainingName, overflow: TextOverflow.ellipsis),
             ),
           ],
         ),
@@ -121,7 +119,8 @@ class _TrainingHistoryDetailScreenState
                     _InfoRow(
                       icon: Icons.fitness_center,
                       label: "Exercices réalisés",
-                      value: "$doneExercises / ${exerciseSteps.length} exercices",
+                      value:
+                          "$doneExercises / ${exerciseSteps.length} exercices",
                     ),
                     _InfoRow(
                       icon: Icons.sports_score,
@@ -131,14 +130,12 @@ class _TrainingHistoryDetailScreenState
                     _InfoRow(
                       icon: Icons.directions_run,
                       label: "Temps de travail",
-                      value:
-                          formatDuration(workDuration),
+                      value: formatDuration(workDuration),
                     ),
                     _InfoRow(
                       icon: Icons.timer,
                       label: "Temps de pause",
-                      value:
-                          formatDuration(restDuration),
+                      value: formatDuration(restDuration),
                     ),
                   ],
                 ),
@@ -161,8 +158,9 @@ class _TrainingHistoryDetailScreenState
                           _GroupDetailCard(
                             groupName: groupEntry.value.first.groupName,
                             steps: groupEntry.value,
-                            collapsed:
-                                _collapsedGroupIds.contains(groupEntry.key),
+                            collapsed: _collapsedGroupIds.contains(
+                              groupEntry.key,
+                            ),
                             onToggle: () {
                               setState(() {
                                 if (!_collapsedGroupIds.add(groupEntry.key)) {
@@ -239,7 +237,9 @@ class _GroupDetailCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Column(
-                children: steps.map((step) => _StepDetailRow(step: step)).toList(),
+                children: steps
+                    .map((step) => _StepDetailRow(step: step))
+                    .toList(),
               ),
             ),
         ],

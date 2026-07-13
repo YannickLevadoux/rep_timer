@@ -60,7 +60,9 @@ class _NumberWheelFieldState extends State<NumberWheelField> {
   }
 
   Future<void> _openKeyboardEntry() async {
-    final textController = TextEditingController(text: _clampedValue.toString());
+    final textController = TextEditingController(
+      text: _clampedValue.toString(),
+    );
 
     final result = await showDialog<int>(
       context: context,
@@ -130,8 +132,9 @@ class _NumberWheelFieldState extends State<NumberWheelField> {
                           n.toString().padLeft(2, '0'),
                           style: TextStyle(
                             fontSize: isSelected ? 24 : 18,
-                            fontWeight:
-                                isSelected ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                             color: isSelected
                                 ? colorScheme.primary
                                 : colorScheme.outline,
