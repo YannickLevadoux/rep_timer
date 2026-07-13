@@ -1,8 +1,6 @@
 name: Release
 
 on:
-  workflow_dispatch:
-
   push:
     tags:
       - "v*"
@@ -55,22 +53,6 @@ jobs:
             KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
             KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
             KEY_ALIAS: ${{ vars.KEY_ALIAS }}
-
-      - name: Debug keystore
-        run: |
-            ls -lh android/app/upload-keystore.jks
-            sha256sum android/app/upload-keystore.jks
-
-            echo "Password length: ${#KEYSTORE_PASSWORD}"
-
-            echo "Password length: ${#KEY_PASSWORD}"
-
-            keytool -list \
-            -keystore android/app/upload-keystore.jks \
-            -storepass "$KEYSTORE_PASSWORD"
-        env:
-            KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-            KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Build signed APK
         run: flutter build apk --release
