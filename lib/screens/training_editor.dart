@@ -143,7 +143,8 @@ class _TrainingEditorState extends State<TrainingEditor> {
     setState(() => _saving = true);
 
     final training = Training(
-      id: widget.training?.id ??
+      id:
+          widget.training?.id ??
           DateTime.now().microsecondsSinceEpoch.toString(),
       name: name,
       groups: groups,
@@ -156,9 +157,9 @@ class _TrainingEditorState extends State<TrainingEditor> {
 
     setState(() => _saving = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Séance enregistrée")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Séance enregistrée")));
 
     // On renvoie `true` pour que l'écran d'accueil sache qu'il doit
     // recharger la liste des séances sauvegardées.
@@ -334,8 +335,10 @@ class _TrainingEditorState extends State<TrainingEditor> {
   Future<void> _renameGroup(ExerciseGroup group) async {
     FocusScope.of(context).unfocus();
 
-    final result =
-        await showRenameGroupDialog(context, initialName: group.name);
+    final result = await showRenameGroupDialog(
+      context,
+      initialName: group.name,
+    );
 
     if (result == null) return;
 
@@ -455,8 +458,7 @@ class _TrainingEditorState extends State<TrainingEditor> {
 
                       onRename: () => _renameGroup(group),
 
-                      onRoundsChanged: (rounds) =>
-                          _updateRounds(group, rounds),
+                      onRoundsChanged: (rounds) => _updateRounds(group, rounds),
 
                       onAddExercise: () => _addExercise(group),
                       onAddRest: () => _addRest(group),
