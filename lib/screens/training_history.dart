@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/training_history_entry.dart';
 import '../services/training_history_storage.dart';
 import '../utils/formatters.dart';
+import '../widgets/dialogs/confirm_dialog.dart';
+import 'training_history_detail.dart';
 
 /// Écran listant les séances effectuées, du plus récent au plus ancien.
 /// Affiche seulement les 5 plus récentes au départ, avec la possibilité
@@ -43,34 +45,15 @@ class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
   }
 
   Future<void> _confirmDelete(TrainingHistoryEntry entry) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Supprimer cette séance ?"),
-          content: Text(
-            'Cette action est irréversible. Supprimer "${entry.trainingName}" '
-            'du ${formatDateTime(entry.date)} de l\'historique ?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text("Annuler"),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error,
-                foregroundColor: Theme.of(context).colorScheme.onError,
-              ),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text("Supprimer"),
-            ),
-          ],
-        );
-      },
+    final confirmed = await showConfirmDialog(
+      context,
+      title: "Supprimer cette séance ?",
+      content: 'Cette action est irréversible. Supprimer "${entry.trainingName}" '
+          'du ${formatDateTime(entry.date)} de l\'historique ?',
+      confirmLabel: "Supprimer",
     );
 
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     await _storage.deleteEntry(entry.id);
 
@@ -78,6 +61,21 @@ class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
     setState(() {
       _allEntries.removeWhere((e) => e.id == entry.id);
     });
+  }
+
+  Future<void> _openDetail(TrainingHistoryEntry entry) async {
+    final deleted = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TrainingHistoryDetailScreen(entry: entry),
+      ),
+    );
+
+    if (deleted == true) {
+      setState(() {
+        _allEntries.removeWhere((e) => e.id == entry.id);
+      });
+    }
   }
 
   @override
@@ -106,6 +104,7 @@ class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
                           final entry = displayedEntries[index];
                           return _HistoryEntryCard(
                             entry: entry,
+                            onTap: () => _openDetail(entry),
                             onDelete: () => _confirmDelete(entry),
                           );
                         },
@@ -130,10 +129,12 @@ class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
 
 class _HistoryEntryCard extends StatelessWidget {
   final TrainingHistoryEntry entry;
+  final VoidCallback onTap;
   final VoidCallback onDelete;
 
   const _HistoryEntryCard({
     required this.entry,
+    required this.onTap,
     required this.onDelete,
   });
 
@@ -142,50 +143,54 @@ class _HistoryEntryCard extends StatelessWidget {
     final isCompleted = entry.status == TrainingSessionStatus.completed;
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          children: [
-            Icon(
-              isCompleted ? Icons.check_circle : Icons.incomplete_circle,
-              color: isCompleted
-                  ? Colors.green
-                  : Theme.of(context).colorScheme.tertiary,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    entry.trainingName,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    formatDateTime(entry.date),
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    "Durée : ${formatDuration(entry.totalDuration)} · "
-                    "${isCompleted ? 'Terminée' : 'Incomplète'}",
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                ],
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: [
+              Icon(
+                isCompleted ? Icons.check_circle : Icons.incomplete_circle,
+                color: isCompleted
+                    ? Colors.green
+                    : Theme.of(context).colorScheme.tertiary,
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              tooltip: "Supprimer",
-              onPressed: onDelete,
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      entry.trainingName,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      formatDateTime(entry.date),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "Durée : ${formatDuration(entry.totalDuration)} · "
+                      "${isCompleted ? 'Terminée' : 'Incomplète'}",
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: "Supprimer",
+                onPressed: onDelete,
+              ),
+            ],
+          ),
         ),
       ),
     );
