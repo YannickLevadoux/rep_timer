@@ -55,14 +55,20 @@ jobs:
 
             echo "Password length: ${#KEYSTORE_PASSWORD}"
 
+            echo "Password length: ${#KEY_PASSWORD}"
+
             keytool -list \
             -keystore android/app/upload-keystore.jks \
             -storepass "$KEYSTORE_PASSWORD"
         env:
             KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+            KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Build signed APK
         run: flutter build apk --release
+        env:
+            KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+            KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Rename APK
         run: |
