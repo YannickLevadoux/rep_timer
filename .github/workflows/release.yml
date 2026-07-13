@@ -46,6 +46,12 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
+      - name: Check keystore
+        run: |
+            ls -l android/app/upload-keystore.jks
+            keytool -list -keystore android/app/upload-keystore.jks \
+            -storepass "${{ secrets.KEYSTORE_PASSWORD }}"
+
       - name: Build signed APK
         run: flutter build apk --release
 
