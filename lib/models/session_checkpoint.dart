@@ -11,6 +11,11 @@ class SessionCheckpoint {
   final bool paused;
   final DateTime savedAt;
 
+  // Temps réellement passé sur chaque étape déjà quittée (utilisé pour
+  // l'historique détaillé) ; l'étape courante n'y figure pas encore tant
+  // qu'on ne l'a pas quittée, voir stepElapsed pour son temps en cours.
+  final List<Duration> stepActualDurations;
+
   SessionCheckpoint({
     required this.trainingId,
     required this.currentIndex,
@@ -19,6 +24,7 @@ class SessionCheckpoint {
     required this.stepElapsed,
     required this.paused,
     required this.savedAt,
+    required this.stepActualDurations,
   });
 
   Map<String, dynamic> toJson() => {
@@ -29,6 +35,8 @@ class SessionCheckpoint {
         'stepElapsedSeconds': stepElapsed.inSeconds,
         'paused': paused,
         'savedAt': savedAt.toIso8601String(),
+        'stepActualDurationsSeconds':
+            stepActualDurations.map((d) => d.inSeconds).toList(),
       };
 
   factory SessionCheckpoint.fromJson(Map<String, dynamic> json) {
@@ -42,6 +50,13 @@ class SessionCheckpoint {
       stepElapsed: Duration(seconds: json['stepElapsedSeconds'] as int),
       paused: json['paused'] as bool,
       savedAt: DateTime.parse(json['savedAt'] as String),
+      // Rétro-compatible : absent dans un checkpoint sauvegardé par une
+      // version antérieure de l'app.
+      stepActualDurations: (json['stepActualDurationsSeconds']
+                  as List<dynamic>?)
+              ?.map((s) => Duration(seconds: s as int))
+              .toList() ??
+          const [],
     );
   }
 }

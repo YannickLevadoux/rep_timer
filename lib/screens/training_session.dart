@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../models/history_step_entry.dart';
 import '../models/session_checkpoint.dart';
 import '../models/session_step.dart';
 import '../models/training.dart';
@@ -40,6 +41,12 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final List<SessionStep> _steps;
   late List<bool> _completed;
+
+  // Temps réellement passé sur chaque étape (indexé comme _steps), utilisé
+  // pour alimenter le détail de l'historique. Mis à jour à chaque fois
+  // qu'on quitte une étape (voir _recordCurrentStepDuration) : 0 tant
+  // qu'une étape n'a jamais été atteinte, valeur partielle si interrompue.
+  late List<Duration> _stepActualDurations;
 
   int _currentIndex = 0;
   bool _paused = false;
@@ -90,12 +97,14 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     final checkpoint = widget.initialCheckpoint;
     final canRestore = checkpoint != null &&
         checkpoint.completed.length == _steps.length &&
+        checkpoint.stepActualDurations.length == _steps.length &&
         checkpoint.currentIndex >= 0 &&
         checkpoint.currentIndex < _steps.length;
 
     if (canRestore) {
       _currentIndex = checkpoint.currentIndex;
       _completed = List.of(checkpoint.completed);
+      _stepActualDurations = List.of(checkpoint.stepActualDurations);
       _globalElapsedOffset = checkpoint.globalElapsed;
       _stepElapsedOffset = checkpoint.stepElapsed;
       _paused = checkpoint.paused;
@@ -115,6 +124,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
       }
     } else {
       _completed = List.filled(_steps.length, false);
+      _stepActualDurations = List.filled(_steps.length, Duration.zero);
     }
 
     if (_steps.isEmpty) {
@@ -213,6 +223,19 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     _saveCheckpoint();
   }
 
+  // Enregistre le temps réellement passé sur l'étape courante avant de la
+  // quitter (complétion, navigation manuelle, ou fin de séance). Appelé à
+  // chaque point de sortie d'une étape ; un second appel sur la même
+  // étape écrase simplement la valeur précédente (pas d'accumulation en
+  // cas de va-et-vient), ce qui reste cohérent avec "temps réellement
+  // passé lors du dernier passage".
+  void _recordCurrentStepDuration() {
+    if (_currentIndex < 0 || _currentIndex >= _stepActualDurations.length) {
+      return;
+    }
+    _stepActualDurations[_currentIndex] = _stepElapsed;
+  }
+
   Future<void> _saveCheckpoint() async {
     if (_finished) return;
 
@@ -225,6 +248,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
         stepElapsed: _stepElapsed,
         paused: _paused,
         savedAt: DateTime.now(),
+        stepActualDurations: List.of(_stepActualDurations),
       ),
     );
   }
@@ -257,6 +281,8 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
   void _completeCurrentStep() {
     if (_finished) return;
 
+    _recordCurrentStepDuration();
+
     setState(() {
       _completed[_currentIndex] = true;
 
@@ -280,6 +306,12 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
   }) async {
     if (_finished) return;
 
+    // Couvre le cas "Terminer la session" (fin anticipée), qui ne passe
+    // pas par _completeCurrentStep : sans cela, le temps partiel de
+    // l'étape en cours au moment de l'arrêt ne serait jamais enregistré.
+    // Idempotent si déjà appelé juste avant depuis _completeCurrentStep.
+    _recordCurrentStepDuration();
+
     _ticker?.cancel();
     _blinkController?.stop();
     _globalStopwatch.stop();
@@ -289,6 +321,25 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     if (!_historySaved) {
       _historySaved = true;
 
+      final stepEntries = [
+        for (var i = 0; i < _steps.length; i++)
+          HistoryStepEntry(
+            groupId: _steps[i].group.id,
+            groupName: _steps[i].group.name,
+            itemType: _steps[i].item.type,
+            itemName: _steps[i].item.name,
+            // Snapshot du commentaire tel qu'il est à la fin de la
+            // séance. Simplification assumée : si un même exercice
+            // revient sur plusieurs tours d'un groupe répété et que son
+            // commentaire est modifié entre deux tours, tous les tours
+            // affichent la dernière valeur plutôt qu'un historique par
+            // tour (cas marginal, non géré pour limiter la complexité).
+            comment: _steps[i].item.comment,
+            actualDuration: _stepActualDurations[i],
+            completed: _completed[i],
+          ),
+      ];
+
       final entry = TrainingHistoryEntry(
         id: DateTime.now().microsecondsSinceEpoch.toString(),
         trainingId: widget.training.id,
@@ -296,6 +347,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
         date: DateTime.now(),
         totalDuration: _globalElapsed,
         status: status,
+        steps: stepEntries,
       );
 
       await TrainingHistoryStorage().addEntry(entry);
@@ -332,6 +384,8 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
   // (et le minuteur de l'étape) change.
   void _jumpToStep(int index) {
     if (index < 0 || index >= _steps.length) return;
+
+    _recordCurrentStepDuration();
 
     setState(() {
       _currentIndex = index;
