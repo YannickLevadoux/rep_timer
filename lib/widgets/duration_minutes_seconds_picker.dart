@@ -38,10 +38,7 @@ class DurationMinutesSecondsPicker extends StatelessWidget {
         const SizedBox(width: 12),
         Padding(
           padding: const EdgeInsets.only(bottom: 20),
-          child: Text(
-            ":",
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
+          child: Text(":", style: Theme.of(context).textTheme.headlineSmall),
         ),
         const SizedBox(width: 12),
         NumberWheelField(

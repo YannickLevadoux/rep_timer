@@ -38,14 +38,14 @@ Future<TrainingItem?> showExerciseDialog(
   final nameController = TextEditingController(
     text: initial?.name ?? defaultName,
   );
-  _ExerciseMode mode =
-      initial != null ? _modeOf(initial) : _ExerciseMode.repetitions;
+  _ExerciseMode mode = initial != null
+      ? _modeOf(initial)
+      : _ExerciseMode.repetitions;
   final valueController = TextEditingController(
     text: initial?.repetitions?.toString() ?? '',
   );
   Duration selectedDuration = initial?.duration ?? defaultExerciseDuration;
-  final commentController =
-      TextEditingController(text: initial?.comment ?? '');
+  final commentController = TextEditingController(text: initial?.comment ?? '');
   String selectedIconName = initial?.iconName ?? defaultExerciseIconName;
 
   return showDialog<TrainingItem>(
@@ -80,8 +80,9 @@ Future<TrainingItem?> showExerciseDialog(
                         child: Icon(
                           iconForExercise(selectedIconName),
                           size: 32,
-                          color:
-                              Theme.of(context).colorScheme.onPrimaryContainer,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onPrimaryContainer,
                         ),
                       ),
                     ),

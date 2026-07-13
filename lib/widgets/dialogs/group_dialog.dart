@@ -22,9 +22,7 @@ Future<({String name, String roundsText})?> showNewGroupDialog(
             TextField(
               controller: nameController,
               autofocus: true,
-              decoration: const InputDecoration(
-                hintText: "Ex : Échauffement",
-              ),
+              decoration: const InputDecoration(hintText: "Ex : Échauffement"),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -43,10 +41,10 @@ Future<({String name, String roundsText})?> showNewGroupDialog(
           ),
           FilledButton(
             onPressed: () {
-              Navigator.pop(
-                context,
-                (name: nameController.text, roundsText: roundsController.text),
-              );
+              Navigator.pop(context, (
+                name: nameController.text,
+                roundsText: roundsController.text,
+              ));
             },
             child: const Text("Ajouter"),
           ),

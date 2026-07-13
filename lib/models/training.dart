@@ -14,11 +14,11 @@ class Training {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'createdAt': createdAt.toIso8601String(),
-        'groups': groups.map((group) => group.toJson()).toList(),
-      };
+    'id': id,
+    'name': name,
+    'createdAt': createdAt.toIso8601String(),
+    'groups': groups.map((group) => group.toJson()).toList(),
+  };
 
   factory Training.fromJson(Map<String, dynamic> json) {
     return Training(

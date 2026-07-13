@@ -12,10 +12,7 @@ import '../duration_minutes_seconds_picker.dart';
 ///
 /// Retourne la [Duration] choisie, ou `null` si annulé. Le bouton de
 /// validation reste inactif tant que la durée est nulle (0s).
-Future<Duration?> showRestDialog(
-  BuildContext context, {
-  Duration? initial,
-}) {
+Future<Duration?> showRestDialog(BuildContext context, {Duration? initial}) {
   final isEditing = initial != null;
   Duration selectedDuration = initial ?? defaultExerciseDuration;
 

@@ -71,10 +71,7 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
 
-      home: HomePage(
-        themeMode: _themeMode,
-        onToggleTheme: _cycleThemeMode,
-      ),
+      home: HomePage(themeMode: _themeMode, onToggleTheme: _cycleThemeMode),
     );
   }
 }

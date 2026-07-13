@@ -35,9 +35,7 @@ class TrainingSummaryScreen extends StatelessWidget {
     final canStart = training.groups.isNotEmpty && totalItems > 0;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(training.name),
-      ),
+      appBar: AppBar(title: Text(training.name)),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -78,7 +76,9 @@ class TrainingSummaryScreen extends StatelessWidget {
 
             Expanded(
               child: training.groups.isEmpty
-                  ? const Center(child: Text("Cette séance ne contient aucun groupe."))
+                  ? const Center(
+                      child: Text("Cette séance ne contient aucun groupe."),
+                    )
                   : ListView.builder(
                       itemCount: training.groups.length,
                       itemBuilder: (context, index) {
@@ -119,7 +119,9 @@ class TrainingSummaryScreen extends StatelessWidget {
                                   Text(
                                     "Aucun exercice",
                                     style: TextStyle(
-                                      color: Theme.of(context).colorScheme.outline,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.outline,
                                     ),
                                   ),
                                 ] else
@@ -131,7 +133,9 @@ class TrainingSummaryScreen extends StatelessWidget {
                                           Icon(
                                             iconForExercise(exercise.iconName),
                                             size: 18,
-                                            color: Theme.of(context).colorScheme.outline,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.outline,
                                           ),
                                           const SizedBox(width: 8),
                                           Expanded(

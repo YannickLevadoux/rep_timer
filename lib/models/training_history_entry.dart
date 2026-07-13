@@ -31,14 +31,14 @@ class TrainingHistoryEntry {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'trainingId': trainingId,
-        'trainingName': trainingName,
-        'date': date.toIso8601String(),
-        'totalDurationSeconds': totalDuration.inSeconds,
-        'status': status.name,
-        'steps': steps.map((s) => s.toJson()).toList(),
-      };
+    'id': id,
+    'trainingId': trainingId,
+    'trainingName': trainingName,
+    'date': date.toIso8601String(),
+    'totalDurationSeconds': totalDuration.inSeconds,
+    'status': status.name,
+    'steps': steps.map((s) => s.toJson()).toList(),
+  };
 
   factory TrainingHistoryEntry.fromJson(Map<String, dynamic> json) {
     return TrainingHistoryEntry(
@@ -51,7 +51,8 @@ class TrainingHistoryEntry {
       status: TrainingSessionStatus.values.byName(
         json['status'] as String? ?? TrainingSessionStatus.completed.name,
       ),
-      steps: (json['steps'] as List<dynamic>?)
+      steps:
+          (json['steps'] as List<dynamic>?)
               ?.map((e) => HistoryStepEntry.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],

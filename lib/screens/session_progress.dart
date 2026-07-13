@@ -144,8 +144,8 @@ class _SessionProgressScreenState extends State<SessionProgressScreen> {
             color: done
                 ? Colors.green
                 : isCurrent
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.outline,
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.outline,
           );
 
           final titleText = Row(
@@ -165,8 +165,9 @@ class _SessionProgressScreenState extends State<SessionProgressScreen> {
                   step.item.name,
                   style: TextStyle(
                     fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                    color:
-                        isCurrent ? Theme.of(context).colorScheme.primary : null,
+                    color: isCurrent
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
                   ),
                 ),
               ),

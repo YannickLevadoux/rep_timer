@@ -48,7 +48,8 @@ class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
     final confirmed = await showConfirmDialog(
       context,
       title: "Supprimer cette séance ?",
-      content: 'Cette action est irréversible. Supprimer "${entry.trainingName}" '
+      content:
+          'Cette action est irréversible. Supprimer "${entry.trainingName}" '
           'du ${formatDateTime(entry.date)} de l\'historique ?',
       confirmLabel: "Supprimer",
     );
@@ -80,49 +81,48 @@ class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final displayedEntries =
-        _showAll ? _allEntries : _allEntries.take(_initialLimit).toList();
+    final displayedEntries = _showAll
+        ? _allEntries
+        : _allEntries.take(_initialLimit).toList();
     final hasMore = !_showAll && _allEntries.length > _initialLimit;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Historique"),
-      ),
+      appBar: AppBar(title: const Text("Historique")),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _allEntries.isEmpty
-              ? const Center(child: Text("Aucune séance effectuée pour l'instant"))
-              : Column(
-                  children: [
-                    Expanded(
-                      child: ListView.separated(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: displayedEntries.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 8),
-                        itemBuilder: (context, index) {
-                          final entry = displayedEntries[index];
-                          return _HistoryEntryCard(
-                            entry: entry,
-                            onTap: () => _openDetail(entry),
-                            onDelete: () => _confirmDelete(entry),
-                          );
-                        },
+          ? const Center(child: Text("Aucune séance effectuée pour l'instant"))
+          : Column(
+              children: [
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: displayedEntries.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final entry = displayedEntries[index];
+                      return _HistoryEntryCard(
+                        entry: entry,
+                        onTap: () => _openDetail(entry),
+                        onDelete: () => _confirmDelete(entry),
+                      );
+                    },
+                  ),
+                ),
+                if (hasMore)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () => setState(() => _showAll = true),
+                        child: const Text("Tout Visualiser"),
                       ),
                     ),
-                    if (hasMore)
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            onPressed: () => setState(() => _showAll = true),
-                            child: const Text("Tout Visualiser"),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                  ),
+              ],
+            ),
     );
   }
 }

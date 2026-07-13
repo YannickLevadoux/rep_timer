@@ -1,7 +1,4 @@
-enum ItemType {
-  exercise,
-  rest,
-}
+enum ItemType { exercise, rest }
 
 class TrainingItem {
   ItemType type;
@@ -38,14 +35,14 @@ class TrainingItem {
   });
 
   Map<String, dynamic> toJson() => {
-        'type': type.name,
-        'name': name,
-        'repetitions': repetitions,
-        'durationSeconds': duration?.inSeconds,
-        'isFreeDuration': isFreeDuration,
-        'comment': comment,
-        'iconName': iconName,
-      };
+    'type': type.name,
+    'name': name,
+    'repetitions': repetitions,
+    'durationSeconds': duration?.inSeconds,
+    'isFreeDuration': isFreeDuration,
+    'comment': comment,
+    'iconName': iconName,
+  };
 
   factory TrainingItem.fromJson(Map<String, dynamic> json) {
     return TrainingItem(

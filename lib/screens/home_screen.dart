@@ -130,8 +130,9 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       // Un second clic sur la séance déjà développée la referme ;
       // sinon on referme la précédente et on développe la nouvelle.
-      _expandedTrainingId =
-          _expandedTrainingId == trainingId ? null : trainingId;
+      _expandedTrainingId = _expandedTrainingId == trainingId
+          ? null
+          : trainingId;
     });
   }
 
@@ -163,61 +164,51 @@ class _HomePageState extends State<HomePage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _trainings.isEmpty
-              ? const Center(
-                  child: Text("Aucune séance enregistrée"),
-                )
-              : ListView.builder(
-                  itemCount: _trainings.length,
-                  itemBuilder: (context, index) {
-                    final training = _trainings[index];
+          ? const Center(child: Text("Aucune séance enregistrée"))
+          : ListView.builder(
+              itemCount: _trainings.length,
+              itemBuilder: (context, index) {
+                final training = _trainings[index];
 
-                    return Card(
-                      key: ValueKey(training.id),
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      child: Column(
-                        children: [
-                          ListTile(
-                            title: Text(training.name),
-                            subtitle: Text(
-                              "${training.groups.length} groupe(s)",
-                            ),
-                            onTap: () => _toggleExpanded(training.id),
-                          ),
-                          if (_expandedTrainingId == training.id)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                16,
-                                0,
-                                16,
-                                12,
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: FilledButton.icon(
-                                      onPressed: () =>
-                                          _startTraining(training),
-                                      icon: const Icon(Icons.play_arrow),
-                                      label: const Text("Commencer"),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      onPressed: () =>
-                                          _openEditor(training: training),
-                                      icon: const Icon(Icons.edit),
-                                      label: const Text("Éditer"),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
+                return Card(
+                  key: ValueKey(training.id),
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        title: Text(training.name),
+                        subtitle: Text("${training.groups.length} groupe(s)"),
+                        onTap: () => _toggleExpanded(training.id),
                       ),
-                    );
-                  },
-                ),
+                      if (_expandedTrainingId == training.id)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: FilledButton.icon(
+                                  onPressed: () => _startTraining(training),
+                                  icon: const Icon(Icons.play_arrow),
+                                  label: const Text("Commencer"),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () =>
+                                      _openEditor(training: training),
+                                  icon: const Icon(Icons.edit),
+                                  label: const Text("Éditer"),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: 0,
         onDestinationSelected: (index) {
@@ -231,14 +222,8 @@ class _HomePageState extends State<HomePage> {
           }
         },
         destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home),
-            label: "Accueil",
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.history),
-            label: "Historique",
-          ),
+          NavigationDestination(icon: Icon(Icons.home), label: "Accueil"),
+          NavigationDestination(icon: Icon(Icons.history), label: "Historique"),
         ],
       ),
       // Ajout d'un bouton flottant pour créer une nouvelle séance

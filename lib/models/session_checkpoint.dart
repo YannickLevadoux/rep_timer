@@ -28,16 +28,17 @@ class SessionCheckpoint {
   });
 
   Map<String, dynamic> toJson() => {
-        'trainingId': trainingId,
-        'currentIndex': currentIndex,
-        'completed': completed,
-        'globalElapsedSeconds': globalElapsed.inSeconds,
-        'stepElapsedSeconds': stepElapsed.inSeconds,
-        'paused': paused,
-        'savedAt': savedAt.toIso8601String(),
-        'stepActualDurationsSeconds':
-            stepActualDurations.map((d) => d.inSeconds).toList(),
-      };
+    'trainingId': trainingId,
+    'currentIndex': currentIndex,
+    'completed': completed,
+    'globalElapsedSeconds': globalElapsed.inSeconds,
+    'stepElapsedSeconds': stepElapsed.inSeconds,
+    'paused': paused,
+    'savedAt': savedAt.toIso8601String(),
+    'stepActualDurationsSeconds': stepActualDurations
+        .map((d) => d.inSeconds)
+        .toList(),
+  };
 
   factory SessionCheckpoint.fromJson(Map<String, dynamic> json) {
     return SessionCheckpoint(
@@ -52,8 +53,8 @@ class SessionCheckpoint {
       savedAt: DateTime.parse(json['savedAt'] as String),
       // Rétro-compatible : absent dans un checkpoint sauvegardé par une
       // version antérieure de l'app.
-      stepActualDurations: (json['stepActualDurationsSeconds']
-                  as List<dynamic>?)
+      stepActualDurations:
+          (json['stepActualDurationsSeconds'] as List<dynamic>?)
               ?.map((s) => Duration(seconds: s as int))
               .toList() ??
           const [],
