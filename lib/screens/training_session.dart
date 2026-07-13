@@ -64,8 +64,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
   Duration _stepElapsedOffset = Duration.zero;
   Timer? _ticker;
 
-  final SessionCheckpointStorage _checkpointStorage =
-      SessionCheckpointStorage();
+  final SessionCheckpointStorage _checkpointStorage = SessionCheckpointStorage();
 
   // Anime le clignotement (nom + icône) de l'exercice en cours. Nullable
   // car non créé si la séance ne contient aucune étape.
@@ -75,8 +74,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
   // _startEditComment), plus d'état d'édition inline à maintenir ici.
   final TrainingStorage _trainingStorage = TrainingStorage();
 
-  Duration get _globalElapsed =>
-      _globalElapsedOffset + _globalStopwatch.elapsed;
+  Duration get _globalElapsed => _globalElapsedOffset + _globalStopwatch.elapsed;
   Duration get _stepElapsed => _stepElapsedOffset + _stepStopwatch.elapsed;
 
   // Horodatage du dernier passage en arrière-plan (processus non tué) ;
@@ -97,8 +95,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     // sinon la séance a été modifiée entre-temps et on repart proprement
     // de zéro plutôt que de risquer un état incohérent).
     final checkpoint = widget.initialCheckpoint;
-    final canRestore =
-        checkpoint != null &&
+    final canRestore = checkpoint != null &&
         checkpoint.completed.length == _steps.length &&
         checkpoint.stepActualDurations.length == _steps.length &&
         checkpoint.currentIndex >= 0 &&
@@ -261,11 +258,12 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
   // Animation de clignotement partagée : réutilisée pour l'icône, le nom
   // et le commentaire de l'exercice en cours (ici et sur l'écran de
   // progression), afin qu'ils restent synchronisés.
-  Animation<double> get _blinkOpacity => _blinkController != null
-      ? Tween<double>(begin: 1, end: 0.35).animate(
-          CurvedAnimation(parent: _blinkController!, curve: Curves.easeInOut),
-        )
-      : const AlwaysStoppedAnimation(1);
+  Animation<double> get _blinkOpacity =>
+      _blinkController != null
+          ? Tween<double>(begin: 1, end: 0.35).animate(
+              CurvedAnimation(parent: _blinkController!, curve: Curves.easeInOut),
+            )
+          : const AlwaysStoppedAnimation(1);
 
   void _onTick() {
     if (_paused || _finished) return;
@@ -578,7 +576,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
 
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         await _showExitMenu();
       },
@@ -613,9 +611,9 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
             child: Text(
               label,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: Theme.of(context).colorScheme.outline,
-                fontWeight: FontWeight.w600,
-              ),
+                    color: Theme.of(context).colorScheme.outline,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
           ),
           Expanded(child: Divider(color: color, thickness: 1)),
@@ -635,9 +633,8 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     final item = step.item;
     final isDurationBased = item.duration != null;
     final isFreeDuration = item.isFreeDuration;
-    final remaining = isDurationBased
-        ? (item.duration! - _stepElapsed)
-        : Duration.zero;
+    final remaining =
+        isDurationBased ? (item.duration! - _stepElapsed) : Duration.zero;
     final nextStep = _nextStep;
 
     return SingleChildScrollView(
@@ -656,14 +653,15 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
               Text(
                 formatDuration(_globalElapsed),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
               ),
               const SizedBox(width: 8),
               IconButton(
                 icon: const Icon(Icons.skip_next),
                 tooltip: "Exercice suivant",
-                onPressed: _currentIndex < _steps.length - 1 ? _goToNext : null,
+                onPressed:
+                    _currentIndex < _steps.length - 1 ? _goToNext : null,
               ),
             ],
           ),
@@ -685,8 +683,8 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
             nextStep == null
                 ? "Fin de la session"
                 : nextStep.item.type == ItemType.rest
-                ? "Pause"
-                : nextStep.item.name,
+                    ? "Pause"
+                    : nextStep.item.name,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyLarge,
           ),
@@ -721,9 +719,9 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
                   item.name,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                 ),
               ],
             ),
@@ -742,19 +740,28 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
             // rebours du mode Temps pour rester cohérent visuellement.
             Text(
               formatDuration(_stepElapsed),
-              style: const TextStyle(fontSize: 72, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 72,
+                fontWeight: FontWeight.bold,
+              ),
             )
           else if (isDurationBased)
             // Compte à rebours très visible : élément le plus proéminent
             // de l'écran.
             Text(
               formatDuration(remaining),
-              style: const TextStyle(fontSize: 72, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 72,
+                fontWeight: FontWeight.bold,
+              ),
             )
           else ...[
             Text(
               "× ${item.repetitions ?? 0}",
-              style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 24),
             FilledButton(
@@ -834,8 +841,8 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
               comment,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-              ),
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
             ),
           ),
         ),
@@ -872,7 +879,9 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 8),
-              Text("Durée totale : ${formatDuration(_globalElapsed)}"),
+              Text(
+                "Durée totale : ${formatDuration(_globalElapsed)}",
+              ),
               const SizedBox(height: 32),
               FilledButton(
                 onPressed: () {

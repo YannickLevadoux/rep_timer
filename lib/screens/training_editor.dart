@@ -143,8 +143,7 @@ class _TrainingEditorState extends State<TrainingEditor> {
     setState(() => _saving = true);
 
     final training = Training(
-      id:
-          widget.training?.id ??
+      id: widget.training?.id ??
           DateTime.now().microsecondsSinceEpoch.toString(),
       name: name,
       groups: groups,
@@ -157,9 +156,9 @@ class _TrainingEditorState extends State<TrainingEditor> {
 
     setState(() => _saving = false);
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Séance enregistrée")));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Séance enregistrée")),
+    );
 
     // On renvoie `true` pour que l'écran d'accueil sache qu'il doit
     // recharger la liste des séances sauvegardées.
@@ -239,8 +238,6 @@ class _TrainingEditorState extends State<TrainingEditor> {
   // Réordonnancement par drag & drop des exercices/pauses dans un groupe
   void _reorderItems(ExerciseGroup group, int oldIndex, int newIndex) {
     setState(() {
-      if (newIndex > oldIndex) newIndex--;
-
       final item = group.items.removeAt(oldIndex);
       group.items.insert(newIndex, item);
     });
@@ -308,6 +305,8 @@ class _TrainingEditorState extends State<TrainingEditor> {
 
     final result = await showNewGroupDialog(context);
 
+    if (!mounted) return;
+
     // Sans ce second appel, le FocusScope de l'écran a tendance à
     // redonner automatiquement la main au premier champ tappable (le
     // Titre) à la fermeture du dialogue, rouvrant le clavier dessus.
@@ -335,10 +334,8 @@ class _TrainingEditorState extends State<TrainingEditor> {
   Future<void> _renameGroup(ExerciseGroup group) async {
     FocusScope.of(context).unfocus();
 
-    final result = await showRenameGroupDialog(
-      context,
-      initialName: group.name,
-    );
+    final result =
+        await showRenameGroupDialog(context, initialName: group.name);
 
     if (result == null) return;
 
@@ -377,7 +374,7 @@ class _TrainingEditorState extends State<TrainingEditor> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         await _handleBackPressed();
       },
@@ -427,10 +424,8 @@ class _TrainingEditorState extends State<TrainingEditor> {
                   buildDefaultDragHandles: false,
                   itemCount: groups.length,
 
-                  onReorder: (oldIndex, newIndex) {
+                  onReorderItem: (oldIndex, newIndex) {
                     setState(() {
-                      if (newIndex > oldIndex) newIndex--;
-
                       final item = groups.removeAt(oldIndex);
                       groups.insert(newIndex, item);
                     });
@@ -460,7 +455,8 @@ class _TrainingEditorState extends State<TrainingEditor> {
 
                       onRename: () => _renameGroup(group),
 
-                      onRoundsChanged: (rounds) => _updateRounds(group, rounds),
+                      onRoundsChanged: (rounds) =>
+                          _updateRounds(group, rounds),
 
                       onAddExercise: () => _addExercise(group),
                       onAddRest: () => _addRest(group),

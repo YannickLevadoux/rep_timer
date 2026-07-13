@@ -55,7 +55,10 @@ class ExerciseGroupCard extends StatelessWidget {
           group.name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
 
         subtitle: Wrap(
@@ -139,7 +142,7 @@ class ExerciseGroupCard extends StatelessWidget {
                     physics: const NeverScrollableScrollPhysics(),
                     buildDefaultDragHandles: false,
                     itemCount: group.items.length,
-                    onReorder: onReorderItems,
+                    onReorderItem: onReorderItems,
                     itemBuilder: (context, itemIndex) {
                       final item = group.items[itemIndex];
 
@@ -253,10 +256,10 @@ class _ItemTile extends StatelessWidget {
                       item.type == ItemType.rest
                           ? "${item.duration!.inSeconds} s"
                           : item.isFreeDuration
-                          ? "Durée libre"
-                          : item.repetitions != null
-                          ? "${item.repetitions} répétitions"
-                          : "${item.duration?.inSeconds ?? 0} s",
+                              ? "Durée libre"
+                              : item.repetitions != null
+                                  ? "${item.repetitions} répétitions"
+                                  : "${item.duration?.inSeconds ?? 0} s",
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
