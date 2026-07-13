@@ -124,15 +124,21 @@ class _TrainingHistoryDetailScreenState
                       value: "$doneExercises / ${exerciseSteps.length} exercices",
                     ),
                     _InfoRow(
-                      icon: Icons.timer,
+                      icon: Icons.sports_score,
                       label: "Temps total",
                       value: formatDuration(entry.totalDuration),
                     ),
                     _InfoRow(
-                      icon: Icons.pie_chart,
-                      label: "Répartition",
+                      icon: Icons.directions_run,
+                      label: "Temps de travail",
                       value:
-                          "${workDuration.inMinutes} min travail / ${restDuration.inMinutes} min pause",
+                          formatDuration(workDuration),
+                    ),
+                    _InfoRow(
+                      icon: Icons.timer,
+                      label: "Temps de pause",
+                      value:
+                          formatDuration(restDuration),
                     ),
                   ],
                 ),
