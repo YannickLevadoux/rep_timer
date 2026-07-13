@@ -578,7 +578,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
 
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         await _showExitMenu();
       },
