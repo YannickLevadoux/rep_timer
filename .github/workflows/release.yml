@@ -42,11 +42,19 @@ jobs:
       - name: Create key.properties
         run: |
           cat > android/key.properties <<EOF
-          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.KEY_PASSWORD }}
-          keyAlias=${{ vars.KEY_ALIAS }}
+          storePassword=${KEYSTORE_PASSWORD}
+          keyPassword=${KEY_PASSWORD}
+          keyAlias=${KEY_ALIAS}
           storeFile=upload-keystore.jks
           EOF
+
+          echo "Key alias: ${KEY_ALIAS}"
+          echo "length of keystore password: ${#KEYSTORE_PASSWORD}"
+          echo "length of key password: ${#KEY_PASSWORD}"
+        env:
+            KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+            KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+            KEY_ALIAS: ${{ vars.KEY_ALIAS }}
 
       - name: Debug keystore
         run: |
@@ -66,9 +74,6 @@ jobs:
 
       - name: Build signed APK
         run: flutter build apk --release
-        env:
-            KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-            KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Rename APK
         run: |
