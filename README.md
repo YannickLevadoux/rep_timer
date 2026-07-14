@@ -29,6 +29,11 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Fin de séance anticipée possible (statut "Incomplète") ou normale (statut "Terminée"), toutes deux enregistrées dans l'historique.
 - Si une pause est définie la fin de la séance (dernière pause du dernier groupe), cette pause sera ignorée.
 
+### Quick Tabata
+- Lancement rapide d'une séance travail/pause répétée, sans avoir à créer de séance au préalable (accessible depuis la barre de navigation de l'accueil).
+- Nom, durée de travail, durée de pause et nombre de répétitions personnalisables ; temps total estimé recalculé en direct.
+- La séance est générée entièrement en mémoire et exécutée avec le même moteur qu'une séance classique (mêmes statistiques, même historique) — elle n'est jamais ajoutée à la liste des séances enregistrées.
+
 ### Historique
 - Historique local des séances effectuées : nom, date, durée totale, statut.
 - Suppression d'une entrée d'historique avec confirmation.

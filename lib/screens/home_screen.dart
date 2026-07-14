@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/training.dart';
 import '../services/session_checkpoint_storage.dart';
 import '../services/training_storage.dart';
+import 'quick_tabata_screen.dart';
 import 'settings_screen.dart';
 import 'training_editor.dart';
 import 'training_history.dart';
@@ -222,6 +223,13 @@ class _HomePageState extends State<HomePage> {
             Navigator.push(
               context,
               MaterialPageRoute(
+                builder: (context) => const QuickTabataScreen(),
+              ),
+            );
+          } else if (index == 2) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
                 builder: (context) => const TrainingHistoryScreen(),
               ),
             );
@@ -229,6 +237,7 @@ class _HomePageState extends State<HomePage> {
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: "Accueil"),
+          NavigationDestination(icon: Icon(Icons.bolt), label: "Quick Tabata"),
           NavigationDestination(icon: Icon(Icons.history), label: "Historique"),
         ],
       ),
