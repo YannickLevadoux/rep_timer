@@ -136,8 +136,8 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _openSettings() {
-    Navigator.push(
+  Future<void> _openSettings() async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => SettingsScreen(
@@ -146,6 +146,12 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
+
+    // On recharge systématiquement au retour : Paramètres peut avoir
+    // modifié les séances stockées (import), sans qu'il soit nécessaire
+    // de faire remonter un signal explicite pour un rechargement aussi
+    // peu coûteux (simple lecture locale).
+    if (mounted) _loadTrainings();
   }
 
   @override
