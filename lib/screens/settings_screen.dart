@@ -2,10 +2,21 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../services/training_export_service.dart';
 import '../widgets/settings_section.dart';
+
+// Copyright affiché dans la boîte de dialogue "À propos". Aucun autre
+// endroit dans le projet ne porte cette information : c'est ici, et
+// uniquement ici, qu'il faut la modifier.
+const String _copyright = "© 2026 Yannick Levadoux";
+
+// Icône de l'application, réutilisée pour la boîte de dialogue "À
+// propos". Doit être déclarée dans pubspec.yaml sous flutter: assets:
+// (voir la documentation fournie avec cette fonctionnalité).
+const String _appIconAsset = "assets/icon/app_icon.png";
 
 /// Écran centralisant les paramètres de l'application, organisé en
 /// sections pour faciliter l'ajout de nouveaux réglages à l'avenir.
@@ -109,6 +120,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _showAboutDialog() async {
+    // PackageInfo lit le nom et la version réellement embarqués dans
+    // l'app installée (voir la documentation associée à cette
+    // fonctionnalité) : jamais de duplication figée en dur dans le code.
+    final packageInfo = await PackageInfo.fromPlatform();
+
+    if (!mounted) return;
+
+    showAboutDialog(
+      context: context,
+      applicationName: packageInfo.appName,
+      applicationVersion: "${packageInfo.version} (${packageInfo.buildNumber})",
+      applicationIcon: SizedBox(
+        width: 48,
+        height: 48,
+        child: Image.asset(_appIconAsset),
+      ),
+      applicationLegalese: _copyright,
+      // Pas d'appel à showLicensePage : AboutDialog affiche déjà
+      // nativement un bouton "Voir les licences" qui l'ouvre lui-même.
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -170,6 +204,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ),
+            ],
+          ),
+
+          SettingsSection(
+            title: "À propos",
+            children: [
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text("À propos"),
+                onTap: _showAboutDialog,
+              ),
             ],
           ),
 
