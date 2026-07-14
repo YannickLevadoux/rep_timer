@@ -51,6 +51,7 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - `file_picker` pour l'import des séances
 - `share_plus` pour l'export des séance via la fenetre stardard de partage d'éléments
 - `flutter_launcher_icons` pour la gestion du logo
+- `package_info_plus` pour l'affichage d'information du package (boite About ou A Propos)
 
 Aucun backend, aucun compte utilisateur : toutes les données restent sur l'appareil.
 
@@ -98,6 +99,25 @@ lib/
 ├── widgets/                   # Composants réutilisables (cartes, pickers, sélecteurs)
 └── utils/                     # Formatage, registre d'icônes...
 ```
+
+## About
+
+Declarer l'image en tant que assets dans pubspec.yaml
+
+```yaml
+flutter:
+  assets:
+    - assets/icon/app_icon.png
+```
+
+Documentation — où modifier chaque information
+
+| Information | Où c'est défini | Comment ça arrive dans le dialogue |
+| ----------- | --------------- | ---------------------------------- |
+| Nom de l'app | `android/app/src/main/AndroidManifest.xml`, attribut `android:label` | Lu au runtime par PackageInfo.fromPlatform().appName | 
+| Icône | `assets/icon/app_icon.png` (le fichier source utilisé par flutter_launcher_icons pour générer les icônes natives) | Chargée via Image.asset(), une fois déclarée dans pubspec.yaml | 
+| Version | `pubspec.yaml`, champ `version`: X.Y.Z+B | Lue via PackageInfo.fromPlatform().version/.buildNumber — c'est ce même champ que Flutter utilise pour générer versionName/versionCode Android à la compilation| 
+| Copyright | Constante _copyright en haut de settings_screen.dart | Aucun autre endroit du projet ne porte cette info : c'est le seul point à éditer | 
 
 ## Auteur
 
