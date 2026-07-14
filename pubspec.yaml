@@ -40,6 +40,9 @@ dependencies:
   # preventing it from going to sleep while your app is running. 
   # This can be useful for applications that require continuous user interaction or display important information without interruption.
   wakelock_plus: ^1.2.8
+  file_picker: ^12.0.0-beta.1
+  share_plus: ^13.2.0
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:

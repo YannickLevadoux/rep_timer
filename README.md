@@ -31,7 +31,12 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 
 ### Historique
 - Historique local des séances effectuées : nom, date, durée totale, statut.
-- Suppression d'une entrée avec confirmation.
+- Suppression d'une entrée d'historique avec confirmation.
+- Détail d'une séance : temps passé sur chaque exercice
+
+### Import / Export
+- Export des séances enregistrées 
+- Import des séances basé (json) sur un fichier précédement enregistré
 
 ### Interface
 - Thème clair/sombre (suit le système, réglable manuellement).
@@ -43,6 +48,9 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - **Flutter / Dart**
 - Stockage local via `shared_preferences` (séances et historique, format JSON)
 - `wakelock_plus` pour le maintien de l'écran actif pendant l'exécution
+- `file_picker` pour l'import des séances
+- `share_plus` pour l'export des séance via la fenetre stardard de partage d'éléments
+- `flutter_launcher_icons` pour la gestion du logo
 
 Aucun backend, aucun compte utilisateur : toutes les données restent sur l'appareil.
 
