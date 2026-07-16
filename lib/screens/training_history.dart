@@ -45,20 +45,16 @@ class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
   }
 
   Future<void> _confirmDelete(TrainingHistoryEntry entry) async {
-    final confirmed = await showConfirmDialog(
+    final deleted = await confirmAndDelete(
       context,
       title: "Supprimer cette séance ?",
       content:
           'Cette action est irréversible. Supprimer "${entry.trainingName}" '
           'du ${formatDateTime(entry.date)} de l\'historique ?',
-      confirmLabel: "Supprimer",
+      onDelete: () => _storage.deleteEntry(entry.id),
     );
 
-    if (!confirmed) return;
-
-    await _storage.deleteEntry(entry.id);
-
-    if (!mounted) return;
+    if (!deleted || !mounted) return;
     setState(() {
       _allEntries.removeWhere((e) => e.id == entry.id);
     });

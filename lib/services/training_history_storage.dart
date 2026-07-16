@@ -1,47 +1,29 @@
-import 'dart:convert';
-
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../models/training_history_entry.dart';
+import 'json_prefs_storage.dart';
 
 /// Sauvegarde locale de l'historique des séances effectuées (persistée en
 /// JSON via SharedPreferences, même mécanisme que TrainingStorage).
 class TrainingHistoryStorage {
   static const _storageKey = 'training_history';
 
-  Future<List<TrainingHistoryEntry>> loadHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_storageKey);
+  final JsonListStorage<TrainingHistoryEntry> _storage =
+      JsonListStorage<TrainingHistoryEntry>(
+        storageKey: _storageKey,
+        fromJson: TrainingHistoryEntry.fromJson,
+        toJson: (e) => e.toJson(),
+      );
 
-    if (raw == null || raw.isEmpty) return [];
-
-    try {
-      final decoded = jsonDecode(raw) as List<dynamic>;
-      return decoded
-          .map((e) => TrainingHistoryEntry.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } catch (_) {
-      // Données corrompues/format incompatible : on repart d'une liste
-      // vide plutôt que de planter l'appli.
-      return [];
-    }
-  }
+  Future<List<TrainingHistoryEntry>> loadHistory() => _storage.loadList();
 
   Future<void> addEntry(TrainingHistoryEntry entry) async {
     final history = await loadHistory();
     history.add(entry);
-    await _saveHistory(history);
+    await _storage.saveList(history);
   }
 
   Future<void> deleteEntry(String id) async {
     final history = await loadHistory();
     history.removeWhere((entry) => entry.id == id);
-    await _saveHistory(history);
-  }
-
-  Future<void> _saveHistory(List<TrainingHistoryEntry> history) async {
-    final prefs = await SharedPreferences.getInstance();
-    final encoded = jsonEncode(history.map((e) => e.toJson()).toList());
-    await prefs.setString(_storageKey, encoded);
+    await _storage.saveList(history);
   }
 }

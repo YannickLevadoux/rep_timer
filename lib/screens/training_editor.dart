@@ -10,6 +10,7 @@ import '../widgets/dialogs/exercise_dialog.dart';
 import '../widgets/dialogs/group_dialog.dart';
 import '../widgets/dialogs/rest_dialog.dart';
 import '../widgets/exercise_group_card.dart';
+import '../utils/snack.dart';
 
 class TrainingEditor extends StatefulWidget {
   // Si une séance est fournie, l'écran s'ouvre en mode édition (pré-rempli).
@@ -127,16 +128,12 @@ class _TrainingEditorState extends State<TrainingEditor> {
     final name = _nameController.text.trim();
 
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Merci de donner un nom à la séance")),
-      );
+      showSnack(context, "Merci de donner un nom à la séance");
       return;
     }
 
     if (groups.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Ajoute au moins un groupe d'exercices")),
-      );
+      showSnack(context, "Ajoute au moins un groupe d'exercices");
       return;
     }
 
@@ -157,9 +154,7 @@ class _TrainingEditorState extends State<TrainingEditor> {
 
     setState(() => _saving = false);
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Séance enregistrée")));
+    showSnack(context, "Séance enregistrée");
 
     // On renvoie `true` pour que l'écran d'accueil sache qu'il doit
     // recharger la liste des séances sauvegardées.
@@ -201,18 +196,14 @@ class _TrainingEditorState extends State<TrainingEditor> {
     final training = widget.training;
     if (training == null) return;
 
-    final confirmed = await showConfirmDialog(
+    final deleted = await confirmAndDelete(
       context,
       title: "Supprimer la séance ?",
       content: 'Cette action est irréversible. Supprimer "${training.name}" ?',
-      confirmLabel: "Supprimer",
+      onDelete: () => _storage.deleteTraining(training.id),
     );
 
-    if (!confirmed) return;
-
-    await _storage.deleteTraining(training.id);
-
-    if (!mounted) return;
+    if (!deleted || !mounted) return;
 
     // On retourne à l'accueil (true = recharger la liste des séances).
     Navigator.pop(context, true);
@@ -250,6 +241,23 @@ class _TrainingEditorState extends State<TrainingEditor> {
     });
   }
 
+  // Ajoute un exercice ou une pause à un groupe : facteur commun à
+  // _addExercise/_addRest (unfocus, affichage du dialogue, ajout à la
+  // liste si non annulé, puis scroll jusqu'au groupe concerné).
+  Future<void> _addItem(
+    ExerciseGroup group,
+    Future<TrainingItem?> Function() showItemDialog,
+  ) async {
+    FocusScope.of(context).unfocus();
+
+    final result = await showItemDialog();
+
+    if (result != null) {
+      setState(() => group.items.add(result));
+      _scrollToGroup(group.id);
+    }
+  }
+
   // Modification d'un exercice ou d'une pause existant(e)
   Future<void> _editItem(ExerciseGroup group, int index) async {
     // Empêche Flutter de restaurer le focus (et donc le clavier) sur un
@@ -285,20 +293,14 @@ class _TrainingEditorState extends State<TrainingEditor> {
     }
   }
 
-  // Méthode pour ajouter un nouvel exercice
-  Future<void> _addExercise(ExerciseGroup group) async {
-    FocusScope.of(context).unfocus();
-
-    // Préremplit uniquement une valeur par défaut, modifiable librement
-    // par l'utilisateur ; n'affecte pas les exercices déjà créés.
-    final result = await showExerciseDialog(context, defaultName: group.name);
-
-    if (result != null) {
-      setState(() {
-        group.items.add(result);
-      });
-      _scrollToGroup(group.id);
-    }
+  // Méthode pour ajouter un nouvel exercice. Préremplit uniquement une
+  // valeur par défaut, modifiable librement par l'utilisateur ; n'affecte
+  // pas les exercices déjà créés.
+  Future<void> _addExercise(ExerciseGroup group) {
+    return _addItem(
+      group,
+      () => showExerciseDialog(context, defaultName: group.name),
+    );
   }
 
   Future<void> _addGroup() async {
@@ -358,19 +360,16 @@ class _TrainingEditorState extends State<TrainingEditor> {
     });
   }
 
-  Future<void> _addRest(ExerciseGroup group) async {
-    FocusScope.of(context).unfocus();
-
-    final result = await showRestDialog(context);
-
-    if (result != null) {
-      setState(() {
-        group.items.add(
-          TrainingItem(type: ItemType.rest, name: "Pause", duration: result),
-        );
-      });
-      _scrollToGroup(group.id);
-    }
+  Future<void> _addRest(ExerciseGroup group) {
+    return _addItem(group, () async {
+      final duration = await showRestDialog(context);
+      if (duration == null) return null;
+      return TrainingItem(
+        type: ItemType.rest,
+        name: "Pause",
+        duration: duration,
+      );
+    });
   }
 
   @override
