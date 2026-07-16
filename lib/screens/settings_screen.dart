@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../services/training_export_service.dart';
+import '../utils/snack.dart';
 import '../widgets/settings_section.dart';
 
 // Copyright affiché dans la boîte de dialogue "À propos". Aucun autre
@@ -71,9 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Erreur lors de l'export : $e")));
+      showSnack(context, "Erreur lors de l'export : $e");
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -98,23 +97,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final importResult = await _exportService.importFromJsonString(content);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Import terminé : ${importResult.importedCount} séance(s) importée(s).",
-          ),
-        ),
+      showSnack(
+        context,
+        "Import terminé : ${importResult.importedCount} séance(s) importée(s).",
       );
     } on FormatException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
+      showSnack(context, e.message);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Erreur lors de l'import : $e")));
+      showSnack(context, "Erreur lors de l'import : $e");
     } finally {
       if (mounted) setState(() => _busy = false);
     }

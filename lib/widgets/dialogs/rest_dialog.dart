@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../duration_minutes_seconds_picker.dart';
+import 'app_form_dialog.dart';
 
 /// Dialogue unique pour créer ou modifier une pause : ne porte que la
 /// durée (le nom d'une pause est toujours "Pause", non éditable).
@@ -16,35 +17,16 @@ Future<Duration?> showRestDialog(BuildContext context, {Duration? initial}) {
   final isEditing = initial != null;
   Duration selectedDuration = initial ?? defaultExerciseDuration;
 
-  return showDialog<Duration>(
-    context: context,
-    builder: (context) {
-      return StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: Text(isEditing ? "Modifier la pause" : "Nouvelle pause"),
-            content: SingleChildScrollView(
-              child: DurationMinutesSecondsPicker(
-                value: selectedDuration,
-                onChanged: (d) => setDialogState(() => selectedDuration = d),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Annuler"),
-              ),
-              FilledButton(
-                onPressed: () {
-                  if (selectedDuration.inSeconds <= 0) return;
-                  Navigator.pop(context, selectedDuration);
-                },
-                child: Text(isEditing ? "Valider" : "Ajouter"),
-              ),
-            ],
-          );
-        },
-      );
-    },
+  return showAppFormDialog<Duration>(
+    context,
+    title: isEditing ? "Modifier la pause" : "Nouvelle pause",
+    contentBuilder: (context, setDialogState) => SingleChildScrollView(
+      child: DurationMinutesSecondsPicker(
+        value: selectedDuration,
+        onChanged: (d) => setDialogState(() => selectedDuration = d),
+      ),
+    ),
+    confirmLabel: isEditing ? "Valider" : "Ajouter",
+    onConfirm: () => selectedDuration.inSeconds <= 0 ? null : selectedDuration,
   );
 }

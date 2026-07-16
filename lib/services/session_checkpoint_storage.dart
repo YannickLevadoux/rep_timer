@@ -1,8 +1,5 @@
-import 'dart:convert';
-
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../models/session_checkpoint.dart';
+import 'json_prefs_storage.dart';
 
 /// Sauvegarde locale du checkpoint de la séance actuellement en cours
 /// (une seule séance active à la fois dans l'application, donc une seule
@@ -10,30 +7,17 @@ import '../models/session_checkpoint.dart';
 class SessionCheckpointStorage {
   static const _storageKey = 'session_checkpoint';
 
-  Future<void> saveCheckpoint(SessionCheckpoint checkpoint) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_storageKey, jsonEncode(checkpoint.toJson()));
-  }
-
-  Future<SessionCheckpoint?> loadCheckpoint() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_storageKey);
-
-    if (raw == null || raw.isEmpty) return null;
-
-    try {
-      return SessionCheckpoint.fromJson(
-        jsonDecode(raw) as Map<String, dynamic>,
+  final JsonObjectStorage<SessionCheckpoint> _storage =
+      JsonObjectStorage<SessionCheckpoint>(
+        storageKey: _storageKey,
+        fromJson: SessionCheckpoint.fromJson,
+        toJson: (c) => c.toJson(),
       );
-    } catch (_) {
-      // Checkpoint corrompu/format incompatible : on l'ignore plutôt que
-      // de planter l'appli.
-      return null;
-    }
-  }
 
-  Future<void> clearCheckpoint() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_storageKey);
-  }
+  Future<void> saveCheckpoint(SessionCheckpoint checkpoint) =>
+      _storage.save(checkpoint);
+
+  Future<SessionCheckpoint?> loadCheckpoint() => _storage.load();
+
+  Future<void> clearCheckpoint() => _storage.clear();
 }

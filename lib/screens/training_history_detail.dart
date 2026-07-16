@@ -29,19 +29,15 @@ class _TrainingHistoryDetailScreenState
   Future<void> _confirmDelete() async {
     final entry = widget.entry;
 
-    final confirmed = await showConfirmDialog(
+    final deleted = await confirmAndDelete(
       context,
       title: "Supprimer cette séance ?",
       content:
           'Cette action est irréversible. Supprimer "${entry.trainingName}" de l\'historique ?',
-      confirmLabel: "Supprimer",
+      onDelete: () => TrainingHistoryStorage().deleteEntry(entry.id),
     );
 
-    if (!confirmed) return;
-
-    await TrainingHistoryStorage().deleteEntry(entry.id);
-
-    if (!mounted) return;
+    if (!deleted || !mounted) return;
 
     // true = la séance a été supprimée, pour que l'écran Historique
     // retire cette entrée de sa liste sans avoir à tout recharger.

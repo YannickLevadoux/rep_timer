@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_form_dialog.dart';
+
 /// Dialogue de création d'un nouveau groupe (nom + nombre de répétitions
 /// du groupe). Retourne le texte brut saisi par l'utilisateur, sans
 /// validation ni parsing (c'est à l'appelant de vérifier que le nom n'est
@@ -11,46 +13,30 @@ Future<({String name, String roundsText})?> showNewGroupDialog(
   final nameController = TextEditingController();
   final roundsController = TextEditingController(text: "1");
 
-  return showDialog<({String name, String roundsText})>(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text("Nouveau groupe"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              autofocus: true,
-              decoration: const InputDecoration(hintText: "Ex : Échauffement"),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: roundsController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: "Nombre de répétitions du groupe",
-              ),
-            ),
-          ],
+  return showAppFormDialog<({String name, String roundsText})>(
+    context,
+    title: "Nouveau groupe",
+    contentBuilder: (context, setDialogState) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(
+          controller: nameController,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: "Ex : Échauffement"),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Annuler"),
+        const SizedBox(height: 16),
+        TextField(
+          controller: roundsController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: "Nombre de répétitions du groupe",
           ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(context, (
-                name: nameController.text,
-                roundsText: roundsController.text,
-              ));
-            },
-            child: const Text("Ajouter"),
-          ),
-        ],
-      );
-    },
+        ),
+      ],
+    ),
+    confirmLabel: "Ajouter",
+    onConfirm: () =>
+        (name: nameController.text, roundsText: roundsController.text),
   );
 }
 
@@ -63,27 +49,15 @@ Future<String?> showRenameGroupDialog(
 }) {
   final controller = TextEditingController(text: initialName);
 
-  return showDialog<String>(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text("Renommer le groupe"),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: "Ex : Échauffement"),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Annuler"),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text("Valider"),
-          ),
-        ],
-      );
-    },
+  return showAppFormDialog<String>(
+    context,
+    title: "Renommer le groupe",
+    contentBuilder: (context, setDialogState) => TextField(
+      controller: controller,
+      autofocus: true,
+      decoration: const InputDecoration(hintText: "Ex : Échauffement"),
+    ),
+    confirmLabel: "Valider",
+    onConfirm: () => controller.text,
   );
 }
