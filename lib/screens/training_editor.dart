@@ -197,10 +197,7 @@ class _TrainingEditorState extends State<TrainingEditor> {
   //   été ajouté dès l'ouverture de cet écran ;
   // - `null` pour un groupe existant ne change rien (rien n'a été
   //   modifié, ou modifications abandonnées).
-  Future<void> _openGroupEditor(
-    ExerciseGroup group, {
-    required bool isNew,
-  }) async {
+  Future<void> _openGroupEditor(ExerciseGroup group, {required bool isNew}) async {
     final result = await Navigator.push<ExerciseGroup>(
       context,
       MaterialPageRoute(
@@ -322,8 +319,13 @@ class _TrainingEditorState extends State<TrainingEditor> {
                             key: ValueKey(group.id),
                             group: group,
                             index: index,
-                            onEdit: () => _openGroupEditor(group, isNew: false),
+                            expanded: group.expanded,
+                            onEdit: () =>
+                                _openGroupEditor(group, isNew: false),
                             onDelete: () => _confirmDeleteGroup(group),
+                            onToggleExpanded: () => setState(() {
+                              group.expanded = !group.expanded;
+                            }),
                           );
                         },
                       ),
