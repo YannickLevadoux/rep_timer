@@ -164,7 +164,9 @@ class _ReadOnlyItemRow extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            item.type == ItemType.rest ? Icons.timer : iconForExercise(item.iconName),
+            item.type == ItemType.rest
+                ? Icons.timer
+                : iconForExercise(item.iconName),
             size: 18,
             color: outline,
           ),
