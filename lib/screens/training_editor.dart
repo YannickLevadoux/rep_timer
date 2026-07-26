@@ -2,16 +2,19 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import '../models/exercise_group.dart';
+import '../models/group_type.dart';
 import '../models/training.dart';
-import '../models/training_item.dart';
 import '../services/training_storage.dart';
 import '../widgets/dialogs/confirm_dialog.dart';
-import '../widgets/dialogs/exercise_dialog.dart';
-import '../widgets/dialogs/group_dialog.dart';
-import '../widgets/dialogs/rest_dialog.dart';
-import '../widgets/exercise_group_card.dart';
+import '../widgets/group_summary_card.dart';
 import '../utils/snack.dart';
+import 'group_editor.dart';
 
+/// Écran de synthèse d'une séance : liste des groupes (nom, type,
+/// répétitions, contenu) en lecture seule, avec uniquement les actions
+/// Éditer / Supprimer / réordonner un groupe. Toute l'édition détaillée
+/// d'un groupe (nom, type, répétitions, exercices/pauses) vit désormais
+/// sur l'écran dédié [GroupEditorScreen].
 class TrainingEditor extends StatefulWidget {
   // Si une séance est fournie, l'écran s'ouvre en mode édition (pré-rempli).
   // Sinon, il s'ouvre en mode création.
@@ -28,35 +31,10 @@ class _TrainingEditorState extends State<TrainingEditor> {
 
   final List<ExerciseGroup> groups = [];
 
-  // Une GlobalKey stable par groupe (par id), pour pouvoir faire défiler
-  // la liste jusqu'à un groupe précis après l'ajout d'un exercice/pause
-  // (le groupe est alors garanti déjà construit, puisque l'utilisateur
-  // vient d'y cliquer). Insuffisant pour un groupe tout juste créé : voir
-  // _groupsScrollController ci-dessous.
-  final Map<String, GlobalKey> _groupKeys = {};
-
-  GlobalKey _keyForGroup(String groupId) =>
-      _groupKeys.putIfAbsent(groupId, () => GlobalKey());
-
-  void _scrollToGroup(String groupId) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final ctx = _groupKeys[groupId]?.currentContext;
-      if (ctx == null) return;
-      Scrollable.ensureVisible(
-        ctx,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        alignment: 0.5,
-      );
-    });
-  }
-
-  // Contrôleur de la liste des groupes. Un nouveau groupe est toujours
-  // ajouté en dernière position : dans une longue liste, son widget n'est
-  // pas forcément déjà construit (ReorderableListView.builder virtualise
-  // le contenu hors écran), donc cibler sa GlobalKey échouerait
-  // silencieusement. On scrolle plutôt directement jusqu'à la fin de la
-  // liste, ce qui force sa construction au passage.
+  // Contrôleur de la liste des groupes : un nouveau groupe est toujours
+  // ajouté en dernière position, dans une longue liste virtualisée par
+  // ReorderableListView.builder ; on scrolle directement jusqu'à la fin
+  // de la liste pour forcer sa construction et le rendre visible.
   final ScrollController _groupsScrollController = ScrollController();
 
   void _scrollGroupsListToEnd() {
@@ -95,7 +73,7 @@ class _TrainingEditorState extends State<TrainingEditor> {
     _nameController.addListener(_onNameChanged);
 
     // Référence de comparaison pour détecter toute modification non
-    // enregistrée (ajout/suppression/renommage/réorganisation/réglages).
+    // enregistrée (ajout/suppression/réorganisation/édition d'un groupe).
     _initialSnapshot = _currentSnapshot();
   }
 
@@ -209,167 +187,71 @@ class _TrainingEditorState extends State<TrainingEditor> {
     Navigator.pop(context, true);
   }
 
-  void _moveItemUp(ExerciseGroup group, int index) {
-    if (index == 0) return;
-
-    setState(() {
-      final item = group.items.removeAt(index);
-      group.items.insert(index - 1, item);
-    });
-  }
-
-  void _moveItemDown(ExerciseGroup group, int index) {
-    if (index >= group.items.length - 1) return;
-
-    setState(() {
-      final item = group.items.removeAt(index);
-      group.items.insert(index + 1, item);
-    });
-  }
-
-  // Réordonnancement par drag & drop des exercices/pauses dans un groupe
-  void _reorderItems(ExerciseGroup group, int oldIndex, int newIndex) {
-    setState(() {
-      final item = group.items.removeAt(oldIndex);
-      group.items.insert(newIndex, item);
-    });
-  }
-
-  void _deleteItem(ExerciseGroup group, int index) {
-    setState(() {
-      group.items.removeAt(index);
-    });
-  }
-
-  // Ajoute un exercice ou une pause à un groupe : facteur commun à
-  // _addExercise/_addRest (unfocus, affichage du dialogue, ajout à la
-  // liste si non annulé, puis scroll jusqu'au groupe concerné).
-  Future<void> _addItem(
-    ExerciseGroup group,
-    Future<TrainingItem?> Function() showItemDialog,
-  ) async {
-    FocusScope.of(context).unfocus();
-
-    final result = await showItemDialog();
-
-    if (result != null) {
-      setState(() => group.items.add(result));
-      _scrollToGroup(group.id);
-    }
-  }
-
-  // Modification d'un exercice ou d'une pause existant(e)
-  Future<void> _editItem(ExerciseGroup group, int index) async {
-    // Empêche Flutter de restaurer le focus (et donc le clavier) sur un
-    // champ de l'écran sous-jacent (ex : le titre de la séance) quand ce
-    // dialogue se refermera.
-    FocusScope.of(context).unfocus();
-
-    final item = group.items[index];
-
-    if (item.type == ItemType.rest) {
-      final result = await showRestDialog(context, initial: item.duration);
-
-      if (result != null) {
-        setState(() {
-          item.duration = result;
-        });
-      }
-
-      return;
-    }
-
-    final result = await showExerciseDialog(context, initial: item);
-
-    if (result != null) {
-      setState(() {
-        item.name = result.name;
-        item.repetitions = result.repetitions;
-        item.duration = result.duration;
-        item.isFreeDuration = result.isFreeDuration;
-        item.comment = result.comment;
-        item.iconName = result.iconName;
-      });
-    }
-  }
-
-  // Méthode pour ajouter un nouvel exercice. Préremplit uniquement une
-  // valeur par défaut, modifiable librement par l'utilisateur ; n'affecte
-  // pas les exercices déjà créés.
-  Future<void> _addExercise(ExerciseGroup group) {
-    return _addItem(
-      group,
-      () => showExerciseDialog(context, defaultName: group.name),
+  // Ouvre l'écran d'édition détaillée d'un groupe (existant ou tout juste
+  // créé, voir _addGroup). Applique le résultat sur la liste locale des
+  // groupes une fois revenu :
+  // - un groupe retourné (Enregistrer a été cliqué) remplace l'entrée
+  //   correspondante ;
+  // - `null` alors que le groupe était nouveau (isNew) signifie que sa
+  //   création a été abandonnée : on retire le placeholder vide qui avait
+  //   été ajouté dès l'ouverture de cet écran ;
+  // - `null` pour un groupe existant ne change rien (rien n'a été
+  //   modifié, ou modifications abandonnées).
+  Future<void> _openGroupEditor(
+    ExerciseGroup group, {
+    required bool isNew,
+  }) async {
+    final result = await Navigator.push<ExerciseGroup>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GroupEditorScreen(group: group, isNew: isNew),
+      ),
     );
-  }
-
-  Future<void> _addGroup() async {
-    FocusScope.of(context).unfocus();
-
-    final result = await showNewGroupDialog(context);
 
     if (!mounted) return;
 
-    // Sans ce second appel, le FocusScope de l'écran a tendance à
-    // redonner automatiquement la main au premier champ tappable (le
-    // Titre) à la fermeture du dialogue, rouvrant le clavier dessus.
-    FocusScope.of(context).unfocus();
-
-    if (result != null && result.name.trim().isNotEmpty) {
-      final rounds = int.tryParse(result.roundsText) ?? 1;
-      final newGroupId = DateTime.now().microsecondsSinceEpoch.toString();
-
+    if (result != null) {
       setState(() {
-        groups.add(
-          ExerciseGroup(
-            id: newGroupId,
-            name: result.name.trim(),
-            rounds: rounds < 1 ? 1 : rounds,
-            items: [],
-          ),
-        );
+        final index = groups.indexWhere((g) => g.id == group.id);
+        if (index >= 0) groups[index] = result;
       });
-
-      _scrollGroupsListToEnd();
+    } else if (isNew) {
+      setState(() {
+        groups.removeWhere((g) => g.id == group.id);
+      });
     }
   }
 
-  Future<void> _renameGroup(ExerciseGroup group) async {
+  // Un nouveau groupe (vide) est ajouté immédiatement à la liste, puis
+  // l'écran d'édition s'ouvre dessus tout de suite : voir _openGroupEditor
+  // pour le nettoyage si sa création est finalement abandonnée.
+  Future<void> _addGroup() async {
     FocusScope.of(context).unfocus();
 
-    final result = await showRenameGroupDialog(
-      context,
-      initialName: group.name,
+    final newGroup = ExerciseGroup(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      name: '',
+      type: GroupType.free,
+      items: [],
     );
 
-    if (result == null) return;
+    setState(() => groups.add(newGroup));
+    _scrollGroupsListToEnd();
 
-    final trimmed = result.trim();
-    if (trimmed.isEmpty) return;
-
-    setState(() {
-      group.name = trimmed;
-    });
+    await _openGroupEditor(newGroup, isNew: true);
   }
 
-  void _updateRounds(ExerciseGroup group, int rounds) {
-    if (rounds < 1) return;
-
-    setState(() {
-      group.rounds = rounds;
-    });
-  }
-
-  Future<void> _addRest(ExerciseGroup group) {
-    return _addItem(group, () async {
-      final duration = await showRestDialog(context);
-      if (duration == null) return null;
-      return TrainingItem(
-        type: ItemType.rest,
-        name: "Pause",
-        duration: duration,
-      );
-    });
+  Future<void> _confirmDeleteGroup(ExerciseGroup group) async {
+    await confirmAndDelete(
+      context,
+      title: "Supprimer ce groupe ?",
+      content:
+          'Cette action est irréversible. Supprimer le groupe '
+          '"${group.name}" et tous ses exercices ?',
+      onDelete: () async {
+        setState(() => groups.removeWhere((g) => g.id == group.id));
+      },
+    );
   }
 
   @override
@@ -418,62 +300,33 @@ class _TrainingEditorState extends State<TrainingEditor> {
 
               const SizedBox(height: 16),
 
-              const SizedBox(height: 10),
-
               Expanded(
-                child: ReorderableListView.builder(
-                  scrollController: _groupsScrollController,
-                  buildDefaultDragHandles: false,
-                  itemCount: groups.length,
+                child: groups.isEmpty
+                    ? const Center(child: Text("Aucun groupe pour l'instant"))
+                    : ReorderableListView.builder(
+                        scrollController: _groupsScrollController,
+                        buildDefaultDragHandles: false,
+                        itemCount: groups.length,
 
-                  onReorderItem: (oldIndex, newIndex) {
-                    setState(() {
-                      final item = groups.removeAt(oldIndex);
-                      groups.insert(newIndex, item);
-                    });
-                  },
+                        onReorderItem: (oldIndex, newIndex) {
+                          setState(() {
+                            final item = groups.removeAt(oldIndex);
+                            groups.insert(newIndex, item);
+                          });
+                        },
 
-                  itemBuilder: (context, index) {
-                    final group = groups[index];
+                        itemBuilder: (context, index) {
+                          final group = groups[index];
 
-                    return ExerciseGroupCard(
-                      key: _keyForGroup(group.id),
-
-                      group: group,
-                      index: index,
-
-                      onExpanded: (expanded) {
-                        setState(() {
-                          group.expanded = expanded;
-                        });
-                      },
-
-                      onDelete: () {
-                        setState(() {
-                          groups.removeAt(index);
-                        });
-                        _groupKeys.remove(group.id);
-                      },
-
-                      onRename: () => _renameGroup(group),
-
-                      onRoundsChanged: (rounds) => _updateRounds(group, rounds),
-
-                      onAddExercise: () => _addExercise(group),
-                      onAddRest: () => _addRest(group),
-
-                      onReorderItems: (oldIndex, newIndex) =>
-                          _reorderItems(group, oldIndex, newIndex),
-                      onMoveItemUp: (itemIndex) =>
-                          _moveItemUp(group, itemIndex),
-                      onMoveItemDown: (itemIndex) =>
-                          _moveItemDown(group, itemIndex),
-                      onEditItem: (itemIndex) => _editItem(group, itemIndex),
-                      onDeleteItem: (itemIndex) =>
-                          _deleteItem(group, itemIndex),
-                    );
-                  },
-                ),
+                          return GroupSummaryCard(
+                            key: ValueKey(group.id),
+                            group: group,
+                            index: index,
+                            onEdit: () => _openGroupEditor(group, isNew: false),
+                            onDelete: () => _confirmDeleteGroup(group),
+                          );
+                        },
+                      ),
               ),
 
               const SizedBox(height: 10),

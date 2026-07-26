@@ -113,6 +113,7 @@ class TrainingExportService {
                   id: _newId(),
                   name: g.name,
                   expanded: g.expanded,
+                  type: g.type,
                   rounds: g.rounds,
                   items: g.items,
                 ),
