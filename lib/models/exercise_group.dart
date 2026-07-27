@@ -1,9 +1,19 @@
 import 'training_item.dart';
 
+enum ExerciseGroupType { free }
+
+String exerciseGroupTypeLabel(ExerciseGroupType type) {
+  return switch (type) {
+    ExerciseGroupType.free => "Groupe libre",
+  };
+}
+
 class ExerciseGroup {
   final String id;
 
   String name;
+
+  ExerciseGroupType type;
 
   bool expanded;
 
@@ -15,6 +25,7 @@ class ExerciseGroup {
   ExerciseGroup({
     required this.id,
     required this.name,
+    this.type = ExerciseGroupType.free,
     this.expanded = true,
     this.rounds = 1,
     required this.items,
@@ -23,6 +34,7 @@ class ExerciseGroup {
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
+    'type': type.name,
     'rounds': rounds,
     'items': items.map((item) => item.toJson()).toList(),
   };
@@ -31,6 +43,9 @@ class ExerciseGroup {
     return ExerciseGroup(
       id: json['id'] as String,
       name: json['name'] as String,
+      type: ExerciseGroupType.values.byName(
+        json['type'] as String? ?? ExerciseGroupType.free.name,
+      ),
       rounds: json['rounds'] as int? ?? 1,
       items: (json['items'] as List<dynamic>)
           .map((e) => TrainingItem.fromJson(e as Map<String, dynamic>))

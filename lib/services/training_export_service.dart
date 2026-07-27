@@ -112,6 +112,7 @@ class TrainingExportService {
                 (g) => ExerciseGroup(
                   id: _newId(),
                   name: g.name,
+                  type: g.type,
                   expanded: g.expanded,
                   rounds: g.rounds,
                   items: g.items,
