@@ -34,6 +34,35 @@ class TrainingItem {
     this.iconName,
   });
 
+  /// Copie profonde de cet item : aucun champ n'est partagé avec
+  /// l'original (utile car [ExerciseGroup] recopie ses items à chaque
+  /// [ExerciseGroup.copyWith], pour éviter qu'une édition en cours ne
+  /// modifie l'instance d'origine avant sauvegarde).
+  ///
+  /// Comme tout `copyWith` classique, un paramètre omis reprend la valeur
+  /// actuelle : il n'est donc pas possible de remettre explicitement un
+  /// champ nullable à `null` via cette méthode (non nécessaire pour les
+  /// usages actuels, purement des copies à l'identique).
+  TrainingItem copyWith({
+    ItemType? type,
+    String? name,
+    int? repetitions,
+    Duration? duration,
+    bool? isFreeDuration,
+    String? comment,
+    String? iconName,
+  }) {
+    return TrainingItem(
+      type: type ?? this.type,
+      name: name ?? this.name,
+      repetitions: repetitions ?? this.repetitions,
+      duration: duration ?? this.duration,
+      isFreeDuration: isFreeDuration ?? this.isFreeDuration,
+      comment: comment ?? this.comment,
+      iconName: iconName ?? this.iconName,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
     'type': type.name,
     'name': name,

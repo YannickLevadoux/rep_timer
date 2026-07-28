@@ -127,8 +127,11 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
 
-    expect(find.text('Abandonner les modifications ?'), findsOneWidget);
-    await tester.tap(find.text('Abandonner'));
+    // GroupEditor est désormais aligné sur showUnsavedChangesDialog
+    // (3 choix), le même dialogue que TrainingEditor : titre et libellé
+    // du bouton "abandonner" diffèrent de l'ancien showConfirmDialog.
+    expect(find.text('Modifications non enregistrées'), findsOneWidget);
+    await tester.tap(find.text('Abandonner les modifications'));
     await tester.pumpAndSettle();
 
     expect(find.text('Modifié'), findsOneWidget);

@@ -27,7 +27,6 @@ class ExerciseGroupCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       margin: const EdgeInsets.only(bottom: 12),
       child: ExpansionTile(
-        maintainState: true,
         initiallyExpanded: group.expanded,
         onExpansionChanged: onExpanded,
         title: Text(
@@ -42,7 +41,7 @@ class ExerciseGroupCard extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
-              exerciseGroupTypeLabel(group.type),
+              group.type.label,
               style: TextStyle(
                 fontSize: 13,
                 color: Theme.of(context).colorScheme.outline,
@@ -84,23 +83,29 @@ class ExerciseGroupCard extends StatelessWidget {
             ),
           ],
         ),
-        children: [
-          Container(
-            width: double.infinity,
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-            child: group.items.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Text("Aucun exercice"),
-                  )
-                : Column(
-                    children: group.items
-                        .map((item) => _ReadonlyItemRow(item: item))
-                        .toList(),
-                  ),
-          ),
-        ],
+        // Rendu conditionnel plutôt que `maintainState: true` : les
+        // lignes d'aperçu ne sont construites que si le groupe est
+        // effectivement déplié, au lieu d'être maintenues en mémoire en
+        // permanence même repliées.
+        children: group.expanded
+            ? [
+                Container(
+                  width: double.infinity,
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                  child: group.items.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.all(8),
+                          child: Text("Aucun exercice"),
+                        )
+                      : Column(
+                          children: group.items
+                              .map((item) => _ReadonlyItemRow(item: item))
+                              .toList(),
+                        ),
+                ),
+              ]
+            : const [],
       ),
     );
   }

@@ -35,12 +35,11 @@ class _TrainingEditorState extends State<TrainingEditor> {
     final existing = widget.training;
     if (existing != null) {
       _nameController.text = existing.name;
+      // Copie profonde (voir ExerciseGroup.copyWith) : les groupes édités
+      // ici ne doivent jamais partager leurs items avec la séance
+      // d'origine tant que "Enregistrer" n'a pas été pressé.
       groups.addAll(
-        existing.groups.map((group) {
-          final copy = ExerciseGroup.fromJson(group.toJson());
-          copy.expanded = true;
-          return copy;
-        }),
+        existing.groups.map((group) => group.copyWith(expanded: true)),
       );
     }
 

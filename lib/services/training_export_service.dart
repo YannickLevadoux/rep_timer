@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
-import '../models/exercise_group.dart';
 import '../models/training.dart';
 import 'training_storage.dart';
 
@@ -107,18 +106,11 @@ class TrainingExportService {
           id: _newId(),
           name: parsed.name,
           createdAt: parsed.createdAt,
-          groups: parsed.groups
-              .map(
-                (g) => ExerciseGroup(
-                  id: _newId(),
-                  name: g.name,
-                  type: g.type,
-                  expanded: g.expanded,
-                  rounds: g.rounds,
-                  items: g.items,
-                ),
-              )
-              .toList(),
+          // Copie profonde (voir ExerciseGroup.copyWith) : chaque groupe
+          // importé reçoit un nouvel identifiant, et ses items sont
+          // recopiés plutôt que partagés avec les objets décodés depuis
+          // le fichier.
+          groups: parsed.groups.map((g) => g.copyWith(id: _newId())).toList(),
         ),
       );
     }

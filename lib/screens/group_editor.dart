@@ -4,12 +4,24 @@ import 'package:flutter/material.dart';
 
 import '../models/exercise_group.dart';
 import '../models/training_item.dart';
-import '../utils/exercise_icons.dart';
 import '../utils/snack.dart';
 import '../widgets/dialogs/confirm_dialog.dart';
 import '../widgets/dialogs/exercise_dialog.dart';
 import '../widgets/dialogs/rest_dialog.dart';
+import '../widgets/group_editor_actions.dart';
+import '../widgets/group_items_list.dart';
+import '../widgets/rounds_editor.dart';
+import '../widgets/type_selector.dart';
 
+/// Écran d'édition d'un groupe d'exercices (création ou modification) :
+/// nom, type, nombre de répétitions, et liste ordonnée des
+/// exercices/pauses qui le composent.
+///
+/// La présentation de la liste des items vit dans [GroupItemsList] (qui
+/// s'appuie elle-même sur `EditableItemTile`), et les blocs "Type du
+/// groupe" / "Répétitions" dans leurs propres widgets ([TypeSelector],
+/// [RoundsEditor]) : ce fichier ne s'occupe que de l'orchestration (état
+/// du groupe en cours d'édition, actions sur ses items).
 class GroupEditor extends StatefulWidget {
   final ExerciseGroup group;
   final bool isNewGroup;
@@ -28,7 +40,10 @@ class _GroupEditorState extends State<GroupEditor> {
   @override
   void initState() {
     super.initState();
-    _group = ExerciseGroup.fromJson(widget.group.toJson());
+    // Copie profonde (voir ExerciseGroup.copyWith) : les items ne sont
+    // jamais partagés avec l'original tant que "Enregistrer" n'a pas été
+    // pressé.
+    _group = widget.group.copyWith();
     _nameController = TextEditingController(text: _group.name);
     _initialSnapshot = _currentSnapshot();
   }
@@ -48,20 +63,28 @@ class _GroupEditorState extends State<GroupEditor> {
 
   bool get _hasUnsavedChanges => _currentSnapshot() != _initialSnapshot;
 
+  // Aligné sur le comportement de TrainingEditor : mêmes 3 choix
+  // (Enregistrer / Abandonner les modifications / Annuler), pour une
+  // cohérence UX entre les deux écrans d'édition de l'application.
   Future<void> _handleBackPressed() async {
     if (!_hasUnsavedChanges) {
       Navigator.pop(context);
       return;
     }
 
-    final discard = await showConfirmDialog(
-      context,
-      title: "Abandonner les modifications ?",
-      content: "Les modifications de ce groupe ne seront pas enregistrées.",
-      confirmLabel: "Abandonner",
-    );
+    final choice = await showUnsavedChangesDialog(context);
 
-    if (discard && mounted) Navigator.pop(context);
+    switch (choice) {
+      case 'save':
+        _saveGroup();
+        break;
+      case 'discard':
+        if (mounted) Navigator.pop(context);
+        break;
+      case 'cancel':
+      default:
+        break;
+    }
   }
 
   Future<void> _addItem(Future<TrainingItem?> Function() showDialog) async {
@@ -133,21 +156,15 @@ class _GroupEditorState extends State<GroupEditor> {
     setState(() => _group.items.removeAt(index));
   }
 
-  void _moveItemUp(int index) {
-    if (index == 0) return;
+  // Factorise "monter" (delta -1) et "descendre" (delta +1) : même
+  // opération de déplacement, seul le sens change.
+  void _moveItem(int index, int delta) {
+    final target = index + delta;
+    if (target < 0 || target >= _group.items.length) return;
 
     setState(() {
       final item = _group.items.removeAt(index);
-      _group.items.insert(index - 1, item);
-    });
-  }
-
-  void _moveItemDown(int index) {
-    if (index >= _group.items.length - 1) return;
-
-    setState(() {
-      final item = _group.items.removeAt(index);
-      _group.items.insert(index + 1, item);
+      _group.items.insert(target, item);
     });
   }
 
@@ -197,226 +214,36 @@ class _GroupEditorState extends State<GroupEditor> {
                 ),
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<ExerciseGroupType>(
-                initialValue: _group.type,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: "Type du groupe",
-                ),
-                items: ExerciseGroupType.values
-                    .map(
-                      (type) => DropdownMenuItem(
-                        value: type,
-                        child: Text(exerciseGroupTypeLabel(type)),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (type) => setState(() => _group.type = type!),
+              TypeSelector(
+                value: _group.type,
+                onChanged: (type) => setState(() => _group.type = type),
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Text("Répétitions"),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.remove_circle_outline),
-                    tooltip: "Moins de répétitions",
-                    onPressed: _group.rounds > 1
-                        ? () => setState(() => _group.rounds--)
-                        : null,
-                  ),
-                  Text(
-                    '${_group.rounds}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle_outline),
-                    tooltip: "Plus de répétitions",
-                    onPressed: () => setState(() => _group.rounds++),
-                  ),
-                ],
+              RoundsEditor(
+                rounds: _group.rounds,
+                onChanged: (rounds) => setState(() => _group.rounds = rounds),
               ),
               const SizedBox(height: 8),
               Expanded(
-                child: _group.items.isEmpty
-                    ? const Center(child: Text("Aucun exercice"))
-                    : ReorderableListView.builder(
-                        buildDefaultDragHandles: false,
-                        itemCount: _group.items.length,
-                        onReorderItem: _reorderItems,
-                        itemBuilder: (context, index) {
-                          final item = _group.items[index];
-
-                          return _EditableItemTile(
-                            key: ValueKey(item),
-                            item: item,
-                            isFirst: index == 0,
-                            isLast: index == _group.items.length - 1,
-                            onMoveUp: () => _moveItemUp(index),
-                            onMoveDown: () => _moveItemDown(index),
-                            onEdit: () => _editItem(index),
-                            onDelete: () => _deleteItem(index),
-                            dragIndex: index,
-                          );
-                        },
-                      ),
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  FilledButton.icon(
-                    onPressed: _addExercise,
-                    icon: const Icon(Icons.fitness_center),
-                    label: const Text("Exercice"),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _addRest,
-                    icon: const Icon(Icons.timer),
-                    label: const Text("Pause"),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _saveGroup,
-                  child: const Text("Enregistrer"),
+                child: GroupItemsList(
+                  items: _group.items,
+                  onReorder: _reorderItems,
+                  onMoveUp: (index) => _moveItem(index, -1),
+                  onMoveDown: (index) => _moveItem(index, 1),
+                  onEdit: _editItem,
+                  onDelete: _deleteItem,
                 ),
+              ),
+              const SizedBox(height: 10),
+              GroupEditorActions(
+                onAddExercise: _addExercise,
+                onAddRest: _addRest,
+                onSave: _saveGroup,
               ),
             ],
           ),
         ),
       ),
     );
-  }
-}
-
-class _EditableItemTile extends StatelessWidget {
-  final TrainingItem item;
-  final bool isFirst;
-  final bool isLast;
-  final VoidCallback onMoveUp;
-  final VoidCallback onMoveDown;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final int dragIndex;
-
-  const _EditableItemTile({
-    super.key,
-    required this.item,
-    required this.isFirst,
-    required this.isLast,
-    required this.onMoveUp,
-    required this.onMoveDown,
-    required this.onEdit,
-    required this.onDelete,
-    required this.dragIndex,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 3),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                item.type == ItemType.exercise
-                    ? iconForExercise(item.iconName)
-                    : Icons.timer,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    Text(
-                      _itemValue(item),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              _actionButton(
-                icon: Icons.arrow_upward,
-                tooltip: "Monter",
-                onPressed: isFirst ? null : onMoveUp,
-              ),
-              _actionButton(
-                icon: Icons.arrow_downward,
-                tooltip: "Descendre",
-                onPressed: isLast ? null : onMoveDown,
-              ),
-              _actionButton(
-                icon: Icons.edit,
-                tooltip: "Modifier",
-                onPressed: onEdit,
-              ),
-              _actionButton(
-                icon: Icons.delete,
-                tooltip: "Supprimer",
-                onPressed: onDelete,
-              ),
-              ReorderableDragStartListener(
-                index: dragIndex,
-                child: const Padding(
-                  padding: EdgeInsets.all(6),
-                  child: Icon(Icons.drag_handle, size: 20),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _actionButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback? onPressed,
-  }) {
-    return IconButton(
-      icon: Icon(icon, size: 20),
-      tooltip: tooltip,
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-      visualDensity: VisualDensity.compact,
-      onPressed: onPressed,
-    );
-  }
-
-  String _itemValue(TrainingItem item) {
-    if (item.type == ItemType.rest) return "${item.duration!.inSeconds} s";
-    if (item.isFreeDuration) return "Durée libre";
-    if (item.repetitions != null) return "${item.repetitions} répétitions";
-    return "${item.duration?.inSeconds ?? 0} s";
   }
 }
