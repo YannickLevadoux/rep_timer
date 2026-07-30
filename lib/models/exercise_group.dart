@@ -1,9 +1,12 @@
+import 'group_type.dart';
 import 'training_item.dart';
 
 class ExerciseGroup {
   final String id;
 
   String name;
+
+  GroupType type;
 
   bool expanded;
 
@@ -15,14 +18,45 @@ class ExerciseGroup {
   ExerciseGroup({
     required this.id,
     required this.name,
+    this.type = GroupType.free,
     this.expanded = true,
     this.rounds = 1,
     required this.items,
   });
 
+  /// Copie profonde de ce groupe : [items] est systématiquement recopié
+  /// (chaque item via [TrainingItem.copyWith]), jamais partagé avec
+  /// l'original — y compris si [items] n'est pas explicitement fourni.
+  /// Sans cela, une modification faite sur la copie (ex : dans l'écran
+  /// d'édition, avant "Enregistrer") se répercuterait silencieusement sur
+  /// l'instance d'origine.
+  ///
+  /// Les autres champs omis reprennent la valeur actuelle. [id] n'est
+  /// changé que si explicitement fourni : une édition en cours veut
+  /// conserver le même id (remplacement à l'enregistrement), tandis
+  /// qu'un import veut au contraire toujours en générer un nouveau.
+  ExerciseGroup copyWith({
+    String? id,
+    String? name,
+    GroupType? type,
+    bool? expanded,
+    int? rounds,
+    List<TrainingItem>? items,
+  }) {
+    return ExerciseGroup(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      expanded: expanded ?? this.expanded,
+      rounds: rounds ?? this.rounds,
+      items: (items ?? this.items).map((item) => item.copyWith()).toList(),
+    );
+  }
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
+    'type': type.name,
     'rounds': rounds,
     'items': items.map((item) => item.toJson()).toList(),
   };
@@ -31,6 +65,7 @@ class ExerciseGroup {
     return ExerciseGroup(
       id: json['id'] as String,
       name: json['name'] as String,
+      type: GroupType.fromName(json['type'] as String?),
       rounds: json['rounds'] as int? ?? 1,
       items: (json['items'] as List<dynamic>)
           .map((e) => TrainingItem.fromJson(e as Map<String, dynamic>))
