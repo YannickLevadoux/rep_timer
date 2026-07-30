@@ -83,29 +83,31 @@ class ExerciseGroupCard extends StatelessWidget {
             ),
           ],
         ),
-        // Rendu conditionnel plutôt que `maintainState: true` : les
-        // lignes d'aperçu ne sont construites que si le groupe est
-        // effectivement déplié, au lieu d'être maintenues en mémoire en
-        // permanence même repliées.
-        children: group.expanded
-            ? [
-                Container(
-                  width: double.infinity,
-                  color: Theme.of(context).colorScheme.surfaceContainerLow,
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-                  child: group.items.isEmpty
-                      ? const Padding(
-                          padding: EdgeInsets.all(8),
-                          child: Text("Aucun exercice"),
-                        )
-                      : Column(
-                          children: group.items
-                              .map((item) => _ReadonlyItemRow(item: item))
-                              .toList(),
-                        ),
-                ),
-              ]
-            : const [],
+        // children inconditionnel : maintainState vaut false par défaut
+        // (on ne le fixe donc plus explicitement à true), ce qui suffit
+        // à ExpansionTile pour retirer lui-même ce sous-arbre une fois
+        // l'animation de repli terminée. Un rendu conditionnel ici (sur
+        // group.expanded) est redondant avec ce mécanisme et néfaste :
+        // onExpansionChanged étant appelé de façon synchrone au tap (pas
+        // en fin d'animation), il viderait children dès la frame 0 et
+        // l'animation de repli se jouerait sur une boîte déjà vide.
+        children: [
+          Container(
+            width: double.infinity,
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+            child: group.items.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Text("Aucun exercice"),
+                  )
+                : Column(
+                    children: group.items
+                        .map((item) => _ReadonlyItemRow(item: item))
+                        .toList(),
+                  ),
+          ),
+        ],
       ),
     );
   }
