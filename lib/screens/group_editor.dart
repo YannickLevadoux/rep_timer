@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 
 import '../models/exercise_group.dart';
 import '../models/training_item.dart';
+import '../services/app_settings_storage.dart';
 import '../utils/snack.dart';
 import '../widgets/dialogs/confirm_dialog.dart';
 import '../widgets/dialogs/exercise_dialog.dart';
+import '../widgets/dialogs/group_editor_settings_dialog.dart';
 import '../widgets/dialogs/rest_dialog.dart';
 import '../widgets/group_editor_actions.dart';
 import '../widgets/group_items_list.dart';
@@ -36,6 +38,7 @@ class _GroupEditorState extends State<GroupEditor> {
   late final TextEditingController _nameController;
   late final ExerciseGroup _group;
   late final String _initialSnapshot;
+  final AppSettingsStorage _settingsStorage = AppSettingsStorage();
 
   @override
   void initState() {
@@ -96,10 +99,19 @@ class _GroupEditorState extends State<GroupEditor> {
     setState(() => _group.items.add(result));
   }
 
-  Future<void> _addExercise() {
-    return _addItem(
-      () =>
-          showExerciseDialog(context, defaultName: _nameController.text.trim()),
+  // Le réglage est relu à chaque ajout (plutôt que mis en cache dans
+  // l'état de l'écran) : s'il vient d'être modifié via le dialogue de
+  // réglages, la prochaine création d'exercice en tient compte
+  // immédiatement, sans qu'il soit nécessaire de rouvrir l'écran.
+  Future<void> _addExercise() async {
+    final prefill = await _settingsStorage.loadPrefillExerciseName();
+    if (!mounted) return;
+
+    await _addItem(
+      () => showExerciseDialog(
+        context,
+        defaultName: prefill ? _nameController.text.trim() : '',
+      ),
     );
   }
 
@@ -186,6 +198,8 @@ class _GroupEditorState extends State<GroupEditor> {
     Navigator.pop(context, _group);
   }
 
+  Future<void> _openSettings() => showGroupEditorSettingsDialog(context);
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -199,6 +213,13 @@ class _GroupEditorState extends State<GroupEditor> {
           title: Text(
             widget.isNewGroup ? "Ajout de groupe" : "Édition du groupe",
           ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.settings),
+              tooltip: "Paramètres",
+              onPressed: _openSettings,
+            ),
+          ],
         ),
         body: Padding(
           padding: const EdgeInsets.all(16),

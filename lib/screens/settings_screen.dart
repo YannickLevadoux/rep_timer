@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../services/app_settings_storage.dart';
 import '../services/training_export_service.dart';
 import '../utils/snack.dart';
 import '../widgets/settings_section.dart';
@@ -37,10 +38,40 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final TrainingExportService _exportService = TrainingExportService();
+  final AppSettingsStorage _settingsStorage = AppSettingsStorage();
 
   // Désactive les actions Importer/Exporter pendant qu'une opération est
   // en cours, pour éviter tout double-déclenchement.
   bool _busy = false;
+
+  // Reflète la préférence persistée (voir AppSettingsStorage) ; valeur
+  // par défaut identique à celle du storage le temps du chargement
+  // asynchrone initial, pour éviter un flash à une valeur incorrecte.
+  bool _prefillExerciseName = AppSettingsStorage.defaultPrefillExerciseName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrefillExerciseNameSetting();
+  }
+
+  // Relit systématiquement la valeur enregistrée (plutôt que de la
+  // supposer inchangée) : c'est ce qui garantit la synchronisation avec
+  // le dialogue de réglages du GroupEditor, qui pilote la même
+  // préférence.
+  Future<void> _loadPrefillExerciseNameSetting() async {
+    final value = await _settingsStorage.loadPrefillExerciseName();
+    if (!mounted) return;
+    setState(() => _prefillExerciseName = value);
+  }
+
+  // Bascule et persiste immédiatement (comme le bouton de thème
+  // ci-dessous) : pas de confirmation nécessaire sur cet écran, une
+  // simple ligne de réglage suffit.
+  Future<void> _togglePrefillExerciseName(bool value) async {
+    setState(() => _prefillExerciseName = value);
+    await _settingsStorage.savePrefillExerciseName(value);
+  }
 
   // Logique de changement de thème réutilisée telle quelle depuis
   // l'écran d'accueil (même icône, même cycle Auto -> Clair -> Sombre).
@@ -161,6 +192,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: Icon(_themeIcon),
                   tooltip: "Thème : $_themeLabel (appuyer pour changer)",
                   onPressed: widget.onToggleTheme,
+                ),
+              ),
+            ],
+          ),
+
+          // Positionnée après "Notifications" (si elle existe un jour)
+          // et avant "Import / Export" ; aucune section "Notifications"
+          // n'existe pour l'instant dans l'application.
+          SettingsSection(
+            title: "Édition",
+            children: [
+              ListTile(
+                title: const Text("Préremplir le nom des nouveaux exercices"),
+                trailing: Switch(
+                  value: _prefillExerciseName,
+                  onChanged: _togglePrefillExerciseName,
                 ),
               ),
             ],
