@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/training.dart';
 import '../services/session_checkpoint_storage.dart';
 import '../services/training_storage.dart';
+import '../utils/id_generator.dart';
+import '../widgets/dialogs/duplicate_training_dialog.dart';
 import 'quick_tabata_screen.dart';
 import 'settings_screen.dart';
 import 'training_editor.dart';
@@ -26,6 +28,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final TrainingStorage _storage = TrainingStorage();
+  final IdGenerator _idGenerator = IdGenerator();
 
   List<Training> _trainings = [];
   bool _loading = true;
@@ -127,6 +130,27 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Duplication d'une séance : demande le nouveau nom (prérempli "<nom>
+  // - Copie"), puis construit une copie totalement indépendante (voir
+  // Training.duplicate/ExerciseGroup.copyWith) avant de l'enregistrer via
+  // le mécanisme de sauvegarde existant. La séance d'origine n'est jamais
+  // modifiée. Reste sur l'écran d'accueil (aucune navigation n'a lieu ici
+  // en dehors du dialogue), la liste est simplement rechargée.
+  Future<void> _duplicateTraining(Training training) async {
+    final name = await showDuplicateTrainingDialog(
+      context,
+      originalName: training.name,
+    );
+
+    if (name == null || !mounted) return;
+
+    final duplicate = training.duplicate(name: name, newId: _idGenerator.next);
+    await _storage.addOrUpdateTraining(duplicate);
+
+    if (!mounted) return;
+    _loadTrainings();
+  }
+
   void _toggleExpanded(String trainingId) {
     setState(() {
       // Un second clic sur la séance déjà développée la referme ;
@@ -192,20 +216,26 @@ class _HomePageState extends State<HomePage> {
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                           child: Row(
                             children: [
-                              Expanded(
-                                child: FilledButton.icon(
-                                  onPressed: () => _startTraining(training),
-                                  icon: const Icon(Icons.play_arrow),
-                                  label: const Text("Commencer"),
-                                ),
+                              IconButton(
+                                icon: const Icon(Icons.copy),
+                                tooltip: "Dupliquer la séance",
+                                onPressed: () => _duplicateTraining(training),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 4),
                               Expanded(
                                 child: OutlinedButton.icon(
                                   onPressed: () =>
                                       _openEditor(training: training),
                                   icon: const Icon(Icons.edit),
                                   label: const Text("Éditer"),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: FilledButton.icon(
+                                  onPressed: () => _startTraining(training),
+                                  icon: const Icon(Icons.play_arrow),
+                                  label: const Text("Commencer"),
                                 ),
                               ),
                             ],
