@@ -57,6 +57,20 @@ jobs:
         uses: actions/github-script@v7.0.1
         with:
           script: |
+            const path = require("path");
+
+            const {
+              notice,
+              warning,
+              failure,
+              writeSummary,
+            } = require(path.join(
+              process.env.GITHUB_WORKSPACE,
+              ".github",
+              "scripts",
+              "workflow-utils.js"
+            ));
+
             const issue = Number("${{ steps.extract.outputs.issue }}");
             const { owner, repo } = context.repo;
 
@@ -91,17 +105,21 @@ jobs:
                 });
               }
 
-              core.info("Issue moved from ready to in-progress.");
+              notice(`Issue #${issue}: removed label 'ready'.`);
+              notice(`Issue #${issue}: added label 'in-progress'.`);
               return;
             }
 
             if (hasInProgress) {
-              core.info("Issue already in progress.");
+              warning(`Issue #${issue}: already in progress.`);
               return;
             }
 
-            core.setFailed(
-              "Issue must have either the 'ready' or 'in-progress' label."
+            failure(`Issue #${issue}: expected label 'ready' or 'in-progress'.`);
+
+            await writeSummary(`Issue lifecycle : Issue #${issue}`);
+
+            core.setFailed("Invalid issue state.");
             );
 
   #
@@ -119,9 +137,23 @@ jobs:
     steps:
 
       - name: Update PR description
-        uses: actions/github-script@v7
+        uses: actions/github-script@v7.0.1
         with:
           script: |
+
+            const path = require("path");
+
+            const {
+              notice,
+              warning,
+              failure,
+              writeSummary,
+            } = require(path.join(
+              process.env.GITHUB_WORKSPACE,
+              ".github",
+              "scripts",
+              "workflow-utils.js"
+            ));
 
             const branch = context.payload.pull_request.head.ref;
 
@@ -165,9 +197,23 @@ jobs:
     steps:
 
       - name: Remove in-progress label
-        uses: actions/github-script@v7
+        uses: actions/github-script@v7.0.1
         with:
           script: |
+
+            const path = require("path");
+
+            const {
+              notice,
+              warning,
+              failure,
+              writeSummary,
+            } = require(path.join(
+              process.env.GITHUB_WORKSPACE,
+              ".github",
+              "scripts",
+              "workflow-utils.js"
+            ));
 
             const branch = context.payload.pull_request.head.ref;
 
@@ -207,10 +253,24 @@ jobs:
     steps:
 
       - name: Remove in-progress label
-        uses: actions/github-script@v7
+        uses: actions/github-script@v7.0.1
         with:
           script: |
 
+            const path = require("path");
+
+            const {
+              notice,
+              warning,
+              failure,
+              writeSummary,
+            } = require(path.join(
+              process.env.GITHUB_WORKSPACE,
+              ".github",
+              "scripts",
+              "workflow-utils.js"
+            ));
+      
             const branch = context.payload.ref;
 
             const match = branch.match(/^(feature|bugfix|hotfix|clean)\/([0-9]+)-/);
