@@ -28,7 +28,11 @@ jobs:
 
   #
   # --------------------------------------------------------------------------
-  # Push -> ready => in-progress
+  # Push a branch
+  # - Check branch naming convention (issue number should be present) 
+  #     Fails if naming convention is not followed
+  # - Update label of issue from ready => in-progress
+  #     Fails if issue does not have label ready or in-progress
   # --------------------------------------------------------------------------
   #
 
@@ -167,7 +171,9 @@ jobs:
 
   #
   # --------------------------------------------------------------------------
-  # PR opened -> prepend Related to #xx
+  # PR opened 
+  # - Add mention "Related to #${issue} in PR description if not already present
+  # - Add link between PR and issue (TODO!) 
   # --------------------------------------------------------------------------
   #
 
@@ -235,7 +241,9 @@ jobs:
 
   #
   # --------------------------------------------------------------------------
-  # PR merged -> remove in-progress
+  # PR merged
+  # - Remove in-progress label on PR
+  # - Close issue if PR description or comments contain 'Close #xx' or 'Closes #xx'
   # --------------------------------------------------------------------------
   #
 
@@ -334,7 +342,8 @@ jobs:
 
   #
   # --------------------------------------------------------------------------
-  # Branch deleted -> remove in-progress if issue still open
+  # Branch deleted 
+  # - remove in-progress label on PR if issue still open
   # --------------------------------------------------------------------------
   #
 
