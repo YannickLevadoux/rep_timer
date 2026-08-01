@@ -105,6 +105,179 @@ lib/
 └── utils/                     # Formatage, registre d'icônes...
 ```
 
+
+## Développement GitHub
+
+### Overview
+
+```mermaid
+flowchart LR
+    A[Issue<br/>ready]
+    B[Premier push]
+    C[in-progress]
+    D[Pull Request]
+    E[Merge]
+    F[Issue fermée]
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E -->|Closes #xx| F
+```
+
+
+### Convention de nommage des branches
+
+Chaque branche de développement doit être associée à **une unique issue GitHub**.
+
+Le nom de la branche doit respecter le format suivant :
+
+```text
+<type>/<issue>-<description>
+```
+
+avec :
+
+* `type` ∈ `feature`, `bugfix`, `hotfix`, `clean`
+* `issue` = numéro de l'issue GitHub
+* `description` = description courte en *kebab-case*
+
+Exemples :
+
+```text
+feature/33-refacto-training-editor
+feature/84-rendre-ci-reproductible
+
+bugfix/61-session-save
+
+hotfix/85-crash-startup
+
+clean/76-refacto-whatever
+```
+
+Toute autre convention de nommage est refusée par la CI.
+
+---
+
+## Cycle de vie d'une issue
+
+Le dépôt automatise la gestion des labels GitHub en fonction du cycle de développement.
+
+### 1. Avant le développement
+
+Une issue prête à être développée doit posséder le label :
+
+```text
+ready
+```
+
+---
+
+### 2. Premier push d'une branche
+
+Lors du premier push d'une branche respectant la convention ci-dessus, la CI :
+
+* extrait automatiquement le numéro d'issue depuis le nom de la branche ;
+* vérifie que l'issue possède le label `ready`.
+
+Si c'est le cas :
+
+* le label `ready` est supprimé ;
+* le label `in-progress` est ajouté.
+
+Cette opération est idempotente.
+
+Si l'issue ne possède ni `ready` ni `in-progress`, le workflow échoue afin de signaler un état incohérent.
+
+---
+
+### 3. Ouverture d'une Pull Request
+
+À l'ouverture d'une Pull Request, la description est automatiquement complétée avec :
+
+```text
+Related to #<issue>
+```
+
+Exemple :
+
+```text
+Related to #33
+```
+
+Cette liaison permet de retrouver facilement l'issue associée.
+
+Si la Pull Request résout complètement l'issue, remplacer ensuite cette ligne par :
+
+```text
+Closes #33
+```
+
+GitHub fermera alors automatiquement l'issue lors du merge.
+
+---
+
+### 4. Fusion de la Pull Request
+
+Lorsqu'une Pull Request est fusionnée :
+
+* le label `in-progress` est supprimé ;
+* si la description contient `Closes #<issue>`, GitHub ferme automatiquement l'issue.
+
+---
+
+### 5. Suppression d'une branche
+
+Lorsqu'une branche de développement est supprimée :
+
+* si l'issue est toujours ouverte ;
+* le label `in-progress` est automatiquement retiré.
+
+Cela évite de laisser des issues bloquées dans un état "en cours" alors que la branche n'existe plus.
+
+---
+
+## CI/CD
+
+Les workflows GitHub Actions utilisent une configuration reproductible.
+
+### Flutter
+
+La version de Flutter est épinglée :
+
+```text
+Flutter 3.44.4
+```
+
+Les builds n'utilisent jamais simplement le canal `stable`.
+
+---
+
+### Vérifications exécutées
+
+Chaque Pull Request et chaque Release exécutent les contrôles suivants :
+
+1. récupération des dépendances (`flutter pub get`)
+2. vérification du formatage (`dart format`)
+3. analyse statique (`flutter analyze`)
+4. exécution des tests (`flutter test`)
+
+Une release n'est publiée que si l'ensemble de ces étapes réussit.
+
+---
+
+### Mise à jour des dépendances
+
+Le dépôt utilise Renovate afin de proposer automatiquement des Pull Requests pour :
+
+* les dépendances Dart / Flutter (`pub`);
+* les GitHub Actions ;
+* la version de Flutter utilisée par les workflows.
+
+Toutes les mises à jour passent par la CI avant d'être fusionnées.
+
+
 ## About
 
 Declarer l'image en tant que assets dans pubspec.yaml
