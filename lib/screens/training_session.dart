@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../models/session_checkpoint.dart';
 import '../models/training.dart';
-import '../models/training_history_entry.dart';
 import '../services/session_controller.dart';
 import '../widgets/dialogs/comment_dialog.dart';
 import '../widgets/dialogs/exit_session_dialog.dart';
 import '../widgets/session_finished_view.dart';
 import '../widgets/session_running_body.dart';
 import 'session_progress.dart';
+import '../widgets/dialogs/incomplete_session_dialog.dart';
 
 /// Écran principal d'exécution d'une séance : empêche la mise en veille,
 /// fait défiler les exercices dans l'ordre (avec répétition des groupes),
@@ -77,14 +77,67 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     super.dispose();
   }
 
+  // Empêche l'ouverture simultanée de plusieurs dialogues "Séance
+  // incomplète" si le contrôleur notifie plusieurs fois pendant que le
+  // dialogue est déjà affiché.
+  bool _showingIncompleteDialog = false;
+
   void _onControllerChanged() {
     // La séance vient de se terminer (auto-complétion du dernier
     // exercice, ou fin anticipée via le menu de sortie) : le
     // clignotement n'a plus lieu d'être. Inoffensif si déjà arrêté.
     if (_controller.finished) {
       _blinkController?.stop();
+    } else if (_blinkController != null) {
+      // Synchronise le clignotement avec l'état de pause du contrôleur,
+      // quelle que soit son origine (bouton pause manuel, ou mise en
+      // pause automatique suite à une séance incomplète).
+      if (_controller.paused && _blinkController!.isAnimating) {
+        _blinkController!.stop();
+      } else if (!_controller.paused && !_blinkController!.isAnimating) {
+        _blinkController!.repeat(reverse: true);
+      }
     }
+
+    // La dernière étape possible vient d'être franchie avec des
+    // exercices/pauses restants : le contrôleur s'est mis en pause tout
+    // seul, à l'écran de proposer le choix à l'utilisateur.
+    if (_controller.pendingIncompleteReview && !_showingIncompleteDialog) {
+      _showingIncompleteDialog = true;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _showIncompleteSessionDialog(),
+      );
+    }
+
     setState(() {});
+  }
+
+  Future<void> _showIncompleteSessionDialog() async {
+    if (!mounted) return;
+
+    final choice = await showIncompleteSessionDialog(context);
+    _showingIncompleteDialog = false;
+
+    if (!mounted) return;
+
+    switch (choice) {
+      case IncompleteSessionChoice.chooseStep:
+        // Réutilise l'écran de progression existant : la sélection d'un
+        // exercice y relance elle-même la séance (voir
+        // SessionController.jumpToStep).
+        _openProgress();
+        break;
+      case IncompleteSessionChoice.finish:
+        // Arrêt définitif : le statut Incomplète est déterminé par le
+        // contrôleur lui-même à partir de la progression réelle, pas
+        // besoin de le préciser ici.
+        await _controller.finishSession(earlyExit: true);
+        break;
+      case null:
+        // Ne devrait pas arriver (dialogue non-annulable), mais laisse
+        // la séance en pause plutôt que de risquer un état incohérent.
+        break;
+    }
   }
 
   @override
@@ -139,12 +192,11 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
 
     switch (choice) {
       case ExitSessionChoice.finish:
-        // Arrêt immédiat, enregistrement en historique avec le statut
-        // "Incomplète", puis affichage du même écran de fin que la
-        // séance normale (aucun changement sur cet écran).
-        await _controller.finishSession(
-          status: TrainingSessionStatus.incomplete,
-        );
+        // Arrêt immédiat. Le statut réellement enregistré (Terminée ou
+        // Incomplète) dépend uniquement de la progression réelle — voir
+        // SessionController.finishSession — pas du simple fait d'avoir
+        // cliqué ce bouton.
+        await _controller.finishSession(earlyExit: true);
         break;
       case ExitSessionChoice.abandon:
         // Quitte immédiatement, aucun enregistrement dans l'historique,
@@ -155,9 +207,6 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
         break;
       case ExitSessionChoice.continueSession:
       case null:
-        // Le menu se ferme simplement ; la séance reprend exactement là
-        // où elle était (rien à faire : le contrôleur n'a jamais été
-        // touché pendant l'affichage du menu).
         break;
     }
   }

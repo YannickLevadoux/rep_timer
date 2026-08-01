@@ -26,7 +26,8 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Mise en évidence visuelle (clignotement) de l'exercice en cours.
 - Pause/reprise de la séance à tout moment.
 - Écran de progression détaillée, avec possibilité de sauter directement à un exercice donné (avec confirmation).
-- Fin de séance anticipée possible (statut "Incomplète") ou normale (statut "Terminée"), toutes deux enregistrées dans l'historique.
+- Fin de séance anticipée ou normale, toutes deux enregistrées dans l'historique : le statut (`Terminée` / `Incomplète`) est toujours déterminé à partir de la progression réelle (mêmes coches que l'écran de progression détaillée), quel que soit le mode de fin de séance.
+- Si l'ordre d'exécution est modifié manuellement (exercices/pauses sautés, groupes réalisés dans un autre ordre) et que le dernier exercice du dernier groupe est terminé alors que des éléments restent non réalisés, la séance ne se termine pas automatiquement : elle se met en pause et propose de **reprendre à un exercice de son choix** (via l'écran de progression) ou de **terminer la séance** (enregistrée avec le statut `Incomplète`).
 - Si une pause est définie la fin de la séance (dernière pause du dernier groupe), cette pause sera ignorée.
 
 ### Quick Tabata

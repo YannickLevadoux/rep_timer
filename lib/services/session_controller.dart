@@ -78,6 +78,18 @@ class SessionController extends ChangeNotifier {
           _stepElapsedOffset += backgroundGap;
         }
       }
+      // Cas particulier : le processus a été tué alors que la séance
+      // venait d'atteindre sa dernière étape possible avec des éléments
+      // encore non réalisés (voir pendingIncompleteReview) — elle avait
+      // donc été mise en pause automatiquement en attendant un choix. On
+      // restaure cette attente plutôt que de la traiter comme une simple
+      // pause manuelle.
+      if (_paused &&
+          _currentIndex == _steps.length - 1 &&
+          _completed[_currentIndex] &&
+          !_allCompleted) {
+        _pendingIncompleteReview = true;
+      }
     } else {
       _completed = List.filled(_steps.length, false);
       _stepActualDurations = List.filled(_steps.length, Duration.zero);
@@ -131,6 +143,16 @@ class SessionController extends ChangeNotifier {
   bool _historySaved = false; // garantit un seul enregistrement historique
   bool _disposed = false;
 
+  // true dès que la dernière étape possible de la séance (dernier
+  // exercice du dernier groupe) a été franchie alors qu'il reste des
+  // exercices ou pauses non réalisés (ex : ordre changé manuellement en
+  // cours de séance). Dans ce cas, la séance est automatiquement mise en
+  // pause plutôt que terminée, et l'écran doit proposer un choix à
+  // l'utilisateur (voir completeCurrentStep). Se remet à false dès que
+  // ce choix est fait (jumpToStep) ou que la séance est finalement
+  // terminée (finishSession).
+  bool _pendingIncompleteReview = false;
+
   // Stopwatch gère nativement l'accumulation du temps écoulé pendant les
   // phases "start" et l'arrêt pendant les phases "stop" : parfait pour
   // gérer pause/reprise sans recalcul manuel de timestamps. Les offsets
@@ -183,6 +205,16 @@ class SessionController extends ChangeNotifier {
   bool get paused => _paused;
   bool get finished => _finished;
   NotificationMode get notificationMode => _notificationMode;
+
+  // Exposé à l'écran pour déclencher la boîte de dialogue "Séance
+  // incomplète" dès que ce champ passe à true (voir completeCurrentStep).
+  bool get pendingIncompleteReview => _pendingIncompleteReview;
+
+  // Référence unique : c'est exactement l'état déjà utilisé par l'écran
+  // de progression (coches vertes). Utilisé ici pour décider si la
+  // séance peut se terminer normalement, et pour déterminer le statut
+  // final enregistré dans l'historique (voir finishSession).
+  bool get _allCompleted => _completed.every((completed) => completed);
 
   SessionStep get currentStep => _steps[_currentIndex];
 
@@ -416,40 +448,66 @@ class SessionController extends ChangeNotifier {
       // naturelle de l'étape précédente (voir _armCountdownForCurrentStep,
       // qui n'annule que le timer, pas un son déjà lancé).
       _armCountdownForCurrentStep();
-    } else {
-      finishSession();
+
+      notifyListeners();
+      if (!_finished) _saveCheckpoint();
+      return;
     }
 
-    notifyListeners();
+    // Dernière étape possible de la séance (dernier exercice du dernier
+    // groupe) atteinte. Si l'ordre a été modifié manuellement en cours
+    // de route, il est possible que d'autres exercices/pauses n'aient
+    // jamais été réalisés : on ne termine alors jamais automatiquement.
+    if (_allCompleted) {
+      finishSession();
+      return;
+    }
 
-    if (!_finished) _saveCheckpoint();
+    // Séance incomplète : mise en pause automatique (même mécanisme que
+    // le bouton pause), en attendant que l'écran affiche le choix à
+    // l'utilisateur (reprendre à un exercice choisi, ou terminer avec le
+    // statut Incomplète — voir pendingIncompleteReview).
+    _pendingIncompleteReview = true;
+    _setPaused(true);
+    _saveCheckpoint();
   }
 
-  Future<void> finishSession({
-    TrainingSessionStatus status = TrainingSessionStatus.completed,
-  }) async {
+  /// Termine définitivement la séance et l'enregistre dans l'historique.
+  ///
+  /// Le statut enregistré (Terminée/Incomplète) n'est jamais décidé par
+  /// l'appelant : il est systématiquement déterminé à partir de l'état
+  /// réel de progression ([_allCompleted]), c'est-à-dire les mêmes
+  /// coches que l'écran de progression — que cette méthode soit appelée
+  /// suite à la fin naturelle de la séance, à un arrêt volontaire
+  /// ("Terminer la session"/"Terminer la séance"), ou après reprise
+  /// suite à un changement d'ordre manuel.
+  ///
+  /// [earlyExit] doit valoir `true` uniquement pour un arrêt volontaire
+  /// avant la fin naturelle de la séance : dans ce cas, toute
+  /// notification son en cours ou programmée est annulée. Une fin
+  /// naturelle ne doit au contraire jamais interrompre une séquence déjà
+  /// lancée.
+  Future<void> finishSession({bool earlyExit = false}) async {
     if (_finished) return;
 
-    // Fin anticipée ("Terminer la session") : coupe immédiatement toute
-    // séquence son en cours ou programmée. Une fin naturelle (dernier
-    // pas de la séance, status par défaut, jamais passé explicitement
-    // ailleurs que par completeCurrentStep) ne doit au contraire jamais
-    // l'interrompre, et n'a de toute façon rien à annuler ici (aucune
-    // nouvelle étape n'est armée après la dernière).
-    if (status == TrainingSessionStatus.incomplete) {
+    if (earlyExit) {
       _cancelCountdown();
     }
 
-    // Couvre le cas "Terminer la session" (fin anticipée), qui ne passe
-    // pas par completeCurrentStep : sans cela, le temps partiel de
-    // l'étape en cours au moment de l'arrêt ne serait jamais enregistré.
-    // Idempotent si déjà appelé juste avant depuis completeCurrentStep.
+    // Couvre le cas d'un arrêt volontaire, qui ne passe pas par
+    // completeCurrentStep : sans cela, le temps partiel de l'étape en
+    // cours au moment de l'arrêt ne serait jamais enregistré. Idempotent
+    // si déjà appelé juste avant depuis completeCurrentStep.
     _recordCurrentStepDuration();
 
     _ticker?.cancel();
     _globalStopwatch.stop();
     _stepStopwatch.stop();
     await _disableWakelock();
+
+    final status = _allCompleted
+        ? TrainingSessionStatus.completed
+        : TrainingSessionStatus.incomplete;
 
     if (!_historySaved) {
       _historySaved = true;
@@ -461,12 +519,6 @@ class SessionController extends ChangeNotifier {
             groupName: _steps[i].group.name,
             itemType: _steps[i].item.type,
             itemName: _steps[i].item.name,
-            // Snapshot du commentaire tel qu'il est à la fin de la
-            // séance. Simplification assumée : si un même exercice
-            // revient sur plusieurs tours d'un groupe répété et que son
-            // commentaire est modifié entre deux tours, tous les tours
-            // affichent la dernière valeur plutôt qu'un historique par
-            // tour (cas marginal, non géré pour limiter la complexité).
             comment: _steps[i].item.comment,
             actualDuration: _stepActualDurations[i],
             completed: _completed[i],
@@ -487,10 +539,10 @@ class SessionController extends ChangeNotifier {
     }
 
     // La séance est close (normalement ou de façon anticipée) : plus
-    // rien à reprendre, on supprime le checkpoint. La configuration de
-    // session des notifications, elle, n'a besoin d'aucune suppression
-    // explicite : elle disparaît avec ce contrôleur (voir dispose()).
+    // rien à reprendre, on supprime le checkpoint.
     await _checkpointStorage.clearCheckpoint();
+
+    _pendingIncompleteReview = false;
 
     if (_disposed) return;
     _finished = true;
@@ -498,7 +550,19 @@ class SessionController extends ChangeNotifier {
   }
 
   void togglePause() {
-    _paused = !_paused;
+    _setPaused(!_paused);
+    _saveCheckpoint();
+  }
+
+  // Applique l'état de pause demandé et ses effets (chronomètres,
+  // notification son programmée). Ne sauvegarde jamais le checkpoint
+  // elle-même : c'est aux appelants de le faire au bon moment
+  // (togglePause, jumpToStep, mise en pause automatique suite à une
+  // séance incomplète...). Factorisée pour que la mise en pause
+  // automatique (voir completeCurrentStep) reproduise exactement le même
+  // comportement que le bouton pause manuel.
+  void _setPaused(bool paused) {
+    _paused = paused;
 
     if (_paused) {
       _globalStopwatch.stop();
@@ -511,7 +575,6 @@ class SessionController extends ChangeNotifier {
     }
 
     notifyListeners();
-    _saveCheckpoint();
   }
 
   // Navigation manuelle : ne modifie jamais le statut "terminé" des
@@ -531,8 +594,20 @@ class SessionController extends ChangeNotifier {
     _stepStopwatch
       ..stop()
       ..reset();
-    if (!_paused) _stepStopwatch.start();
-    _armCountdownForCurrentStep();
+
+    // Une reprise manuelle sur une séance mise en pause suite à une fin
+    // de séance incomplète relance automatiquement la séance :
+    // l'utilisateur vient justement de choisir de continuer sur cet
+    // élément (voir "Reprendre à un exercice de mon choix").
+    final wasPendingIncompleteReview = _pendingIncompleteReview;
+    _pendingIncompleteReview = false;
+
+    if (wasPendingIncompleteReview && _paused) {
+      _setPaused(false);
+    } else {
+      if (!_paused) _stepStopwatch.start();
+      _armCountdownForCurrentStep();
+    }
 
     notifyListeners();
     _saveCheckpoint();
