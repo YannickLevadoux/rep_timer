@@ -5,8 +5,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../models/notification_mode.dart';
 import '../services/app_settings_storage.dart';
+import '../services/step_end_notification_service.dart';
 import '../services/training_export_service.dart';
+import '../utils/notification_mode_icons.dart';
 import '../utils/snack.dart';
 import '../widgets/settings_section.dart';
 
@@ -39,6 +42,8 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final TrainingExportService _exportService = TrainingExportService();
   final AppSettingsStorage _settingsStorage = AppSettingsStorage();
+  final StepEndNotificationService _notificationService =
+      StepEndNotificationService();
 
   // Désactive les actions Importer/Exporter pendant qu'une opération est
   // en cours, pour éviter tout double-déclenchement.
@@ -49,10 +54,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // asynchrone initial, pour éviter un flash à une valeur incorrecte.
   bool _prefillExerciseName = AppSettingsStorage.defaultPrefillExerciseName;
 
+  // Configuration globale des notifications de fin d'exercice/pause :
+  // c'est cette valeur que SessionController relit au démarrage de
+  // chaque nouvelle séance (voir sa configuration de session).
+  NotificationMode _notificationMode =
+      AppSettingsStorage.defaultNotificationMode;
+
   @override
   void initState() {
     super.initState();
     _loadPrefillExerciseNameSetting();
+    _loadNotificationModeSetting();
+  }
+
+  @override
+  void dispose() {
+    _notificationService.dispose();
+    super.dispose();
   }
 
   // Relit systématiquement la valeur enregistrée (plutôt que de la
@@ -71,6 +89,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _togglePrefillExerciseName(bool value) async {
     setState(() => _prefillExerciseName = value);
     await _settingsStorage.savePrefillExerciseName(value);
+  }
+
+  Future<void> _loadNotificationModeSetting() async {
+    final value = await _settingsStorage.loadNotificationMode();
+    if (!mounted) return;
+    setState(() => _notificationMode = value);
+  }
+
+  // Fait défiler Son -> Vibration -> Rien -> Son, persiste immédiatement
+  // le nouveau mode, puis joue son aperçu (sauf pour "Rien", qui n'en a
+  // pas). Cet aperçu n'est joué que depuis cet écran, jamais depuis le
+  // contrôle rapide de l'écran d'exécution d'une séance.
+  Future<void> _cycleNotificationMode() async {
+    final newMode = _notificationMode.next;
+    setState(() => _notificationMode = newMode);
+    await _settingsStorage.saveNotificationMode(newMode);
+    await _notificationService.playPreview(newMode);
   }
 
   // Logique de changement de thème réutilisée telle quelle depuis
@@ -197,9 +232,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
 
-          // Positionnée après "Notifications" (si elle existe un jour)
-          // et avant "Import / Export" ; aucune section "Notifications"
-          // n'existe pour l'instant dans l'application.
+          // Ordre : Affichage, Édition, Notifications, Import / Export,
+          // À propos (voir la section "Notifications" juste après pour
+          // le réglage "Fin d'exercice").
           SettingsSection(
             title: "Édition",
             children: [
@@ -208,6 +243,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing: Switch(
                   value: _prefillExerciseName,
                   onChanged: _togglePrefillExerciseName,
+                ),
+              ),
+            ],
+          ),
+
+          SettingsSection(
+            title: "Notifications",
+            children: [
+              ListTile(
+                title: Row(
+                  children: [
+                    const Text("Fin d'exercice"),
+                    const SizedBox(width: 8),
+                    Text(
+                      _notificationMode.label,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                  ],
+                ),
+                trailing: IconButton(
+                  icon: Icon(iconForNotificationMode(_notificationMode)),
+                  tooltip:
+                      "Notifications : ${_notificationMode.label} (appuyer pour changer)",
+                  onPressed: _cycleNotificationMode,
                 ),
               ),
             ],

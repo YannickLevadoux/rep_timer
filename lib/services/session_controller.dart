@@ -4,11 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../models/history_step_entry.dart';
+import '../models/notification_mode.dart';
 import '../models/session_checkpoint.dart';
 import '../models/session_step.dart';
 import '../models/training.dart';
 import '../models/training_history_entry.dart';
+import 'app_settings_storage.dart';
 import 'session_checkpoint_storage.dart';
+import 'step_end_notification_service.dart';
 import 'training_history_storage.dart';
 import 'training_storage.dart';
 
@@ -25,12 +28,17 @@ class SessionController extends ChangeNotifier {
     SessionCheckpointStorage? checkpointStorage,
     TrainingStorage? trainingStorage,
     TrainingHistoryStorage? historyStorage,
+    AppSettingsStorage? settingsStorage,
+    StepEndNotificationService? notificationService,
     Future<void> Function()? enableWakelock,
     Future<void> Function()? disableWakelock,
   }) : _steps = buildSessionSteps(training),
        _checkpointStorage = checkpointStorage ?? SessionCheckpointStorage(),
        _trainingStorage = trainingStorage ?? TrainingStorage(),
        _historyStorage = historyStorage ?? TrainingHistoryStorage(),
+       _settingsStorage = settingsStorage ?? AppSettingsStorage(),
+       _notificationService =
+           notificationService ?? StepEndNotificationService(),
        _enableWakelock = enableWakelock ?? WakelockPlus.enable,
        _disableWakelock = disableWakelock ?? WakelockPlus.disable {
     // Tente de reprendre depuis un checkpoint, uniquement s'il correspond
@@ -71,6 +79,14 @@ class SessionController extends ChangeNotifier {
       _completed = List.filled(_steps.length, false);
       _stepActualDurations = List.filled(_steps.length, Duration.zero);
     }
+
+    // Configuration de session des notifications : initialisée à partir
+    // de la configuration globale (voir AppSettingsStorage), puis
+    // totalement indépendante de celle-ci pour le reste de la séance
+    // (voir cycleNotificationMode). Chargement asynchrone, comme
+    // _saveCheckpoint() ci-dessous : la valeur par défaut (Rien) reste
+    // affichée le temps très bref de ce chargement.
+    _loadInitialNotificationMode();
 
     if (_steps.isEmpty) {
       _finished = true;
@@ -122,8 +138,16 @@ class SessionController extends ChangeNotifier {
   final SessionCheckpointStorage _checkpointStorage;
   final TrainingStorage _trainingStorage;
   final TrainingHistoryStorage _historyStorage;
+  final AppSettingsStorage _settingsStorage;
+  final StepEndNotificationService _notificationService;
   final Future<void> Function() _enableWakelock;
   final Future<void> Function() _disableWakelock;
+
+  // Configuration de session des notifications (voir le commentaire du
+  // constructeur) : ne survit jamais à cette instance de contrôleur,
+  // c'est ce qui garantit qu'une nouvelle séance reparte toujours de la
+  // configuration globale.
+  NotificationMode _notificationMode = NotificationMode.none;
 
   // Horodatage du dernier passage en arrière-plan (processus non tué) ;
   // sert à calculer le temps réellement écoulé au retour, via l'heure
@@ -136,6 +160,7 @@ class SessionController extends ChangeNotifier {
   int get currentIndex => _currentIndex;
   bool get paused => _paused;
   bool get finished => _finished;
+  NotificationMode get notificationMode => _notificationMode;
 
   SessionStep get currentStep => _steps[_currentIndex];
 
@@ -147,11 +172,28 @@ class SessionController extends ChangeNotifier {
   Duration get globalElapsed => _globalElapsedOffset + _globalStopwatch.elapsed;
   Duration get stepElapsed => _stepElapsedOffset + _stepStopwatch.elapsed;
 
+  Future<void> _loadInitialNotificationMode() async {
+    final mode = await _settingsStorage.loadNotificationMode();
+    if (_disposed) return;
+    _notificationMode = mode;
+    notifyListeners();
+  }
+
+  // Contrôle rapide pendant la séance (icône de la section Global) :
+  // modifie uniquement la configuration de session, jamais la
+  // configuration globale enregistrée dans les Paramètres. Le nouveau
+  // mode s'applique immédiatement aux notifications suivantes.
+  void cycleNotificationMode() {
+    _notificationMode = _notificationMode.next;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _disposed = true;
     _ticker?.cancel();
     _disableWakelock();
+    _notificationService.dispose();
     super.dispose();
   }
 
@@ -181,7 +223,9 @@ class SessionController extends ChangeNotifier {
   // Retour au premier plan (processus jamais tué, contrairement au cas
   // pris en charge dans le constructeur) : on rattrape le temps
   // réellement écoulé pendant l'arrière-plan via l'heure système, puis
-  // on relance les chronomètres.
+  // on relance les chronomètres. Aucune notification n'est jouée ici,
+  // même si l'écart rattrapé franchit un seuil de déclenchement : seul
+  // le tick naturel suivant peut en déclencher une (voir _onTick).
   void handleAppResumed() {
     final backgroundedAt = _backgroundedAt;
     _backgroundedAt = null;
@@ -235,6 +279,21 @@ class SessionController extends ChangeNotifier {
     if (_paused || _finished) return;
 
     final duration = currentStep.item.duration;
+
+    // Notification de fin naturelle (pause ou exercice Temps
+    // uniquement : les exercices en Répétitions/Durée libre n'ont pas de
+    // `duration`, donc ne déclenchent jamais rien ici). Le temps restant
+    // utilisé est exactement celui affiché à l'écran (voir
+    // SessionRunningBody), garantissant la synchronisation.
+    if (duration != null) {
+      final remainingSeconds = (duration - stepElapsed).inSeconds;
+      unawaited(
+        _notificationService.onTick(
+          mode: _notificationMode,
+          remainingSeconds: remainingSeconds,
+        ),
+      );
+    }
 
     if (duration != null && stepElapsed >= duration) {
       completeCurrentStep();
@@ -319,7 +378,9 @@ class SessionController extends ChangeNotifier {
     }
 
     // La séance est close (normalement ou de façon anticipée) : plus
-    // rien à reprendre, on supprime le checkpoint.
+    // rien à reprendre, on supprime le checkpoint. La configuration de
+    // session des notifications, elle, n'a besoin d'aucune suppression
+    // explicite : elle disparaît avec ce contrôleur (voir dispose()).
     await _checkpointStorage.clearCheckpoint();
 
     if (_disposed) return;
@@ -344,7 +405,8 @@ class SessionController extends ChangeNotifier {
 
   // Navigation manuelle : ne modifie jamais le statut "terminé" des
   // exercices, contrairement à completeCurrentStep. Seul l'index courant
-  // (et le minuteur de l'étape) change.
+  // (et le minuteur de l'étape) change. Aucune notification n'est jouée
+  // ici (voir _onTick, seul point de déclenchement).
   void jumpToStep(int index) {
     if (index < 0 || index >= _steps.length) return;
 
