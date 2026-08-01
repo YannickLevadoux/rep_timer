@@ -45,25 +45,84 @@ jobs:
         shell: bash
         run: |
           BRANCH="${GITHUB_REF_NAME}"
+          PATTERN='^(feature|bugfix|hotfix|clean)/([0-9]+)-.*$'
 
-          if [[ ! "$BRANCH" =~ ^(feature|bugfix|hotfix|clean)/([0-9]+)-.*$ ]]; then
-            echo "::error::Branch '$BRANCH' does not follow the required naming convention."
+          if [[ ! "$BRANCH" =~ $PATTERN ]]; then
+            MESSAGE="Branch '$BRANCH' does not follow the required naming convention."
+
+            echo "::error::$MESSAGE"
+
+            {
+              echo "## Issue lifecycle"
+              echo
+              echo "| Status | Action |"
+              echo "| ------ | ------ |"
+              echo "| ❌ | $MESSAGE |"
+              echo
+              echo "**Expected format:**"
+              echo
+              echo "- feature/33-my-feature"
+              echo "- bugfix/61-my-bugfix"
+              echo "- hotfix/85-my-hotfix"
+              echo "- clean/76-my-cleanup"
+            } >> "$GITHUB_STEP_SUMMARY"
+
             exit 1
           fi
 
-          echo "issue=${BASH_REMATCH[2]}" >> "$GITHUB_OUTPUT"
+          ISSUE="${BASH_REMATCH[2]}"
+
+          echo "issue=$ISSUE" >> "$GITHUB_OUTPUT"
+
+          echo "::notice::Branch '$BRANCH' is linked to issue #$ISSUE."
+
+          {
+            echo "## Issue lifecycle"
+            echo
+            echo "| Status | Action |"
+            echo "| ------ | ------ |"
+            echo "| ✅ | Branch '$BRANCH' linked to issue #$ISSUE |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Update issue labels
         uses: actions/github-script@v7.0.1
         with:
           script: |
+            const path = require("path");
+
+            const {
+              notice,
+              warning,
+              failure,
+              writeSummary,
+            } = require(path.join(
+              process.env.GITHUB_WORKSPACE,
+              ".github",
+              "scripts",
+              "workflow-utils.js"
+            ))(core);
+
+            const issue = Number("${{ steps.extract.outputs.issue }}");
+            const { owner, repo } = context.repo;
+
+            const { data } = await github.rest.issues.get({
+              owner,
+              repo,
+              issue_number: issue,
+            });
+
+            const labels = data.labels.map(label => label.name);
+
+            const hasReady = labels.includes("ready");
+            const hasInProgress = labels.includes("in-progress");
+
             if (hasReady) {
 
               await github.rest.issues.removeLabel({
                 owner,
                 repo,
                 issue_number: issue,
-                name: "ready"
+                name: "ready",
               });
 
               notice(`Issue #${issue}: removed label 'ready'.`);
@@ -74,7 +133,7 @@ jobs:
                   owner,
                   repo,
                   issue_number: issue,
-                  labels: ["in-progress"]
+                  labels: ["in-progress"],
                 });
 
                 notice(`Issue #${issue}: added label 'in-progress'.`);
@@ -82,9 +141,10 @@ jobs:
               } else {
 
                 warning(`Issue #${issue}: label 'in-progress' already exists.`);
+
               }
 
-              await writeSummary(`Issue lifecycle : Issue #${issue}`);
+              await writeSummary(`Issue lifecycle - Issue #${issue}`);
               return;
             }
 
@@ -92,13 +152,13 @@ jobs:
 
               warning(`Issue #${issue}: already in progress.`);
 
-              await writeSummary(`Issue lifecycle : Issue #${issue}`);
+              await writeSummary(`Issue lifecycle - Issue #${issue}`);
               return;
             }
 
             failure(`Issue #${issue}: expected label 'ready' or 'in-progress'.`);
 
-            await writeSummary(`Issue lifecycle : Issue #${issue}`);
+            await writeSummary(`Issue lifecycle - Issue #${issue}`);
 
             core.setFailed("Invalid issue state.");
 
