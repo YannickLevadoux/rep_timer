@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/notification_mode.dart';
+import '../models/notification_sound.dart';
 import '../services/app_settings_storage.dart';
 import '../services/step_end_notification_service.dart';
 import '../services/training_export_service.dart';
@@ -100,12 +101,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Fait défiler Son -> Vibration -> Rien -> Son, persiste immédiatement
   // le nouveau mode, puis joue son aperçu (sauf pour "Rien", qui n'en a
   // pas). Cet aperçu n'est joué que depuis cet écran, jamais depuis le
-  // contrôle rapide de l'écran d'exécution d'une séance.
+  // contrôle rapide de l'écran d'exécution d'une séance. Le service ne
+  // connaissant plus la notion de "mode" (voir StepEndNotificationService),
+  // c'est ici que ce mapping mode -> action se fait.
   Future<void> _cycleNotificationMode() async {
     final newMode = _notificationMode.next;
     setState(() => _notificationMode = newMode);
     await _settingsStorage.saveNotificationMode(newMode);
-    await _notificationService.playPreview(newMode);
+
+    switch (newMode) {
+      case NotificationMode.sound:
+        await _notificationService.playPreview(NotificationSound.classic);
+        break;
+      case NotificationMode.vibration:
+        await _notificationService.vibrate();
+        break;
+      case NotificationMode.none:
+        break;
+    }
   }
 
   // Logique de changement de thème réutilisée telle quelle depuis

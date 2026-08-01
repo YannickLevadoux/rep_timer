@@ -5,6 +5,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../models/history_step_entry.dart';
 import '../models/notification_mode.dart';
+import '../models/notification_sound.dart';
 import '../models/session_checkpoint.dart';
 import '../models/session_step.dart';
 import '../models/training.dart';
@@ -30,6 +31,7 @@ class SessionController extends ChangeNotifier {
     TrainingHistoryStorage? historyStorage,
     AppSettingsStorage? settingsStorage,
     StepEndNotificationService? notificationService,
+    NotificationSound? notificationSound,
     Future<void> Function()? enableWakelock,
     Future<void> Function()? disableWakelock,
   }) : _steps = buildSessionSteps(training),
@@ -39,6 +41,7 @@ class SessionController extends ChangeNotifier {
        _settingsStorage = settingsStorage ?? AppSettingsStorage(),
        _notificationService =
            notificationService ?? StepEndNotificationService(),
+       _notificationSound = notificationSound ?? NotificationSound.classic,
        _enableWakelock = enableWakelock ?? WakelockPlus.enable,
        _disableWakelock = disableWakelock ?? WakelockPlus.disable {
     // Tente de reprendre depuis un checkpoint, uniquement s'il correspond
@@ -80,24 +83,22 @@ class SessionController extends ChangeNotifier {
       _stepActualDurations = List.filled(_steps.length, Duration.zero);
     }
 
-    // Configuration de session des notifications : initialisée à partir
-    // de la configuration globale (voir AppSettingsStorage), puis
-    // totalement indépendante de celle-ci pour le reste de la séance
-    // (voir cycleNotificationMode). Chargement asynchrone, comme
-    // _saveCheckpoint() ci-dessous : la valeur par défaut (Rien) reste
-    // affichée le temps très bref de ce chargement.
-    _loadInitialNotificationMode();
-
     if (_steps.isEmpty) {
       _finished = true;
       return;
     }
 
-    // Initialise les seuils de notification encore à venir pour l'étape
-    // de départ, en excluant ceux déjà "dépassés" si on reprend en cours
-    // de route (checkpoint restauré avec un temps restant déjà sous 3s,
-    // par exemple) : voir _resetNotificationThresholds.
-    _resetNotificationThresholds();
+    // Précharge la source audio du thème actuel dès le départ (best
+    // effort, indépendant du mode réellement configuré) pour réduire la
+    // latence de la toute première lecture. Arme ensuite une première
+    // fois avec le mode par défaut (Rien), qui ne fait donc rien tant
+    // que le mode global n'est pas connu — voir _loadInitialNotificationMode,
+    // qui réarme dès que ce mode réel est chargé, pour ne jamais
+    // "consommer" silencieusement le déclenchement de la toute première
+    // étape avec la valeur par défaut.
+    unawaited(_notificationService.preload(_notificationSound));
+    _armCountdownForCurrentStep();
+    _loadInitialNotificationMode();
 
     _enableWakelock();
 
@@ -146,24 +147,29 @@ class SessionController extends ChangeNotifier {
   final TrainingHistoryStorage _historyStorage;
   final AppSettingsStorage _settingsStorage;
   final StepEndNotificationService _notificationService;
+  final NotificationSound _notificationSound;
   final Future<void> Function() _enableWakelock;
   final Future<void> Function() _disableWakelock;
 
-  // Configuration de session des notifications (voir le commentaire du
-  // constructeur) : ne survit jamais à cette instance de contrôleur,
-  // c'est ce qui garantit qu'une nouvelle séance reparte toujours de la
-  // configuration globale.
+  // Configuration de session des notifications : initialisée une seule
+  // fois à partir de la configuration globale (voir
+  // _loadInitialNotificationMode), puis totalement indépendante de
+  // celle-ci pour le reste de la séance (voir cycleNotificationMode).
+  // Ne survit jamais à cette instance de contrôleur : une nouvelle
+  // séance repart toujours de la configuration globale.
   NotificationMode _notificationMode = NotificationMode.none;
 
-  // Seuils (en secondes restantes) encore à jouer pour l'étape en cours,
-  // du plus grand au plus petit ([3, 2, 1, 0] au départ d'une étape à
-  // durée). Comparés en "<=" plutôt qu'en égalité stricte dans _onTick,
-  // pour rester robustes à la dérive de Timer.periodic (voir _onTick) :
-  // sans ça, un tick légèrement en retard peut faire sauter directement
-  // le compte à rebours affiché de 3s à 1s, et le seuil "2" ne serait
-  // alors jamais atteint par une simple égalité.
-  static const List<int> _notificationThresholds = [3, 2, 1, 0];
-  List<int> _pendingNotificationThresholds = [];
+  // true dès que l'utilisateur modifie le mode depuis le contrôle rapide
+  // de la séance : protège contre la course asynchrone avec le
+  // chargement initial du mode global (voir cycleNotificationMode et
+  // _loadInitialNotificationMode) — une fois vrai, le résultat du
+  // chargement global ne doit plus jamais écraser le choix utilisateur.
+  bool _notificationModeOverridden = false;
+
+  // Timer ponctuel (non périodique) programmé pour démarrer la séquence
+  // audio composite exactement à T - goOffset, où T est la fin naturelle
+  // de l'étape en cours. Voir _armCountdownForCurrentStep/_cancelCountdown.
+  Timer? _countdownTimer;
 
   // Horodatage du dernier passage en arrière-plan (processus non tué) ;
   // sert à calculer le temps réellement écoulé au retour, via l'heure
@@ -190,64 +196,89 @@ class SessionController extends ChangeNotifier {
 
   Future<void> _loadInitialNotificationMode() async {
     final mode = await _settingsStorage.loadNotificationMode();
-    if (_disposed) return;
+
+    // L'utilisateur a déjà modifié le mode (contrôle rapide de la
+    // séance) pendant ce chargement : son choix prévaut définitivement,
+    // le résultat du chargement global est ignoré plutôt que d'écraser
+    // une action déjà prise en compte.
+    if (_disposed || _notificationModeOverridden) return;
+
     _notificationMode = mode;
+    // Réarme maintenant que le mode réel est connu : sans ça, si la
+    // toute première étape à durée se termine avant la fin de ce
+    // chargement asynchrone, elle aurait été "consommée" silencieusement
+    // avec le mode par défaut (Rien) armé au constructeur.
+    _armCountdownForCurrentStep();
     notifyListeners();
   }
 
   // Contrôle rapide pendant la séance (icône de la section Global) :
   // modifie uniquement la configuration de session, jamais la
   // configuration globale enregistrée dans les Paramètres. Le nouveau
-  // mode s'applique immédiatement aux notifications suivantes.
+  // mode s'applique immédiatement : toute séquence son en cours ou
+  // programmée est annulée, puis réarmée si le nouveau mode est Son.
   void cycleNotificationMode() {
+    _notificationModeOverridden = true;
     _notificationMode = _notificationMode.next;
+    _cancelCountdown();
+    _armCountdownForCurrentStep();
     notifyListeners();
   }
 
-  // Recalcule les seuils encore à jouer pour l'étape courante, à partir
-  // du temps restant réel à cet instant. Appelé à chaque point où la
-  // trajectoire du temps restant peut "sauter" plutôt que de progresser
-  // tick par tick : démarrage d'une nouvelle étape, navigation manuelle,
-  // retour d'arrière-plan. Un seuil déjà dépassé à ce moment-là (ex :
-  // reprise avec 1s restante) n'est jamais ajouté aux seuils en attente,
-  // conformément à la règle "pas de rattrapage de notifications
-  // manquées lors d'une reprise".
-  void _resetNotificationThresholds() {
-    final duration = currentStep.item.duration;
-    if (duration == null) {
-      _pendingNotificationThresholds = [];
-      return;
-    }
+  // Programme un timer ponctuel démarrant la séquence audio composite
+  // pile à T - goOffset (T = fin naturelle de l'étape en cours), à
+  // partir du temps restant réel à cet instant. Annule d'abord tout
+  // timer déjà programmé (sans jamais interrompre un son déjà en train
+  // de jouer : voir _cancelCountdown pour ça). No-op si le mode courant
+  // n'est pas Son, si la séance est en pause/terminée, ou si l'étape
+  // courante n'a pas de durée (Répétitions/Durée libre).
+  //
+  // Appelé à chaque point où la trajectoire du temps restant peut
+  // "sauter" plutôt que de progresser en continu : démarrage d'une
+  // étape, navigation manuelle, reprise après pause générale ou retour
+  // d'arrière-plan, chargement initial du mode, changement de mode.
+  void _armCountdownForCurrentStep() {
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
 
-    final remainingSeconds = (duration - stepElapsed).inSeconds;
-    _pendingNotificationThresholds = _notificationThresholds
-        .where((threshold) => threshold <= remainingSeconds)
-        .toList();
+    if (_notificationMode != NotificationMode.sound) return;
+    if (_paused || _finished) return;
+
+    final duration = currentStep.item.duration;
+    if (duration == null) return;
+
+    final delay = (duration - stepElapsed) - _notificationSound.goOffset;
+
+    // Le point de déclenchement (T - goOffset) est déjà dépassé : on ne
+    // rattrape jamais une séquence manquée plutôt que de la jouer en
+    // retard (ex : reprise avec moins de goOffset restant sur l'étape).
+    if (delay.isNegative) return;
+
+    _countdownTimer = Timer(delay, () {
+      _countdownTimer = null;
+      if (_disposed) return;
+      unawaited(_notificationService.playCountdown(_notificationSound));
+    });
   }
 
-  // Déclenche, dans l'ordre décroissant, tous les seuils désormais
-  // atteints ou dépassés par [remainingSeconds]. Utilise "<=" plutôt
-  // qu'une égalité stricte : si un tick en retard a fait sauter
-  // directement de 3s à 1s, les seuils 3 puis 2 sont tous les deux
-  // déclenchés à ce tick plutôt que silencieusement perdus (voir le
-  // commentaire du champ _pendingNotificationThresholds).
-  void _fireDueNotificationThresholds(int remainingSeconds) {
-    while (_pendingNotificationThresholds.isNotEmpty &&
-        remainingSeconds <= _pendingNotificationThresholds.first) {
-      final threshold = _pendingNotificationThresholds.removeAt(0);
-      unawaited(
-        _notificationService.onTick(
-          mode: _notificationMode,
-          remainingSeconds: threshold,
-        ),
-      );
-    }
+  // Annule immédiatement toute notification son en cours ou programmée :
+  // le timer ponctuel s'il n'a pas encore sonné, ET le son déjà en train
+  // de jouer le cas échéant. Utilisé pour les véritables annulations
+  // (navigation manuelle, pause générale, changement de mode, fin/
+  // abandon de séance) — jamais pour un simple changement d'étape suite
+  // à une fin naturelle, qui doit au contraire laisser une séquence déjà
+  // lancée se terminer (voir completeCurrentStep).
+  void _cancelCountdown() {
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
+    unawaited(_notificationService.stopCountdown());
   }
 
   @override
   void dispose() {
     _disposed = true;
     _ticker?.cancel();
+    _countdownTimer?.cancel();
     _disableWakelock();
     _notificationService.dispose();
     super.dispose();
@@ -273,15 +304,23 @@ class SessionController extends ChangeNotifier {
         ..reset();
     }
 
+    // Le timer ponctuel utilise l'horloge murale réelle et continuerait
+    // de décompter même hors premier plan (contrairement à nos
+    // Stopwatch, gelés ci-dessus) : il serait donc décalé par rapport à
+    // notre suivi du temps restant au retour. On l'annule ici et on le
+    // réarme au retour (voir handleAppResumed), sans pour autant
+    // interrompre un son déjà en cours de lecture à cet instant précis.
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
+
     _saveCheckpoint();
   }
 
   // Retour au premier plan (processus jamais tué, contrairement au cas
   // pris en charge dans le constructeur) : on rattrape le temps
   // réellement écoulé pendant l'arrière-plan via l'heure système, puis
-  // on relance les chronomètres. Aucune notification n'est jouée ici,
-  // même si l'écart rattrapé franchit un seuil de déclenchement : seul
-  // le tick naturel suivant peut en déclencher une (voir _onTick).
+  // on relance les chronomètres et on réarme la notification son (sans
+  // rattraper un déclenchement déjà dépassé, voir _armCountdownForCurrentStep).
   void handleAppResumed() {
     final backgroundedAt = _backgroundedAt;
     _backgroundedAt = null;
@@ -294,13 +333,9 @@ class SessionController extends ChangeNotifier {
       _globalElapsedOffset += backgroundGap;
       _stepElapsedOffset += backgroundGap;
     }
-    // Recalcule les seuils encore à venir après ce saut de temps : ceux
-    // déjà dépassés pendant l'arrière-plan ne doivent pas être rattrapés
-    // maintenant (voir _resetNotificationThresholds).
-    _resetNotificationThresholds();
-
     _globalStopwatch.start();
     _stepStopwatch.start();
+    _armCountdownForCurrentStep();
 
     notifyListeners();
     _saveCheckpoint();
@@ -341,16 +376,6 @@ class SessionController extends ChangeNotifier {
 
     final duration = currentStep.item.duration;
 
-    // Notification de fin naturelle (pause ou exercice Temps
-    // uniquement : les exercices en Répétitions/Durée libre n'ont pas de
-    // `duration`, donc ne déclenchent jamais rien ici). Le temps restant
-    // utilisé est exactement celui affiché à l'écran (voir
-    // SessionRunningBody), garantissant la synchronisation.
-    if (duration != null) {
-      final remainingSeconds = (duration - stepElapsed).inSeconds;
-      _fireDueNotificationThresholds(remainingSeconds);
-    }
-
     if (duration != null && stepElapsed >= duration) {
       completeCurrentStep();
     } else {
@@ -361,6 +386,19 @@ class SessionController extends ChangeNotifier {
 
   void completeCurrentStep() {
     if (_finished) return;
+
+    // Vibration : déclenchée directement ici, au moment exact de la fin
+    // naturelle, plutôt que via un timer programmé à l'avance comme pour
+    // le son — une vibration unique n'a besoin d'aucune précision
+    // anticipée. currentStep.item.duration != null exclut à la fois les
+    // exercices Répétitions/Durée libre (jamais de notification, et
+    // c'est leur seul moyen d'appeler completeCurrentStep, via le bouton
+    // "Valider") ET garantit qu'on est bien sur un passage naturel (seul
+    // cas où completeCurrentStep est appelé pour une étape à durée).
+    if (_notificationMode == NotificationMode.vibration &&
+        currentStep.item.duration != null) {
+      unawaited(_notificationService.vibrate());
+    }
 
     _recordCurrentStepDuration();
 
@@ -373,7 +411,11 @@ class SessionController extends ChangeNotifier {
         ..stop()
         ..reset();
       if (!_paused) _stepStopwatch.start();
-      _resetNotificationThresholds();
+      // Nouvelle étape : on arme sa propre notification sans jamais
+      // couper une séquence son encore en train de jouer suite à la fin
+      // naturelle de l'étape précédente (voir _armCountdownForCurrentStep,
+      // qui n'annule que le timer, pas un son déjà lancé).
+      _armCountdownForCurrentStep();
     } else {
       finishSession();
     }
@@ -387,6 +429,16 @@ class SessionController extends ChangeNotifier {
     TrainingSessionStatus status = TrainingSessionStatus.completed,
   }) async {
     if (_finished) return;
+
+    // Fin anticipée ("Terminer la session") : coupe immédiatement toute
+    // séquence son en cours ou programmée. Une fin naturelle (dernier
+    // pas de la séance, status par défaut, jamais passé explicitement
+    // ailleurs que par completeCurrentStep) ne doit au contraire jamais
+    // l'interrompre, et n'a de toute façon rien à annuler ici (aucune
+    // nouvelle étape n'est armée après la dernière).
+    if (status == TrainingSessionStatus.incomplete) {
+      _cancelCountdown();
+    }
 
     // Couvre le cas "Terminer la session" (fin anticipée), qui ne passe
     // pas par completeCurrentStep : sans cela, le temps partiel de
@@ -451,9 +503,11 @@ class SessionController extends ChangeNotifier {
     if (_paused) {
       _globalStopwatch.stop();
       _stepStopwatch.stop();
+      _cancelCountdown();
     } else {
       _globalStopwatch.start();
       _stepStopwatch.start();
+      _armCountdownForCurrentStep();
     }
 
     notifyListeners();
@@ -462,11 +516,14 @@ class SessionController extends ChangeNotifier {
 
   // Navigation manuelle : ne modifie jamais le statut "terminé" des
   // exercices, contrairement à completeCurrentStep. Seul l'index courant
-  // (et le minuteur de l'étape) change. Aucune notification n'est jouée
-  // ici (voir _onTick, seul point de déclenchement).
+  // (et le minuteur de l'étape) change. Toute notification son en cours
+  // ou programmée pour l'étape quittée est annulée (voir
+  // _cancelCountdown), puis une nouvelle est armée pour l'étape
+  // d'arrivée.
   void jumpToStep(int index) {
     if (index < 0 || index >= _steps.length) return;
 
+    _cancelCountdown();
     _recordCurrentStepDuration();
 
     _currentIndex = index;
@@ -475,7 +532,7 @@ class SessionController extends ChangeNotifier {
       ..stop()
       ..reset();
     if (!_paused) _stepStopwatch.start();
-    _resetNotificationThresholds();
+    _armCountdownForCurrentStep();
 
     notifyListeners();
     _saveCheckpoint();
@@ -495,6 +552,10 @@ class SessionController extends ChangeNotifier {
     await _trainingStorage.addOrUpdateTraining(training);
   }
 
-  // Abandon de la séance : aucune trace ne doit permettre de la reprendre.
-  Future<void> abandon() => _checkpointStorage.clearCheckpoint();
+  // Abandon de la séance : aucune trace ne doit permettre de la
+  // reprendre, et toute notification en cours ou programmée est annulée.
+  Future<void> abandon() {
+    _cancelCountdown();
+    return _checkpointStorage.clearCheckpoint();
+  }
 }

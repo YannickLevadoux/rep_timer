@@ -1,126 +1,108 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:vibration/vibration.dart';
 
-import '../models/notification_mode.dart';
+import '../models/notification_sound.dart';
 
-/// Point d'entrée unique pour jouer les notifications de fin
-/// d'exercice/pause (mode Son ou Vibration), ainsi que leurs aperçus
-/// depuis l'écran Paramètres. Isolé du [SessionController] et de
-/// `SettingsScreen` pour que la logique de lecture audio/vibration ne
-/// soit écrite qu'à un seul endroit.
-///
-/// Les fichiers son doivent être copiés dans `assets/sounds/` à la
-/// racine du projet :
-/// - `assets/sounds/correct-bell.ogg`
-/// - `assets/sounds/deadrobotmusic.ogg`
-/// et déclarés dans le `pubspec.yaml` sous `flutter: assets:` (voir la
-/// documentation fournie avec cette fonctionnalité).
+/// Lecture audio/vibration des notifications de fin d'exercice/pause.
+/// Ne connaît aucune logique temporelle (quand déclencher, quand
+/// annuler) ni aucun mode : c'est entièrement la responsabilité de
+/// [SessionController] (pour les déclenchements réels) et de
+/// `SettingsScreen` (pour les aperçus), qui appellent cette classe au
+/// bon moment avec le [NotificationSound] voulu. Ce service sait
+/// seulement "comment" jouer un son ou vibrer, jamais "quand" ni
+/// "quel thème par défaut".
 class StepEndNotificationService {
-  static const _bellAsset = 'sounds/correct-bell.ogg';
-  static const _goAsset = 'sounds/deadrobotmusic.ogg';
-
-  // Durée de la vibration, en millisecondes.
   static const _vibrationDurationMs = 300;
 
-  // Pool de lecteurs alternés (voir _playOnNextPlayer) : chaque son est
-  // joué sur un lecteur différent du précédent, ce qui évite les ratés
-  // de lecture liés à la réutilisation d'un même AudioPlayer en
-  // succession rapide (.play() sur une source qu'il vient déjà de jouer
-  // peut être silencieusement ignoré), sans le défaut d'un .stop()
-  // préalable : une micro-coupure audible du son en cours, gênante au
-  // casque.
-  final List<AudioPlayer> _players;
-  int _nextPlayerIndex = 0;
+  // Lecteur dédié à la séquence "3-2-1-GO" pendant une séance. Un seul
+  // fichier composite par déclenchement ne nécessite plus le pool de
+  // lecteurs alternés utilisé par l'ancienne approche multi-fichiers.
+  final AudioPlayer _countdownPlayer;
 
-  StepEndNotificationService({List<AudioPlayer>? players})
-    : _players = players ?? List.generate(3, (_) => AudioPlayer());
+  // Lecteur séparé pour les aperçus (écran Paramètres) : les isoler du
+  // lecteur de séance évite toute interférence entre les deux, et rend
+  // chacun plus simple à raisonner indépendamment.
+  final AudioPlayer _previewPlayer;
 
-  /// Appelé à chaque tick (1 Hz) du chronomètre d'une étape à durée
-  /// (pause ou exercice Temps) avec le temps restant en secondes
-  /// entières — la même valeur que celle affichée à l'écran, ce qui
-  /// garantit la synchronisation par construction. Ne déclenche quelque
-  /// chose qu'aux instants 3/2/1/0 secondes ; toute autre valeur (y
-  /// compris négative, en cas de léger dépassement) est ignorée.
-  ///
-  /// Mode Son : bip à 3, 2 et 1 seconde, puis son de fin à 0. Mode
-  /// Vibration : une seule vibration, à 0 seconde uniquement (voir la
-  /// spec : la vibration ne "compte" pas 3-2-1 comme le son).
-  Future<void> onTick({
-    required NotificationMode mode,
-    required int remainingSeconds,
-  }) async {
-    if (mode == NotificationMode.none) return;
-    if (remainingSeconds > 3 || remainingSeconds < 0) return;
+  bool _disposed = false;
 
-    if (mode == NotificationMode.vibration) {
-      if (remainingSeconds == 0) await _vibrate();
-      return;
-    }
+  StepEndNotificationService({
+    AudioPlayer? countdownPlayer,
+    AudioPlayer? previewPlayer,
+  }) : _countdownPlayer = countdownPlayer ?? AudioPlayer(),
+       _previewPlayer = previewPlayer ?? AudioPlayer();
 
-    if (remainingSeconds == 0) {
-      await _playGoSound();
-    } else {
-      await _playBellSound();
+  /// Précharge la source audio de [sound] à l'avance (typiquement une
+  /// fois au démarrage d'une séance), pour réduire la latence de la
+  /// toute première lecture réelle. Best-effort : une erreur ici ne
+  /// doit jamais empêcher la lecture ultérieure via [playCountdown],
+  /// qui rechargera la source si besoin.
+  Future<void> preload(NotificationSound sound) async {
+    if (_disposed) return;
+    try {
+      await _countdownPlayer.setSource(AssetSource(sound.sequenceAsset));
+    } catch (_) {
+      // Ignoré : la lecture réelle rechargera la source elle-même.
     }
   }
 
-  /// Aperçu joué depuis l'écran Paramètres au moment où l'utilisateur
-  /// sélectionne un mode (jamais pendant une séance, et jamais pour le
-  /// mode Rien).
-  Future<void> playPreview(NotificationMode mode) async {
-    switch (mode) {
-      case NotificationMode.none:
-        break;
-      case NotificationMode.vibration:
-        await _vibrate();
-        break;
-      case NotificationMode.sound:
-        await _playFullSequencePreview();
-        break;
+  /// Joue la séquence composite de [sound] (bips + GO) depuis le début.
+  /// Appelé une seule fois par [SessionController] lorsque le point de
+  /// déclenchement (T - [NotificationSound.goOffset]) est atteint.
+  Future<void> playCountdown(NotificationSound sound) async {
+    if (_disposed) return;
+    try {
+      await _countdownPlayer.stop();
+      await _countdownPlayer.play(AssetSource(sound.sequenceAsset));
+    } catch (_) {
+      // Lecture best-effort : une erreur de lecture audio ne doit
+      // jamais faire planter la séance en cours.
     }
   }
 
-  Future<void> _playFullSequencePreview() async {
-    await _playBellSound();
-    await Future.delayed(const Duration(milliseconds: 800));
-    await _playBellSound();
-    await Future.delayed(const Duration(milliseconds: 800));
-    await _playBellSound();
-    await Future.delayed(const Duration(milliseconds: 800));
-    await _playGoSound();
+  /// Arrête immédiatement la séquence en cours (si elle joue), sans
+  /// effet si rien n'est en train de jouer.
+  Future<void> stopCountdown() async {
+    if (_disposed) return;
+    try {
+      await _countdownPlayer.stop();
+    } catch (_) {}
   }
 
-  Future<void> _playBellSound() => _playOnNextPlayer(_bellAsset);
-
-  Future<void> _playGoSound() => _playOnNextPlayer(_goAsset);
-
-  // Alterne entre les lecteurs du pool à chaque appel (round-robin) :
-  // deux déclenchements rapprochés (bip -> bip, ou bip -> son de fin)
-  // n'utilisent donc jamais le même AudioPlayer, contournant le risque
-  // de non-relecture d'une même source sur un lecteur qui vient tout
-  // juste de la jouer.
-  Future<void> _playOnNextPlayer(String asset) {
-    final player = _players[_nextPlayerIndex];
-    _nextPlayerIndex = (_nextPlayerIndex + 1) % _players.length;
-    return player.play(AssetSource(asset));
+  /// Aperçu joué depuis l'écran Paramètres : lit une fois le fichier
+  /// composite complet de [sound]. Un nouvel appel interrompt
+  /// immédiatement un aperçu déjà en cours (lecteur dédié, toujours
+  /// stoppé avant de rejouer) plutôt que de superposer plusieurs
+  /// aperçus lors d'appuis rapides.
+  Future<void> playPreview(NotificationSound sound) async {
+    if (_disposed) return;
+    try {
+      await _previewPlayer.stop();
+      await _previewPlayer.play(AssetSource(sound.sequenceAsset));
+    } catch (_) {}
   }
 
-  // Utilise le package `vibration` (Vibrator Android natif) plutôt que
-  // HapticFeedback.vibrate() : ce dernier respecte le réglage système
-  // "Retour haptique tactile" (celui du clavier/boutons) et non le
-  // moteur de vibration général — sur de nombreux appareils où ce
-  // réglage est désactivé, HapticFeedback ne produit alors aucune
-  // vibration perceptible, silencieusement.
-  Future<void> _vibrate() async {
-    final hasVibrator = await Vibration.hasVibrator();
-    if (hasVibrator == true) {
-      await Vibration.vibrate(duration: _vibrationDurationMs);
-    }
+  /// Vibration ponctuelle. Utilise le package `vibration` (Vibrator
+  /// Android natif) plutôt que HapticFeedback.vibrate() : ce dernier
+  /// respecte le réglage système "Retour haptique tactile" (celui du
+  /// clavier/boutons) et non le moteur de vibration général — sur de
+  /// nombreux appareils où ce réglage est désactivé, HapticFeedback ne
+  /// produit alors aucune vibration perceptible, silencieusement.
+  Future<void> vibrate() async {
+    if (_disposed) return;
+    try {
+      final hasVibrator = await Vibration.hasVibrator();
+      if (hasVibrator == true) {
+        await Vibration.vibrate(duration: _vibrationDurationMs);
+      }
+    } catch (_) {}
   }
 
   void dispose() {
-    for (final player in _players) {
-      player.dispose();
-    }
+    _disposed = true;
+    unawaited(_countdownPlayer.dispose());
+    unawaited(_previewPlayer.dispose());
   }
 }
