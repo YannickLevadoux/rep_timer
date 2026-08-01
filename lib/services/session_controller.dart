@@ -93,6 +93,12 @@ class SessionController extends ChangeNotifier {
       return;
     }
 
+    // Initialise les seuils de notification encore à venir pour l'étape
+    // de départ, en excluant ceux déjà "dépassés" si on reprend en cours
+    // de route (checkpoint restauré avec un temps restant déjà sous 3s,
+    // par exemple) : voir _resetNotificationThresholds.
+    _resetNotificationThresholds();
+
     _enableWakelock();
 
     if (!_paused) {
@@ -149,6 +155,16 @@ class SessionController extends ChangeNotifier {
   // configuration globale.
   NotificationMode _notificationMode = NotificationMode.none;
 
+  // Seuils (en secondes restantes) encore à jouer pour l'étape en cours,
+  // du plus grand au plus petit ([3, 2, 1, 0] au départ d'une étape à
+  // durée). Comparés en "<=" plutôt qu'en égalité stricte dans _onTick,
+  // pour rester robustes à la dérive de Timer.periodic (voir _onTick) :
+  // sans ça, un tick légèrement en retard peut faire sauter directement
+  // le compte à rebours affiché de 3s à 1s, et le seuil "2" ne serait
+  // alors jamais atteint par une simple égalité.
+  static const List<int> _notificationThresholds = [3, 2, 1, 0];
+  List<int> _pendingNotificationThresholds = [];
+
   // Horodatage du dernier passage en arrière-plan (processus non tué) ;
   // sert à calculer le temps réellement écoulé au retour, via l'heure
   // système plutôt qu'un chronomètre qui peut se figer pendant la mise
@@ -186,6 +202,46 @@ class SessionController extends ChangeNotifier {
   void cycleNotificationMode() {
     _notificationMode = _notificationMode.next;
     notifyListeners();
+  }
+
+  // Recalcule les seuils encore à jouer pour l'étape courante, à partir
+  // du temps restant réel à cet instant. Appelé à chaque point où la
+  // trajectoire du temps restant peut "sauter" plutôt que de progresser
+  // tick par tick : démarrage d'une nouvelle étape, navigation manuelle,
+  // retour d'arrière-plan. Un seuil déjà dépassé à ce moment-là (ex :
+  // reprise avec 1s restante) n'est jamais ajouté aux seuils en attente,
+  // conformément à la règle "pas de rattrapage de notifications
+  // manquées lors d'une reprise".
+  void _resetNotificationThresholds() {
+    final duration = currentStep.item.duration;
+    if (duration == null) {
+      _pendingNotificationThresholds = [];
+      return;
+    }
+
+    final remainingSeconds = (duration - stepElapsed).inSeconds;
+    _pendingNotificationThresholds = _notificationThresholds
+        .where((threshold) => threshold <= remainingSeconds)
+        .toList();
+  }
+
+  // Déclenche, dans l'ordre décroissant, tous les seuils désormais
+  // atteints ou dépassés par [remainingSeconds]. Utilise "<=" plutôt
+  // qu'une égalité stricte : si un tick en retard a fait sauter
+  // directement de 3s à 1s, les seuils 3 puis 2 sont tous les deux
+  // déclenchés à ce tick plutôt que silencieusement perdus (voir le
+  // commentaire du champ _pendingNotificationThresholds).
+  void _fireDueNotificationThresholds(int remainingSeconds) {
+    while (_pendingNotificationThresholds.isNotEmpty &&
+        remainingSeconds <= _pendingNotificationThresholds.first) {
+      final threshold = _pendingNotificationThresholds.removeAt(0);
+      unawaited(
+        _notificationService.onTick(
+          mode: _notificationMode,
+          remainingSeconds: threshold,
+        ),
+      );
+    }
   }
 
   @override
@@ -238,6 +294,11 @@ class SessionController extends ChangeNotifier {
       _globalElapsedOffset += backgroundGap;
       _stepElapsedOffset += backgroundGap;
     }
+    // Recalcule les seuils encore à venir après ce saut de temps : ceux
+    // déjà dépassés pendant l'arrière-plan ne doivent pas être rattrapés
+    // maintenant (voir _resetNotificationThresholds).
+    _resetNotificationThresholds();
+
     _globalStopwatch.start();
     _stepStopwatch.start();
 
@@ -287,12 +348,7 @@ class SessionController extends ChangeNotifier {
     // SessionRunningBody), garantissant la synchronisation.
     if (duration != null) {
       final remainingSeconds = (duration - stepElapsed).inSeconds;
-      unawaited(
-        _notificationService.onTick(
-          mode: _notificationMode,
-          remainingSeconds: remainingSeconds,
-        ),
-      );
+      _fireDueNotificationThresholds(remainingSeconds);
     }
 
     if (duration != null && stepElapsed >= duration) {
@@ -317,6 +373,7 @@ class SessionController extends ChangeNotifier {
         ..stop()
         ..reset();
       if (!_paused) _stepStopwatch.start();
+      _resetNotificationThresholds();
     } else {
       finishSession();
     }
@@ -418,6 +475,7 @@ class SessionController extends ChangeNotifier {
       ..stop()
       ..reset();
     if (!_paused) _stepStopwatch.start();
+    _resetNotificationThresholds();
 
     notifyListeners();
     _saveCheckpoint();
