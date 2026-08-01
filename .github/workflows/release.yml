@@ -1,31 +1,45 @@
 name: Release
 
 on:
+
   push:
     tags:
       - "v*"
 
-permissions:
-  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+
+  validate:
+
+    uses: ./.github/workflows/flutter-validate.yml
+
   release:
+
+    needs: validate
+
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     steps:
+
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v4.7.1
         with:
           distribution: temurin
-          java-version: 17
+          java-version: "17"
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@v2.21.0
         with:
-          channel: stable
+          flutter-version: 3.44.4
           cache: true
 
       - name: Install dependencies
@@ -38,6 +52,10 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
 
       - name: Create key.properties
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ vars.KEY_ALIAS }}
         run: |
           cat > android/key.properties <<EOF
           storePassword=${KEYSTORE_PASSWORD}
@@ -45,14 +63,6 @@ jobs:
           keyAlias=${KEY_ALIAS}
           storeFile=upload-keystore.jks
           EOF
-
-          echo "Key alias: ${KEY_ALIAS}"
-          echo "length of keystore password: ${#KEYSTORE_PASSWORD}"
-          echo "length of key password: ${#KEY_PASSWORD}"
-        env:
-            KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-            KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-            KEY_ALIAS: ${{ vars.KEY_ALIAS }}
 
       - name: Build signed APK
         run: flutter build apk --release
@@ -64,7 +74,7 @@ jobs:
              build/app/outputs/flutter-apk/RepTimer-${TAG_NAME}.apk
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.3.3
         with:
           generate_release_notes: true
           files: build/app/outputs/flutter-apk/RepTimer-${{ github.ref_name }}.apk

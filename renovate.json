@@ -1,0 +1,37 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+
+  "extends": [
+    "config:recommended"
+  ],
+
+  "labels": [
+    "dependencies"
+  ],
+
+  "packageRules": [
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "matchManagers": ["pub"],
+      "groupName": "Dart & Flutter packages"
+    }
+  ],
+
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^.github\\/workflows\\/.*\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "flutter-version:\\s*(?<currentValue>[0-9.]+)"
+      ],
+      "depNameTemplate": "flutter",
+      "packageNameTemplate": "flutter",
+      "datasourceTemplate": "flutter-version"
+    }
+  ]
+}

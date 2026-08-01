@@ -1,6 +1,7 @@
 name: CI
 
 on:
+
   pull_request:
     branches:
       - main
@@ -9,37 +10,12 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  flutter:
-    runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+  validate:
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed .
-
-      - name: Static analysis
-        run: dart analyze
-
-      - name: Run tests
-        run: flutter test --coverage
-
-      - name: Build Android APK (debug)
-        run: flutter build apk --debug
+    uses: ./.github/workflows/flutter-validate.yml
