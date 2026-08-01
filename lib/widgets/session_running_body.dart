@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../models/notification_mode.dart';
 import '../models/session_step.dart';
 import '../models/training_item.dart';
 import '../utils/exercise_icons.dart';
 import '../utils/formatters.dart';
+import '../utils/notification_mode_icons.dart';
 import 'section_divider.dart';
 import 'session_comment_section.dart';
 
@@ -12,8 +14,9 @@ import 'session_comment_section.dart';
 /// commentaire, et actions (précédent/suivant, valider, pause).
 ///
 /// Widget purement d'affichage : toute la logique (progression, calcul
-/// des durées, pause...) reste dans `SessionController` et l'écran
-/// parent, qui fournit ici l'état courant et les callbacks d'action.
+/// des durées, pause, notifications de fin d'étape...) reste dans
+/// `SessionController` et l'écran parent, qui fournit ici l'état courant
+/// et les callbacks d'action.
 class SessionRunningBody extends StatelessWidget {
   final SessionStep step;
   final SessionStep? nextStep;
@@ -22,12 +25,14 @@ class SessionRunningBody extends StatelessWidget {
   final Duration globalElapsed;
   final Duration stepElapsed;
   final bool paused;
+  final NotificationMode notificationMode;
   final Animation<double> blinkOpacity;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final VoidCallback onComplete;
   final VoidCallback onTogglePause;
   final VoidCallback onEditComment;
+  final VoidCallback onCycleNotificationMode;
 
   const SessionRunningBody({
     super.key,
@@ -38,12 +43,14 @@ class SessionRunningBody extends StatelessWidget {
     required this.globalElapsed,
     required this.stepElapsed,
     required this.paused,
+    required this.notificationMode,
     required this.blinkOpacity,
     required this.onPrevious,
     required this.onNext,
     required this.onComplete,
     required this.onTogglePause,
     required this.onEditComment,
+    required this.onCycleNotificationMode,
   });
 
   @override
@@ -91,7 +98,25 @@ class SessionRunningBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text("Exercice ${currentIndex + 1} / $totalSteps"),
+          // Icône de contrôle rapide des notifications, alignée
+          // complètement à droite sur la même ligne que la progression
+          // globale ; taille et contraintes compactes pour ne pas
+          // modifier la hauteur de cette section (même principe que le
+          // bouton d'édition du commentaire dans SessionCommentSection).
+          Row(
+            children: [
+              Text("Exercice ${currentIndex + 1} / $totalSteps"),
+              const Spacer(),
+              IconButton(
+                icon: Icon(iconForNotificationMode(notificationMode), size: 20),
+                tooltip: "Notifications : ${notificationMode.label}",
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                visualDensity: VisualDensity.compact,
+                onPressed: onCycleNotificationMode,
+              ),
+            ],
+          ),
 
           // ---- Section "Prochain" ----
           const SectionDivider(label: "Prochain"),
