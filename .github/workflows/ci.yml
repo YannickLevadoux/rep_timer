@@ -6,10 +6,6 @@ on:
     branches:
       - main
 
-  push:
-    branches:
-      - main
-
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -19,3 +15,35 @@ jobs:
   validate:
 
     uses: ./.github/workflows/flutter-validate.yml
+  
+  build-debug-apk:
+
+    needs: validate
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Java
+        uses: actions/setup-java@v4.7.1
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2.21.0
+        with:
+          flutter-version: 3.44.4
+          cache: true
+  
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Android APK (debug)
+        run: flutter build apk --debug
