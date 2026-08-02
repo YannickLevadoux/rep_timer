@@ -28,10 +28,10 @@ jobs:
 
   #
   # --------------------------------------------------------------------------
-  # Push a branch
-  # - Check branch naming convention (issue number should be present) 
+  # mark-in-progress: when pushing a branch
+  # - Extract issue number : Check branch naming convention (issue number should be present) 
   #     Fails if naming convention is not followed
-  # - Update label of issue from ready => in-progress
+  # - Update issue labels : Update label of issue from ready => in-progress
   #     Fails if issue does not have label ready or in-progress
   # --------------------------------------------------------------------------
   #
@@ -171,8 +171,8 @@ jobs:
 
   #
   # --------------------------------------------------------------------------
-  # PR opened 
-  # - Add mention "Related to #${issue} in PR description if not already present
+  # update-pr: when a PR is opened
+  # - Add mention "Closes #${issue} in PR description if not already present
   # - Add link between PR and issue (TODO!) 
   # --------------------------------------------------------------------------
   #
@@ -221,13 +221,13 @@ jobs:
 
           let body = context.payload.pull_request.body ?? "";
 
-          if (body.includes(`Related to #${issue}`)) {
+          if (body.includes(`Closes #${issue}`)) {
             warning(`PR already references issue #${issue}.`);
             await writeSummary(`Issue lifecycle - Issue #${issue}`);
             return;
           }
 
-          body = `Related to #${issue}\n\n${body}`;
+          body = `Closes #${issue}\n\n${body}`;
 
           await github.rest.pulls.update({
             ...context.repo,
@@ -235,15 +235,16 @@ jobs:
             body,
           });
 
-          notice(`PR description updated with 'Related to #${issue}'.`);
+          notice(`PR description updated with 'Closes #${issue}'.`);
 
           await writeSummary(`Issue lifecycle - Issue #${issue}`);
 
   #
   # --------------------------------------------------------------------------
-  # PR merged
-  # - Remove in-progress label on PR
-  # - Close issue if PR description or comments contain 'Close #xx' or 'Closes #xx'
+  # merged: when a PR is merged
+  # - Remove in-progress label : 
+  #    - Remove in-progress label on PR
+  #    - Close issue if PR description or comments contain 'Close #xx' or 'Closes #xx'
   # --------------------------------------------------------------------------
   #
 
@@ -342,8 +343,8 @@ jobs:
 
   #
   # --------------------------------------------------------------------------
-  # Branch deleted 
-  # - remove in-progress label on PR if issue still open
+  # deleted: when a branch is deleted
+  # - Remove in-progress label : remove in-progress label on PR if issue still open
   # --------------------------------------------------------------------------
   #
 
