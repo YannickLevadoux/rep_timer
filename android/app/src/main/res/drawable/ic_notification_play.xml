@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icône de la barre de notification lorsqu'un chronomètre/compte à
+     rebours de séance est actif (voir SessionNotificationService). Simple
+     silhouette blanche sur fond transparent, comme attendu pour une
+     "small icon" Android (le système l'affiche en mode monochrome). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M8,5v14l11,-7z" />
+</vector>

@@ -29,6 +29,7 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Fin de séance anticipée ou normale, toutes deux enregistrées dans l'historique : le statut (`Terminée` / `Incomplète`) est toujours déterminé à partir de la progression réelle (mêmes coches que l'écran de progression détaillée), quel que soit le mode de fin de séance.
 - Si l'ordre d'exécution est modifié manuellement (exercices/pauses sautés, groupes réalisés dans un autre ordre) et que le dernier exercice du dernier groupe est terminé alors que des éléments restent non réalisés, la séance ne se termine pas automatiquement : elle se met en pause et propose de **reprendre à un exercice de son choix** (via l'écran de progression) ou de **terminer la séance** (enregistrée avec le statut `Incomplète`).
 - Si une pause est définie la fin de la séance (dernière pause du dernier groupe), cette pause sera ignorée.
+- Notification Android persistante pendant qu'un chronomètre est actif (pause, exercice Temps ou Durée libre — jamais pour un exercice Répétitions) : icône Play/Pause dans la barre d'état, nom de l'exercice/de la pause et temps restant (ou écoulé en Durée libre) dans la notification repliée, prochain élément de la séance et boutons **Pause** / **Voir la séance** une fois développée. Repose sur un vrai Foreground Service Android (et non une simple notification), afin que la mise à jour du chronomètre ainsi que le son/la vibration de fin d'exercice restent fiables même lorsque l'application est en arrière-plan. Disparaît automatiquement à la fin, à l'abandon, ou à l'arrêt de la séance.
 
 ### Quick Tabata
 - Lancement rapide d'une séance travail/pause répétée, sans avoir à créer de séance au préalable (accessible depuis la barre de navigation de l'accueil).
@@ -58,6 +59,7 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - `share_plus` pour l'export des séance via la fenetre stardard de partage d'éléments
 - `flutter_launcher_icons` pour la gestion du logo
 - `package_info_plus` pour l'affichage d'information du package (boite About ou A Propos)
+- `flutter_foreground_task` pour le Foreground Service Android de la notification persistante pendant l'exécution d'une séance
 
 Aucun backend, aucun compte utilisateur : toutes les données restent sur l'appareil.
 

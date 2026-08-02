@@ -32,10 +32,47 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Service de premier plan (flutter_foreground_task) affichant la
+             notification persistante pendant l'exécution d'une séance (voir
+             lib/services/session_notification_service.dart). Ne fait rien
+             d'autre que garder le processus actif et afficher/mettre à jour
+             cette notification : toute la logique de chronométrage reste
+             dans SessionController (isolate principal), jamais dupliquée
+             ici. android:stopWithTask="true" : la notification disparaît si
+             l'utilisateur retire l'application de la liste des apps
+             récentes, plutôt que de laisser une notification orpheline sans
+             application à rouvrir derrière.
+             "specialUse" est le type de Foreground Service le plus honnête
+             ici : l'app ne lit aucun capteur (le type "health" imposerait
+             de déclarer ACTIVITY_RECOGNITION/BODY_SENSORS, non utilisés). -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false"
+            android:stopWithTask="true">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Affiche le chronomètre ou le compte à rebours d'une séance d'entraînement en cours, pour que l'utilisateur puisse suivre sa progression pendant qu'il utilise une autre application." />
+        </service>
     </application>
+
     <!--User Permission :
         VIBRATE : to allow vibrate the Device-->
     <uses-permission android:name="android.permission.VIBRATE"/>
+
+    <!-- Notification persistante de séance (voir SessionNotificationService) :
+         FOREGROUND_SERVICE (obligatoire pour tout Foreground Service),
+         FOREGROUND_SERVICE_SPECIAL_USE (obligatoire pour le type déclaré
+         ci-dessus sur Android 14+), POST_NOTIFICATIONS (obligatoire sur
+         Android 13+ pour afficher n'importe quelle notification), WAKE_LOCK
+         (déjà nécessaire à wakelock_plus, également utilisé par
+         flutter_foreground_task pour maintenir le CPU actif pendant la
+         séance). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
