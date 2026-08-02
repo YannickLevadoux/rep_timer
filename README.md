@@ -1,6 +1,11 @@
 # RepTimer
 
+[![CI](https://github.com/YannickLevadoux/rep_timer/actions/workflows/ci.yml/badge.svg)](https://github.com/YannickLevadoux/rep_timer/actions/workflows/ci.yml)
+[![Release](https://github.com/YannickLevadoux/rep_timer/actions/workflows/release.yml/badge.svg)](https://github.com/YannickLevadoux/rep_timer/actions/workflows/release.yml)
+
 Application mobile (Android) de suivi et d'exécution de séances d'entraînement, développée avec Flutter.
+
+Pas de version iOS prévue.
 
 RepTimer permet de créer ses propres séances (échauffement, circuits, séries...), de les organiser en groupes d'exercices répétables, puis de les exécuter avec un système de minuteur, de progression et d'historique.
 
@@ -14,6 +19,9 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
   - **Durée libre** — aucun temps ni répétitions fixés à l'avance ; l'utilisateur décide lui-même de la fin de l'exercice, un chronomètre mesure le temps réellement passé.
 - Pauses chronométrées entre les exercices.
 - Réorganisation par glisser-déposer des groupes et des exercices.
+- Aperçu repliable du contenu de chaque groupe et écran dédié à l'édition de ses paramètres, exercices et pauses.
+- Option permettant de désactiver le préremplissage du nom des nouveaux exercices avec le nom du groupe.
+- Duplication d'une séance depuis l'écran d'accueil, avec choix du nom de la copie ; la nouvelle séance reste indépendante de l'originale.
 - Icône personnalisable par exercice, parmi une liste prédéfinie.
 - Commentaire libre et optionnel par exercice (poids, intensité...), modifiable aussi bien à l'édition que pendant l'exécution de la séance.
 - Détection des modifications non enregistrées à la fermeture de l'écran d'édition (proposition d'enregistrer, d'abandonner ou d'annuler).
@@ -22,14 +30,16 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Écran de résumé avant le lancement (aperçu des groupes et exercices).
 - Empêche la mise en veille de l'écran pendant toute la durée de la séance.
 - Chronomètre global de la séance, indépendant du minuteur de chaque exercice.
+- Écran organisé autour des commandes de séance, de la progression, du prochain élément et de l'exercice ou de la pause en cours.
 - Navigation manuelle entre les exercices (précédent/suivant), en plus de la progression automatique.
 - Mise en évidence visuelle (clignotement) de l'exercice en cours.
 - Pause/reprise de la séance à tout moment.
 - Écran de progression détaillée, avec possibilité de sauter directement à un exercice donné (avec confirmation).
 - Fin de séance anticipée ou normale, toutes deux enregistrées dans l'historique : le statut (`Terminée` / `Incomplète`) est toujours déterminé à partir de la progression réelle (mêmes coches que l'écran de progression détaillée), quel que soit le mode de fin de séance.
 - Si l'ordre d'exécution est modifié manuellement (exercices/pauses sautés, groupes réalisés dans un autre ordre) et que le dernier exercice du dernier groupe est terminé alors que des éléments restent non réalisés, la séance ne se termine pas automatiquement : elle se met en pause et propose de **reprendre à un exercice de son choix** (via l'écran de progression) ou de **terminer la séance** (enregistrée avec le statut `Incomplète`).
-- Si une pause est définie la fin de la séance (dernière pause du dernier groupe), cette pause sera ignorée.
-- Notification Android persistante pendant qu'un chronomètre est actif (pause, exercice Temps ou Durée libre — jamais pour un exercice Répétitions) : icône Play/Pause dans la barre d'état, nom de l'exercice/de la pause et temps restant (ou écoulé en Durée libre) dans la notification repliée, prochain élément de la séance et boutons **Pause** / **Voir la séance** une fois développée. Repose sur un vrai Foreground Service Android (et non une simple notification), afin que la mise à jour du chronomètre ainsi que le son/la vibration de fin d'exercice restent fiables même lorsque l'application est en arrière-plan. Disparaît automatiquement à la fin, à l'abandon, ou à l'arrêt de la séance.
+- Si une pause est définie à la fin de la séance (dernière pause du dernier groupe), cette pause sera ignorée.
+- Alerte de fin des exercices et pauses chronométrés, configurable sur **Son**, **Vibration** ou **Rien** depuis les paramètres et ajustable pendant la séance.
+- Notification Android persistante pendant qu'un chronomètre est actif (pause, exercice Temps ou Durée libre — jamais pour un exercice Répétitions) : icône Play/Pause dans la barre d'état, nom de l'exercice/de la pause et temps restant (ou écoulé en Durée libre), prochain élément de la séance et bouton **Pause** / **Reprendre**. Un appui sur la notification rouvre la séance. Repose sur un vrai Foreground Service Android (et non une simple notification), afin que la mise à jour du chronomètre ainsi que le son/la vibration de fin d'exercice restent fiables même lorsque l'application est en arrière-plan. Disparaît automatiquement à la fin, à l'abandon, ou à l'arrêt de la séance.
 
 ### Quick Tabata
 - Lancement rapide d'une séance travail/pause répétée, sans avoir à créer de séance au préalable (accessible depuis la barre de navigation de l'accueil).
@@ -66,7 +76,7 @@ Aucun backend, aucun compte utilisateur : toutes les données restent sur l'appa
 ## Prérequis
 
 - [Flutter SDK](https://docs.flutter.dev/get-started/install) (canal stable)
-- Un appareil Android (ou un émulateur) avec le débogage USB activé, ou le support desktop Linux activé pour tester sur PC
+- Un appareil Android (ou un émulateur) avec le débogage USB activé, ou le support desktop Linux activé (instable) pour tester sur PC
 
 ## Installation
 
@@ -109,32 +119,34 @@ lib/
 ```
 
 
-## Développement GitHub
+## Développement GitHub & CI/CD
 
-### Overview
+### Vue d'ensemble
 
 ```mermaid
 flowchart LR
-    A[Issue<br/>ready]
-    B[Premier push]
-    C[in-progress]
-    D[Pull Request]
-    E[Merge]
-    F[Issue fermée]
+    A[Issue avec label ready]
+    B[Push sur une branche conforme]
+    C[Issue avec label in-progress]
+    D[Pull Request vers main]
+    E[Validation et APK debug]
+    F[Merge]
+    G[Issue fermée]
 
-    A --> B
-    B --> C
-    C --> D
-    D --> E
-    E -->|Closes #xx| F
+    A --> B --> C --> D --> E --> F
+    F -->|Close ou Closes présent| G
 ```
 
+Les automatisations sont réparties entre quatre workflows :
+
+- `issue-lifecycle.yml` gère la convention des branches, les labels et la liaison entre les Pull Requests et les issues ;
+- `flutter-validate.yml` centralise les contrôles Flutter réutilisés par la CI et les releases ;
+- `ci.yml` valide les Pull Requests vers `main` et construit un APK debug ;
+- `release.yml` construit et publie un APK signé lors de l'envoi d'un tag `v*`.
 
 ### Convention de nommage des branches
 
-Chaque branche de développement doit être associée à **une unique issue GitHub**.
-
-Le nom de la branche doit respecter le format suivant :
+Chaque branche de développement doit être associée à une unique issue GitHub et respecter le format suivant :
 
 ```text
 <type>/<issue>-<description>
@@ -142,143 +154,101 @@ Le nom de la branche doit respecter le format suivant :
 
 avec :
 
-* `type` ∈ `feature`, `bugfix`, `hotfix`, `clean`
-* `issue` = numéro de l'issue GitHub
-* `description` = description courte en *kebab-case*
+- `type` parmi `feature`, `bugfix`, `hotfix` ou `clean` ;
+- `issue` correspondant au numéro de l'issue GitHub ;
+- `description` sous la forme d'une description courte, généralement en *kebab-case*.
 
 Exemples :
 
 ```text
 feature/33-refacto-training-editor
-feature/84-rendre-ci-reproductible
-
 bugfix/61-session-save
-
 hotfix/85-crash-startup
-
 clean/76-refacto-whatever
 ```
 
-Toute autre convention de nommage est refusée par la CI.
+Le workflow de cycle de vie surveille les pushes sur ces quatre familles de branches. Il vérifie leur nom avec l'expression `<type>/<numéro>-<description>` et échoue si le numéro d'issue ne peut pas être extrait. La même convention est contrôlée lors de l'ouverture et de la fusion d'une Pull Request, ainsi que lors de la suppression d'une branche.
 
----
+### Cycle de vie d'une issue
 
-## Cycle de vie d'une issue
+Une issue prête à être développée doit d'abord porter le label `ready`.
 
-Le dépôt automatise la gestion des labels GitHub en fonction du cycle de développement.
+Lors d'un push sur une branche conforme :
 
-### 1. Avant le développement
+- le numéro de l'issue est extrait du nom de la branche ;
+- le label `ready` est supprimé ;
+- le label `in-progress` est ajouté.
 
-Une issue prête à être développée doit posséder le label :
+L'opération est idempotente si l'issue porte déjà le label `in-progress`. En revanche, le workflow échoue si l'issue ne possède ni `ready` ni `in-progress`.
 
-```text
-ready
-```
-
----
-
-### 2. Premier push d'une branche
-
-Lors du premier push d'une branche respectant la convention ci-dessus, la CI :
-
-* extrait automatiquement le numéro d'issue depuis le nom de la branche ;
-* vérifie que l'issue possède le label `ready`.
-
-Si c'est le cas :
-
-* le label `ready` est supprimé ;
-* le label `in-progress` est ajouté.
-
-Cette opération est idempotente.
-
-Si l'issue ne possède ni `ready` ni `in-progress`, le workflow échoue afin de signaler un état incohérent.
-
----
-
-### 3. Ouverture d'une Pull Request
-
-À l'ouverture d'une Pull Request, la description est automatiquement complétée avec :
+À l'ouverture d'une Pull Request, le workflow ajoute automatiquement la directive suivante au début de sa description si elle n'est pas déjà présente :
 
 ```text
-Related to #<issue>
+Closes #<issue>
 ```
 
-Exemple :
+Lors de la fusion de la Pull Request :
 
-```text
-Related to #33
+- le label `in-progress` est retiré ;
+- l'issue est fermée si la description ou un commentaire de la Pull Request contient `Close #<issue>` ou `Closes #<issue>`, sans distinction de casse.
+
+Lorsqu'une branche est supprimée, le label `in-progress` est retiré si l'issue associée est encore ouverte. Les actions du workflow sont également publiées sous forme d'annotations et de tableaux récapitulatifs dans GitHub Actions.
+
+### Validation des Pull Requests
+
+Le workflow `ci.yml` s'exécute uniquement pour les Pull Requests ciblant `main`. Il appelle d'abord le workflow réutilisable `flutter-validate.yml`, qui effectue :
+
+1. la récupération des dépendances avec `flutter pub get` ;
+2. la vérification du formatage avec `dart format --output=none --set-exit-if-changed .` ;
+3. l'analyse statique avec `flutter analyze --no-fatal-infos` ;
+4. les tests automatisés avec `flutter test --coverage`.
+
+Les informations remontées par l'analyseur ne sont donc pas bloquantes actuellement, contrairement aux avertissements et aux erreurs.
+
+Une fois la validation réussie, un second job configure Java et Flutter, récupère les dépendances puis construit un APK Android debug avec :
+
+```bash
+flutter build apk --debug
 ```
 
-Cette liaison permet de retrouver facilement l'issue associée.
+Le build debug ne démarre pas si le job de validation échoue.
 
-Si la Pull Request résout complètement l'issue, remplacer ensuite cette ligne par :
+### Reproductibilité
 
-```text
-Closes #33
-```
+Les jobs Flutter utilisent les mêmes versions et paramètres :
 
-GitHub fermera alors automatiquement l'issue lors du merge.
+- Flutter `3.44.4`, explicitement épinglé avec le cache activé ;
+- Java `17`, distribution Temurin ;
+- versions épinglées des GitHub Actions utilisées par les workflows ;
+- fichier `pubspec.lock` suivi dans le dépôt.
 
----
+Les workflows CI et Release utilisent aussi des groupes de concurrence distincts. Lorsqu'une nouvelle exécution démarre pour une même référence Git, l'exécution précédente encore en cours est annulée.
 
-### 4. Fusion de la Pull Request
+### Création d'une release
 
-Lorsqu'une Pull Request est fusionnée :
+Le workflow `release.yml` se déclenche lors de l'envoi de tout tag correspondant à `v*`. Il réutilise les mêmes validations que la CI avant d'autoriser le job de publication.
 
-* le label `in-progress` est supprimé ;
-* si la description contient `Closes #<issue>`, GitHub ferme automatiquement l'issue.
+Après validation, le workflow :
 
----
+1. configure Java 17 et Flutter 3.44.4 ;
+2. récupère les dépendances ;
+3. décode le keystore Android depuis le secret `KEYSTORE_BASE64` ;
+4. génère `android/key.properties` à partir des secrets `KEYSTORE_PASSWORD`, `KEY_PASSWORD` et de la variable `KEY_ALIAS` ;
+5. construit l'APK release signé avec `flutter build apk --release` ;
+6. renomme l'artefact en `RepTimer-<tag>.apk` ;
+7. crée une GitHub Release avec des notes générées automatiquement et y joint l'APK.
 
-### 5. Suppression d'une branche
-
-Lorsqu'une branche de développement est supprimée :
-
-* si l'issue est toujours ouverte ;
-* le label `in-progress` est automatiquement retiré.
-
-Cela évite de laisser des issues bloquées dans un état "en cours" alors que la branche n'existe plus.
-
----
-
-## CI/CD
-
-Les workflows GitHub Actions utilisent une configuration reproductible.
-
-### Flutter
-
-La version de Flutter est épinglée :
-
-```text
-Flutter 3.44.4
-```
-
-Les builds n'utilisent jamais simplement le canal `stable`.
-
----
-
-### Vérifications exécutées
-
-Chaque Pull Request et chaque Release exécutent les contrôles suivants :
-
-1. récupération des dépendances (`flutter pub get`)
-2. vérification du formatage (`dart format`)
-3. analyse statique (`flutter analyze`)
-4. exécution des tests (`flutter test`)
-
-Une release n'est publiée que si l'ensemble de ces étapes réussit.
-
----
+La publication nécessite donc que les validations réussissent et que les secrets et variables de signature Android soient configurés dans le dépôt GitHub.
 
 ### Mise à jour des dépendances
 
-Le dépôt utilise Renovate afin de proposer automatiquement des Pull Requests pour :
+Renovate crée des Pull Requests portant le label `dependencies` pour :
 
-* les dépendances Dart / Flutter (`pub`);
-* les GitHub Actions ;
-* la version de Flutter utilisée par les workflows.
+- les dépendances Dart et Flutter, regroupées sous `Dart & Flutter packages` ;
+- les GitHub Actions, regroupées sous `GitHub Actions` ;
+- la version de Flutter déclarée dans les workflows, détectée par une règle dédiée.
 
-Toutes les mises à jour passent par la CI avant d'être fusionnées.
+Les Pull Requests Renovate ciblant `main` passent par les mêmes validations et le même build APK debug que les autres Pull Requests.
 
 
 ## About
