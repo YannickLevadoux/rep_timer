@@ -337,7 +337,7 @@ class SessionController extends ChangeNotifier {
     final next = nextStep;
     if (next == null) return "Fin de la séance";
     final label = next.item.type == ItemType.rest ? "Pause" : next.item.name;
-    return "$label - ${next.group.name}";
+    return "Suivant : ${next.group.name} - $label";
   }
 
   // Affiche, met à jour, ou masque la notification persistante en
