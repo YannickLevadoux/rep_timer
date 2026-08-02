@@ -225,6 +225,7 @@ class SessionController extends ChangeNotifier {
   // sert à calculer le temps réellement écoulé au retour, via l'heure
   // système plutôt qu'un chronomètre qui peut se figer pendant la mise
   // en veille du téléphone.
+  bool _isAppBackgrounded = false;
   DateTime? _backgroundedAt;
 
   List<SessionStep> get steps => _steps;
@@ -307,7 +308,7 @@ class SessionController extends ChangeNotifier {
     _countdownTimer = null;
 
     if (_notificationMode != NotificationMode.sound) return;
-    if (_paused || _finished || _backgroundedAt != null) return;
+    if (_paused || _finished || _isAppBackgrounded) return;
 
     final duration = currentStep.item.duration;
     if (duration == null) return;
@@ -353,11 +354,8 @@ class SessionController extends ChangeNotifier {
     _playCountdownOnce(stepToken);
   }
 
-  void _handleTaskStepEnded(String stepToken, NotificationMode mode) {
-    if (_disposed ||
-        _finished ||
-        stepToken != _notificationStepToken ||
-        mode != _notificationMode) {
+  void _handleTaskStepEnded(String stepToken, NotificationMode _) {
+    if (_disposed || _finished || stepToken != _notificationStepToken) {
       return;
     }
 
@@ -369,16 +367,7 @@ class SessionController extends ChangeNotifier {
     // on attribue donc à l'étape courante le temps mural écoulé depuis
     // le dernier point de synchronisation. Le nouvel ancrage servira à
     // mesurer l'étape suivante sans reporter tout l'arrière-plan sur elle.
-    final backgroundedAt = _backgroundedAt;
-    if (backgroundedAt != null) {
-      final now = DateTime.now();
-      final backgroundGap = now.difference(backgroundedAt);
-      if (backgroundGap > Duration.zero) {
-        _globalElapsedOffset += backgroundGap;
-        _stepElapsedOffset += backgroundGap;
-      }
-      _backgroundedAt = now;
-    }
+    if (_isAppBackgrounded) _captureBackgroundElapsed(keepTiming: true);
 
     final duration = currentStep.item.duration;
     if (duration != null) completeCurrentStep();
@@ -479,7 +468,8 @@ class SessionController extends ChangeNotifier {
   // checkpoint immédiatement : le processus peut être tué à tout moment
   // une fois en arrière-plan, sans autre avertissement.
   void handleAppBackgrounded() {
-    _backgroundedAt = DateTime.now();
+    _isAppBackgrounded = true;
+    _backgroundedAt = _paused ? null : DateTime.now();
 
     if (!_paused) {
       _globalElapsedOffset += _globalStopwatch.elapsed;
@@ -504,6 +494,19 @@ class SessionController extends ChangeNotifier {
     _saveCheckpoint();
   }
 
+  void _captureBackgroundElapsed({required bool keepTiming}) {
+    final backgroundedAt = _backgroundedAt;
+    final now = DateTime.now();
+    if (backgroundedAt != null) {
+      final backgroundGap = now.difference(backgroundedAt);
+      if (backgroundGap > Duration.zero) {
+        _globalElapsedOffset += backgroundGap;
+        _stepElapsedOffset += backgroundGap;
+      }
+    }
+    _backgroundedAt = keepTiming ? now : null;
+  }
+
   // Retour au premier plan (processus jamais tué, contrairement au cas
   // pris en charge dans le constructeur) : on rattrape le temps
   // réellement écoulé pendant l'arrière-plan via l'heure système, puis
@@ -512,6 +515,7 @@ class SessionController extends ChangeNotifier {
   void handleAppResumed() {
     final backgroundedAt = _backgroundedAt;
     _backgroundedAt = null;
+    _isAppBackgrounded = false;
 
     if (backgroundedAt == null || _paused) return;
 
@@ -603,7 +607,7 @@ class SessionController extends ChangeNotifier {
       _stepStopwatch
         ..stop()
         ..reset();
-      if (!_paused && _backgroundedAt == null) _stepStopwatch.start();
+      if (!_paused && !_isAppBackgrounded) _stepStopwatch.start();
       // Nouvelle étape : on arme sa propre notification sans jamais
       // couper une séquence son encore en train de jouer suite à la fin
       // naturelle de l'étape précédente (voir _armCountdownForCurrentStep,
@@ -728,6 +732,14 @@ class SessionController extends ChangeNotifier {
   // automatique (voir completeCurrentStep) reproduise exactement le même
   // comportement que le bouton pause manuel.
   void _setPaused(bool paused) {
+    if (_isAppBackgrounded) {
+      if (!_paused && paused) {
+        _captureBackgroundElapsed(keepTiming: false);
+      } else if (_paused && !paused) {
+        _backgroundedAt = DateTime.now();
+      }
+    }
+
     _paused = paused;
 
     if (_paused) {
@@ -735,8 +747,10 @@ class SessionController extends ChangeNotifier {
       _stepStopwatch.stop();
       _cancelCountdown();
     } else {
-      _globalStopwatch.start();
-      _stepStopwatch.start();
+      if (!_isAppBackgrounded) {
+        _globalStopwatch.start();
+        _stepStopwatch.start();
+      }
       _armCountdownForCurrentStep();
     }
 
