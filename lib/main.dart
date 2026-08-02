@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import 'screens/home_screen.dart';
 
@@ -13,6 +14,12 @@ Future<void> main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
+  // Requis par flutter_foreground_task pour que l'isolate principal
+  // puisse recevoir les messages envoyés par le Foreground Service (voir
+  // SessionNotificationService) — à appeler avant runApp, même si aucune
+  // séance n'a encore démarré.
+  FlutterForegroundTask.initCommunicationPort();
 
   runApp(const MyApp());
 }

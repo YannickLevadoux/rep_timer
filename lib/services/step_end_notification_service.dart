@@ -7,13 +7,20 @@ import '../models/notification_sound.dart';
 
 /// Lecture audio/vibration des notifications de fin d'exercice/pause.
 /// Ne connaît aucune logique temporelle (quand déclencher, quand
-/// annuler) ni aucun mode : c'est entièrement la responsabilité de
-/// [SessionController] (pour les déclenchements réels) et de
-/// `SettingsScreen` (pour les aperçus), qui appellent cette classe au
-/// bon moment avec le [NotificationSound] voulu. Ce service sait
+/// annuler) ni aucun mode : le TaskHandler du Foreground Service et le
+/// filet de sécurité de [SessionController] l'appellent au bon moment ;
+/// `SettingsScreen` l'utilise aussi pour les aperçus. Ce service sait
 /// seulement "comment" jouer un son ou vibrer, jamais "quand" ni
 /// "quel thème par défaut".
-class StepEndNotificationService {
+abstract interface class StepEndNotifier {
+  Future<void> preload(NotificationSound sound);
+  Future<void> playCountdown(NotificationSound sound);
+  Future<void> stopCountdown();
+  Future<void> vibrate();
+  void dispose();
+}
+
+class StepEndNotificationService implements StepEndNotifier {
   static const _vibrationDurationMs = 300;
 
   // Lecteur dédié à la séquence "3-2-1-GO" pendant une séance. Un seul
@@ -39,6 +46,7 @@ class StepEndNotificationService {
   /// toute première lecture réelle. Best-effort : une erreur ici ne
   /// doit jamais empêcher la lecture ultérieure via [playCountdown],
   /// qui rechargera la source si besoin.
+  @override
   Future<void> preload(NotificationSound sound) async {
     if (_disposed) return;
     try {
@@ -51,6 +59,7 @@ class StepEndNotificationService {
   /// Joue la séquence composite de [sound] (bips + GO) depuis le début.
   /// Appelé une seule fois par [SessionController] lorsque le point de
   /// déclenchement (T - [NotificationSound.goOffset]) est atteint.
+  @override
   Future<void> playCountdown(NotificationSound sound) async {
     if (_disposed) return;
     try {
@@ -64,6 +73,7 @@ class StepEndNotificationService {
 
   /// Arrête immédiatement la séquence en cours (si elle joue), sans
   /// effet si rien n'est en train de jouer.
+  @override
   Future<void> stopCountdown() async {
     if (_disposed) return;
     try {
@@ -90,6 +100,7 @@ class StepEndNotificationService {
   /// clavier/boutons) et non le moteur de vibration général — sur de
   /// nombreux appareils où ce réglage est désactivé, HapticFeedback ne
   /// produit alors aucune vibration perceptible, silencieusement.
+  @override
   Future<void> vibrate() async {
     if (_disposed) return;
     try {
@@ -100,6 +111,7 @@ class StepEndNotificationService {
     } catch (_) {}
   }
 
+  @override
   void dispose() {
     _disposed = true;
     unawaited(_countdownPlayer.dispose());
