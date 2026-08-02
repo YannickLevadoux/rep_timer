@@ -28,7 +28,11 @@ jobs:
 
   #
   # --------------------------------------------------------------------------
-  # Push -> ready => in-progress
+  # mark-in-progress: when pushing a branch
+  # - Extract issue number : Check branch naming convention (issue number should be present) 
+  #     Fails if naming convention is not followed
+  # - Update issue labels : Update label of issue from ready => in-progress
+  #     Fails if issue does not have label ready or in-progress
   # --------------------------------------------------------------------------
   #
 
@@ -40,73 +44,136 @@ jobs:
 
     steps:
 
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
       - name: Extract issue number
         id: extract
         shell: bash
         run: |
           BRANCH="${GITHUB_REF_NAME}"
+          PATTERN='^(feature|bugfix|hotfix|clean)/([0-9]+)-.*$'
 
-          if [[ ! "$BRANCH" =~ ^(feature|bugfix|hotfix|clean)/([0-9]+)-.*$ ]]; then
-            echo "::error::Branch '$BRANCH' does not follow the required naming convention."
+          if [[ ! "$BRANCH" =~ $PATTERN ]]; then
+            MESSAGE="Branch '$BRANCH' does not follow the required naming convention."
+
+            echo "::error::$MESSAGE"
+
+            {
+              echo "## Issue lifecycle"
+              echo
+              echo "| Status | Action |"
+              echo "| ------ | ------ |"
+              echo "| ❌ | $MESSAGE |"
+              echo
+              echo "**Expected format:**"
+              echo
+              echo "- feature/33-my-feature"
+              echo "- bugfix/61-my-bugfix"
+              echo "- hotfix/85-my-hotfix"
+              echo "- clean/76-my-cleanup"
+            } >> "$GITHUB_STEP_SUMMARY"
+
             exit 1
           fi
 
-          echo "issue=${BASH_REMATCH[2]}" >> "$GITHUB_OUTPUT"
+          ISSUE="${BASH_REMATCH[2]}"
+
+          echo "issue=$ISSUE" >> "$GITHUB_OUTPUT"
+
+          echo "::notice::Branch '$BRANCH' is linked to issue #$ISSUE."
+
+          {
+            echo "## Issue lifecycle"
+            echo
+            echo "| Status | Action |"
+            echo "| ------ | ------ |"
+            echo "| ✅ | Branch '$BRANCH' linked to issue #$ISSUE |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Update issue labels
         uses: actions/github-script@v7.0.1
         with:
           script: |
+            const path = require("path");
+
+            const {
+              notice,
+              warning,
+              failure,
+              writeSummary,
+            } = require(path.join(
+              process.env.GITHUB_WORKSPACE,
+              ".github",
+              "scripts",
+              "workflow-utils.js"
+            ))(core);
+
             const issue = Number("${{ steps.extract.outputs.issue }}");
             const { owner, repo } = context.repo;
 
             const { data } = await github.rest.issues.get({
               owner,
               repo,
-              issue_number: issue
+              issue_number: issue,
             });
 
-            const labels = data.labels.map(l => l.name);
+            const labels = data.labels.map(label => label.name);
 
             const hasReady = labels.includes("ready");
             const hasInProgress = labels.includes("in-progress");
 
             if (hasReady) {
 
-              try {
-                await github.rest.issues.removeLabel({
-                  owner,
-                  repo,
-                  issue_number: issue,
-                  name: "ready"
-                });
-              } catch (_) {}
+              await github.rest.issues.removeLabel({
+                owner,
+                repo,
+                issue_number: issue,
+                name: "ready",
+              });
+
+              notice(`Issue #${issue}: removed label 'ready'.`);
 
               if (!hasInProgress) {
+
                 await github.rest.issues.addLabels({
                   owner,
                   repo,
                   issue_number: issue,
-                  labels: ["in-progress"]
+                  labels: ["in-progress"],
                 });
+
+                notice(`Issue #${issue}: added label 'in-progress'.`);
+
+              } else {
+
+                warning(`Issue #${issue}: label 'in-progress' already exists.`);
+
               }
 
-              core.info("Issue moved from ready to in-progress.");
+              await writeSummary(`Issue lifecycle - Issue #${issue}`);
               return;
             }
 
             if (hasInProgress) {
-              core.info("Issue already in progress.");
+
+              warning(`Issue #${issue}: already in progress.`);
+
+              await writeSummary(`Issue lifecycle - Issue #${issue}`);
               return;
             }
 
-            core.setFailed(
-              "Issue must have either the 'ready' or 'in-progress' label."
-            );
+            failure(`Issue #${issue}: expected label 'ready' or 'in-progress'.`);
+
+            await writeSummary(`Issue lifecycle - Issue #${issue}`);
+
+            core.setFailed("Invalid issue state.");
 
   #
   # --------------------------------------------------------------------------
-  # PR opened -> prepend Related to #xx
+  # update-pr: when a PR is opened
+  # - Add mention "Closes #${issue} in PR description if not already present
+  # - Add link between PR and issue (TODO!) 
   # --------------------------------------------------------------------------
   #
 
@@ -118,38 +185,66 @@ jobs:
 
     steps:
 
-      - name: Update PR description
-        uses: actions/github-script@v7
-        with:
-          script: |
+    - name: Checkout
+      uses: actions/checkout@v4.2.2
 
-            const branch = context.payload.pull_request.head.ref;
+    - name: Update PR description
+      uses: actions/github-script@v7.0.1
+      with:
+        script: |
+          const path = require("path");
 
-            const match = branch.match(/^(feature|bugfix|hotfix|clean)\/([0-9]+)-/);
+          const {
+            notice,
+            warning,
+            failure,
+            writeSummary,
+          } = require(path.join(
+            process.env.GITHUB_WORKSPACE,
+            ".github",
+            "scripts",
+            "workflow-utils.js"
+          ))(core);
 
-            if (!match) {
-              core.setFailed("Invalid branch name.");
-              return;
-            }
+          const branch = context.payload.pull_request.head.ref;
 
-            const issue = match[2];
+          const match = branch.match(/^(feature|bugfix|hotfix|clean)\/([0-9]+)-/);
 
-            let body = context.payload.pull_request.body ?? "";
+          if (!match) {
+            failure(`Branch '${branch}' does not follow the required naming convention.`);
+            await writeSummary("Issue lifecycle");
+            core.setFailed("Invalid branch name.");
+            return;
+          }
 
-            if (!body.includes(`Related to #${issue}`)) {
+          const issue = match[2];
 
-              body = `Related to #${issue}\n\n${body}`;
+          let body = context.payload.pull_request.body ?? "";
 
-              await github.rest.pulls.update({
-                ...context.repo,
-                pull_number: context.payload.pull_request.number,
-                body
-              });
-            }
+          if (body.includes(`Closes #${issue}`)) {
+            warning(`PR already references issue #${issue}.`);
+            await writeSummary(`Issue lifecycle - Issue #${issue}`);
+            return;
+          }
+
+          body = `Closes #${issue}\n\n${body}`;
+
+          await github.rest.pulls.update({
+            ...context.repo,
+            pull_number: context.payload.pull_request.number,
+            body,
+          });
+
+          notice(`PR description updated with 'Closes #${issue}'.`);
+
+          await writeSummary(`Issue lifecycle - Issue #${issue}`);
 
   #
   # --------------------------------------------------------------------------
-  # PR merged -> remove in-progress
+  # merged: when a PR is merged
+  # - Remove in-progress label : 
+  #    - Remove in-progress label on PR
+  #    - Close issue if PR description or comments contain 'Close #xx' or 'Closes #xx'
   # --------------------------------------------------------------------------
   #
 
@@ -164,35 +259,92 @@ jobs:
 
     steps:
 
-      - name: Remove in-progress label
-        uses: actions/github-script@v7
-        with:
-          script: |
+    - name: Checkout
+      uses: actions/checkout@v4.2.2
 
-            const branch = context.payload.pull_request.head.ref;
+    - name: Remove in-progress label
+      uses: actions/github-script@v7.0.1
+      with:
+        script: |
+          const path = require("path");
 
-            const match = branch.match(/^(feature|bugfix|hotfix|clean)\/([0-9]+)-/);
+          const {
+            notice,
+            warning,
+            failure,
+            writeSummary,
+          } = require(path.join(
+            process.env.GITHUB_WORKSPACE,
+            ".github",
+            "scripts",
+            "workflow-utils.js"
+          ))(core);
 
-            if (!match)
-              return;
+          const branch = context.payload.pull_request.head.ref;
 
-            const issue = Number(match[2]);
+          const match = branch.match(/^(feature|bugfix|hotfix|clean)\/([0-9]+)-/);
 
-            try {
+          if (!match) {
+            failure(`Branch '${branch}' does not follow the required naming convention.`);
+            await writeSummary("Issue lifecycle");
+            core.setFailed("Invalid branch name.");
+            return;
+          }
 
-              await github.rest.issues.removeLabel({
-                ...context.repo,
-                issue_number: issue,
-                name: "in-progress"
-              });
+          const issue = Number(match[2]);
 
-            } catch (_) {
-              // already removed
-            }
+          const { data } = await github.rest.issues.get({
+            ...context.repo,
+            issue_number: issue,
+          });
+
+          const labels = data.labels.map(label => label.name);
+
+          if (!labels.includes("in-progress")) {
+            warning(`Issue #${issue}: label 'in-progress' is already absent.`);
+          } else {
+            await github.rest.issues.removeLabel({
+              ...context.repo,
+              issue_number: issue,
+              name: "in-progress",
+            });
+
+            notice(`Issue #${issue}: removed label 'in-progress'.`);
+          }
+
+          const closeRegex = new RegExp(`\\bcloses?\\s+#${issue}\\b`, "i");
+
+          let shouldClose = closeRegex.test(context.payload.pull_request.body ?? "");
+
+          if (!shouldClose) {
+            const { data: comments } = await github.rest.issues.listComments({
+              ...context.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+
+            shouldClose = comments.some(comment =>
+              closeRegex.test(comment.body ?? "")
+            );
+          }
+
+          if (shouldClose) {
+            await github.rest.issues.update({
+              ...context.repo,
+              issue_number: issue,
+              state: "closed",
+            });
+
+            notice(`Issue #${issue}: closed.`);
+          } else {
+            warning(`Issue #${issue}: no 'Close #${issue}' or 'Closes #${issue}' directive found in PR description or comments.`);
+          }
+
+          await writeSummary(`Issue lifecycle - Issue #${issue}`);
 
   #
   # --------------------------------------------------------------------------
-  # Branch deleted -> remove in-progress if issue still open
+  # deleted: when a branch is deleted
+  # - Remove in-progress label : remove in-progress label on PR if issue still open
   # --------------------------------------------------------------------------
   #
 
@@ -206,36 +358,65 @@ jobs:
 
     steps:
 
-      - name: Remove in-progress label
-        uses: actions/github-script@v7
-        with:
-          script: |
+    - name: Checkout
+      uses: actions/checkout@v4.2.2
 
-            const branch = context.payload.ref;
+    - name: Remove in-progress label
+      uses: actions/github-script@v7.0.1
+      with:
+        script: |
+          const path = require("path");
 
-            const match = branch.match(/^(feature|bugfix|hotfix|clean)\/([0-9]+)-/);
+          const {
+            notice,
+            warning,
+            failure,
+            writeSummary,
+          } = require(path.join(
+            process.env.GITHUB_WORKSPACE,
+            ".github",
+            "scripts",
+            "workflow-utils.js"
+          ))(core);
 
-            if (!match)
-              return;
+          const branch = context.payload.ref;
 
-            const issue = Number(match[2]);
+          const match = branch.match(/^(feature|bugfix|hotfix|clean)\/([0-9]+)-/);
 
-            const { data } = await github.rest.issues.get({
-              ...context.repo,
-              issue_number: issue
-            });
+          if (!match) {
+            failure(`Branch '${branch}' does not follow the required naming convention.`);
+            await writeSummary("Issue lifecycle");
+            core.setFailed("Invalid branch name.");
+            return;
+          }
 
-            if (data.state !== "open")
-              return;
+          const issue = Number(match[2]);
 
-            try {
+          const { data } = await github.rest.issues.get({
+            ...context.repo,
+            issue_number: issue,
+          });
 
-              await github.rest.issues.removeLabel({
-                ...context.repo,
-                issue_number: issue,
-                name: "in-progress"
-              });
+          if (data.state !== "open") {
+            warning(`Issue #${issue}: already closed.`);
+            await writeSummary(`Issue lifecycle - Issue #${issue}`);
+            return;
+          }
 
-            } catch (_) {
-              // already removed
-            }
+          const labels = data.labels.map(label => label.name);
+
+          if (!labels.includes("in-progress")) {
+            warning(`Issue #${issue}: label 'in-progress' is already absent.`);
+            await writeSummary(`Issue lifecycle - Issue #${issue}`);
+            return;
+          }
+
+          await github.rest.issues.removeLabel({
+            ...context.repo,
+            issue_number: issue,
+            name: "in-progress",
+          });
+
+          notice(`Issue #${issue}: removed label 'in-progress'.`);
+
+          await writeSummary(`Issue lifecycle - Issue #${issue}`);
