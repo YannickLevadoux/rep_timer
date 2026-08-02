@@ -8,7 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import '../models/notification_mode.dart';
 import '../models/notification_sound.dart';
 import '../services/app_settings_storage.dart';
-import '../services/session_notification_service.dart';
+import '../services/session_notification_permission_service.dart';
 import '../services/step_end_notification_service.dart';
 import '../services/training_export_service.dart';
 import '../utils/notification_mode_icons.dart';
@@ -46,8 +46,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final AppSettingsStorage _settingsStorage = AppSettingsStorage();
   final StepEndNotificationService _notificationService =
       StepEndNotificationService();
-  final SessionNotificationService _sessionNotificationService =
-      SessionNotificationService();
+  final SessionNotificationPermissionService _sessionPermissions =
+      SessionNotificationPermissionService();
 
   // Désactive le bouton pendant la demande de permissions (peut ouvrir un
   // écran système et prendre quelques secondes), pour éviter tout
@@ -130,16 +130,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // Redéclenche explicitement les demandes de permissions liées à la
-  // notification persistante de séance (voir SessionNotificationService.
-  // requestPermissions) : utile si l'utilisateur les avait refusées par
-  // erreur au premier lancement d'une séance, sans avoir à en relancer
+  // notification persistante de séance : utile si l'utilisateur les avait
+  // refusées par erreur au premier lancement d'une séance, sans avoir à relancer
   // une pour réessayer. Peut ouvrir un écran système (exemption de
   // batterie) : d'où la protection _requestingSessionNotificationPermissions
   // le temps de l'opération.
   Future<void> _requestSessionNotificationPermissions() async {
     setState(() => _requestingSessionNotificationPermissions = true);
 
-    await _sessionNotificationService.requestPermissions();
+    await _sessionPermissions.requestPermissions();
 
     if (!mounted) return;
     setState(() => _requestingSessionNotificationPermissions = false);

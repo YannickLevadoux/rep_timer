@@ -1,14 +1,11 @@
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import '../models/notification_mode.dart';
-import '../models/notification_sound.dart';
 import '../utils/formatters.dart';
+import 'session_notification_permission_service.dart';
+import 'session_notification_protocol.dart';
 import 'session_notification_task_handler.dart';
 
-/// Identifiant fixe du canal de notification (voir Paramètres système >
-/// Notifications > RepTimer, un seul canal pour cette fonctionnalité).
-const String _channelId = 'session_progress';
-const String _channelName = 'Progression de la séance';
 const int _serviceId = 4200;
 
 /// Notification Android persistante affichée pendant qu'un chronomètre ou
@@ -39,8 +36,12 @@ const int _serviceId = 4200;
 /// Android (contrairement à une notification "ongoing" classique) : rien
 /// à configurer explicitement ici pour ça.
 class SessionNotificationService {
-  static bool _pluginInitialized = false;
-  static bool _autoPermissionsRequested = false;
+  SessionNotificationService({
+    SessionNotificationPermissionService? permissionService,
+  }) : _permissionService =
+           permissionService ?? SessionNotificationPermissionService();
+
+  final SessionNotificationPermissionService _permissionService;
   bool _dataCallbackRegistered = false;
   int _pinRevision = 0;
   Future<void> _pinQueue = Future<void>.value();
@@ -49,58 +50,18 @@ class SessionNotificationService {
   void Function(String stepToken)? _onSoundThreshold;
   void Function(String stepToken, NotificationMode mode)? _onTimedStepEnded;
 
-  void _ensurePluginInitialized() {
-    if (_pluginInitialized) return;
-    _pluginInitialized = true;
-
-    FlutterForegroundTask.init(
-      androidNotificationOptions: AndroidNotificationOptions(
-        channelId: _channelId,
-        channelName: _channelName,
-        channelDescription:
-            "Notification de suivi d'une séance en cours (chronomètre ou "
-            "compte à rebours), pour continuer à suivre sa progression "
-            "sans revenir dans l'application.",
-        channelImportance: NotificationChannelImportance.DEFAULT,
-        priority: NotificationPriority.DEFAULT,
-        onlyAlertOnce: true,
-      ),
-      iosNotificationOptions: const IOSNotificationOptions(
-        showNotification: false,
-        playSound: false,
-      ),
-      // eventAction périodique requis par l'API du plugin : c'est lui qui
-      // déclenche onRepeatEvent chaque seconde côté TaskHandler, qui
-      // recalcule alors lui-même la valeur du chrono à afficher (voir
-      // session_notification_task_handler.dart).
-      foregroundTaskOptions: ForegroundTaskOptions(
-        eventAction: ForegroundTaskEventAction.repeat(1000),
-        autoRunOnBoot: false,
-        allowWakeLock: true,
-        allowWifiLock: false,
-      ),
-    );
-  }
-
   void _handleTaskData(dynamic data) {
-    if (data == sessionNotificationPauseButtonId) {
+    if (SessionNotificationAction.fromWire(data) ==
+        SessionNotificationAction.pause) {
       _onPausePressed?.call();
       return;
     }
 
-    if (data is! Map) return;
-
-    final event = data['event'] as String?;
-    final stepToken = data['stepToken'] as String?;
-    if (stepToken == null) return;
-
-    if (event == sessionNotificationSoundThresholdEvent) {
-      _onSoundThreshold?.call(stepToken);
-    } else if (event == sessionNotificationTimedStepEndedEvent) {
-      final mode = NotificationMode.fromName(
-        data['notificationMode'] as String?,
-      );
-      _onTimedStepEnded?.call(stepToken, mode);
+    final event = SessionNotificationEvent.fromWire(data);
+    if (event is SessionSoundThresholdReached) {
+      _onSoundThreshold?.call(event.stepToken);
+    } else if (event is SessionTimedStepEnded) {
+      _onTimedStepEnded?.call(event.stepToken, event.notificationMode);
     }
   }
 
@@ -112,54 +73,9 @@ class SessionNotificationService {
     FlutterForegroundTask.initCommunicationPort();
   }
 
-  /// Demande les permissions dont dépend la fiabilité de la notification
-  /// persistante : notification (Android 13+, sans laquelle le Foreground
-  /// Service démarre bien mais n'affiche jamais rien) et exemption
-  /// d'optimisation de batterie (nécessaire sur certains constructeurs,
-  /// ex. MIUI, dont la gestion de batterie peut ralentir l'app en
-  /// arrière-plan malgré le Foreground Service actif).
-  ///
-  /// Exposée publiquement (contrairement à une simple demande automatique
-  /// à usage unique) pour pouvoir être redéclenchée explicitement depuis
-  /// l'écran Paramètres ("Activer les notifications de séance"), par
-  /// exemple si l'utilisateur avait refusé une permission par erreur.
-  /// Best effort : une permission refusée dégrade la fiabilité
-  /// correspondante mais ne doit jamais empêcher le déroulement de la
-  /// séance.
-  Future<void> requestPermissions() async {
-    _ensurePluginInitialized();
-
-    try {
-      final notificationPermission =
-          await FlutterForegroundTask.checkNotificationPermission();
-      if (notificationPermission != NotificationPermission.granted) {
-        await FlutterForegroundTask.requestNotificationPermission();
-      }
-    } catch (_) {}
-
-    try {
-      final ignoringBatteryOptimizations =
-          await FlutterForegroundTask.isIgnoringBatteryOptimizations;
-      if (!ignoringBatteryOptimizations) {
-        await FlutterForegroundTask.requestIgnoreBatteryOptimization();
-      }
-    } catch (_) {}
-  }
-
-  // Déclenche requestPermissions() automatiquement, mais une seule fois
-  // par installation (voir pin()) : les demandes suivantes ne peuvent
-  // venir que d'un geste explicite de l'utilisateur, voir
-  // requestPermissions() ci-dessus.
-  Future<void> _ensureAutoPermissionsRequested() async {
-    if (_autoPermissionsRequested) return;
-    _autoPermissionsRequested = true;
-    await requestPermissions();
-  }
-
   /// Affiche ou met à jour la notification persistante à partir d'un
-  /// "point de référence" : la valeur du chrono ([baseMilliseconds]) telle
-  /// qu'elle est exacte au moment de l'appel, plus son sens
-  /// ([isCountingDown]). Le TaskHandler du Foreground Service se charge
+  /// "point de référence" typé ([data]). Le TaskHandler du Foreground Service
+  /// se charge
   /// ensuite de faire défiler l'affichage chaque seconde à partir de ce
   /// point — voir session_notification_task_handler.dart.
   ///
@@ -173,20 +89,13 @@ class SessionNotificationService {
   /// l'application (voir StepEndNotificationService) : une notification
   /// manquante ne doit jamais empêcher le déroulement de la séance.
   Future<void> pin({
-    required String stepLabel,
-    required String nextStepLabel,
-    required String stepToken,
-    required NotificationMode notificationMode,
-    required NotificationSound notificationSound,
-    required bool isPlaying,
-    required bool isCountingDown,
-    required int baseMilliseconds,
+    required SessionNotificationPinData data,
     required void Function() onPausePressed,
     required void Function(String stepToken) onSoundThreshold,
     required void Function(String stepToken, NotificationMode mode)
     onTimedStepEnded,
   }) {
-    _ensurePluginInitialized();
+    _permissionService.ensureInitialized();
     _onPausePressed = onPausePressed;
     _onSoundThreshold = onSoundThreshold;
     _onTimedStepEnded = onTimedStepEnded;
@@ -197,26 +106,8 @@ class SessionNotificationService {
     }
 
     final revision = ++_pinRevision;
-    final pinData = <String, dynamic>{
-      'stepLabel': stepLabel,
-      'nextStepLabel': nextStepLabel,
-      'stepToken': stepToken,
-      'notificationMode': notificationMode.name,
-      'isPlaying': isPlaying,
-      'isCountingDown': isCountingDown,
-      'baseMilliseconds': baseMilliseconds,
-      'pinEpochMillis': DateTime.now().millisecondsSinceEpoch,
-      'soundGoOffsetMilliseconds': notificationSound.goOffset.inMilliseconds,
-    };
-
     final operation = _pinQueue.then(
-      (_) => _applyPin(
-        revision: revision,
-        pinData: pinData,
-        stepLabel: stepLabel,
-        isPlaying: isPlaying,
-        baseMilliseconds: baseMilliseconds,
-      ),
+      (_) => _applyPin(revision: revision, data: data),
     );
     _pinQueue = operation.then<void>((_) {}, onError: (_) {});
     return operation;
@@ -224,20 +115,17 @@ class SessionNotificationService {
 
   Future<void> _applyPin({
     required int revision,
-    required Map<String, dynamic> pinData,
-    required String stepLabel,
-    required bool isPlaying,
-    required int baseMilliseconds,
+    required SessionNotificationPinData data,
   }) async {
     if (revision != _pinRevision) return;
 
-    await _ensureAutoPermissionsRequested();
+    await _permissionService.ensureAutoPermissionsRequested();
     if (revision != _pinRevision) return;
 
     try {
       if (await FlutterForegroundTask.isRunningService) {
         if (revision != _pinRevision) return;
-        FlutterForegroundTask.sendDataToTask(pinData);
+        FlutterForegroundTask.sendDataToTask(data.toWire());
         return;
       }
       if (revision != _pinRevision) return;
@@ -247,29 +135,29 @@ class SessionNotificationService {
       // startService (le TaskHandler prendra ensuite le relai dès qu'il
       // aura reçu ce même point de référence, envoyé juste après).
       final chronoText = formatDuration(
-        Duration(milliseconds: baseMilliseconds),
+        Duration(milliseconds: data.baseMilliseconds),
       );
 
       await FlutterForegroundTask.startService(
         serviceId: _serviceId,
-        notificationTitle: "$chronoText — $stepLabel",
-        notificationText: pinData['nextStepLabel']! as String,
+        notificationTitle: '$chronoText — ${data.stepLabel}',
+        notificationText: data.nextStepLabel,
         notificationIcon: NotificationIcon(
-          metaDataName: isPlaying
+          metaDataName: data.isPlaying
               ? 'session_notification_icon_play'
               : 'session_notification_icon_pause',
         ),
-        notificationButtons: [
+        notificationButtons: <NotificationButton>[
           NotificationButton(
-            id: sessionNotificationPauseButtonId,
-            text: isPlaying ? "Pause" : "Reprendre",
+            id: SessionNotificationAction.pause.name,
+            text: data.isPlaying ? 'Pause' : 'Reprendre',
           ),
         ],
         callback: sessionNotificationTaskHandlerCallback,
       );
 
       if (revision == _pinRevision) {
-        FlutterForegroundTask.sendDataToTask(pinData);
+        FlutterForegroundTask.sendDataToTask(data.toWire());
       }
     } catch (_) {
       // Cf. commentaire de classe : jamais bloquant pour la séance.
