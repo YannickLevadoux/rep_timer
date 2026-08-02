@@ -5,6 +5,7 @@ import '../models/notification_sound.dart';
 import '../models/session_step.dart';
 import '../models/training_item.dart';
 import 'app_settings_storage.dart';
+import 'session_notification_protocol.dart';
 import 'session_notification_service.dart';
 import 'step_end_notification_service.dart';
 
@@ -249,14 +250,17 @@ class SessionNotificationCoordinator {
 
     unawaited(
       _foregroundService.pin(
-        stepLabel: stepLabel,
-        nextStepLabel: _nextStepLabel(snapshot.nextStep),
-        stepToken: _stepToken(snapshot),
-        notificationMode: _mode,
-        notificationSound: _notificationSound,
-        isPlaying: !snapshot.paused,
-        isCountingDown: isCountingDown,
-        baseMilliseconds: baseMilliseconds,
+        data: SessionNotificationPinData(
+          stepLabel: stepLabel,
+          nextStepLabel: _nextStepLabel(snapshot.nextStep),
+          stepToken: _stepToken(snapshot),
+          notificationMode: _mode,
+          isPlaying: !snapshot.paused,
+          isCountingDown: isCountingDown,
+          baseMilliseconds: baseMilliseconds,
+          pinEpochMillis: DateTime.now().millisecondsSinceEpoch,
+          soundGoOffsetMilliseconds: _notificationSound.goOffset.inMilliseconds,
+        ),
         onPausePressed: _onPausePressed,
         onSoundThreshold: _handleTaskSoundThreshold,
         onTimedStepEnded: _handleTaskStepEnded,

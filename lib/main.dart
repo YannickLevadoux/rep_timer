@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import 'screens/home_screen.dart';
+import 'services/session_notification_service.dart';
 
 Future<void> main() async {
   // Verrouille l'orientation en portrait pour toute l'application : le
@@ -19,7 +19,7 @@ Future<void> main() async {
   // puisse recevoir les messages envoyés par le Foreground Service (voir
   // SessionNotificationService) — à appeler avant runApp, même si aucune
   // séance n'a encore démarré.
-  FlutterForegroundTask.initCommunicationPort();
+  SessionNotificationService.initCommunicationPort();
 
   runApp(const MyApp());
 }

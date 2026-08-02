@@ -8,6 +8,7 @@ import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/services/app_settings_storage.dart';
 import 'package:rep_timer/services/session_checkpoint_storage.dart';
 import 'package:rep_timer/services/session_controller.dart';
+import 'package:rep_timer/services/session_notification_protocol.dart';
 import 'package:rep_timer/services/session_notification_service.dart';
 import 'package:rep_timer/services/step_end_notification_service.dart';
 
@@ -208,20 +209,13 @@ class _FakeSessionNotificationService extends SessionNotificationService {
 
   @override
   Future<void> pin({
-    required String stepLabel,
-    required String nextStepLabel,
-    required String stepToken,
-    required NotificationMode notificationMode,
-    required NotificationSound notificationSound,
-    required bool isPlaying,
-    required bool isCountingDown,
-    required int baseMilliseconds,
+    required SessionNotificationPinData data,
     required void Function() onPausePressed,
     required void Function(String stepToken) onSoundThreshold,
     required void Function(String stepToken, NotificationMode mode)
     onTimedStepEnded,
   }) async {
-    this.stepToken = stepToken;
+    stepToken = data.stepToken;
     _onSoundThreshold = onSoundThreshold;
     _onTimedStepEnded = onTimedStepEnded;
   }
