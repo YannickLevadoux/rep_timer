@@ -38,7 +38,7 @@ void main() {
   );
 
   test(
-    'la vibration de fin est unique en arrière-plan et un ancien jeton est ignoré',
+    'les fins successives font progresser la séance en arrière-plan sans doublon',
     () async {
       final stepEndService = _FakeStepEndNotificationService();
       final foregroundService = _FakeSessionNotificationService();
@@ -64,9 +64,8 @@ void main() {
       await _flushAsyncInitialization();
 
       expect(stepEndService.vibrationCalls, 1);
-      expect(controller.currentIndex, 0);
+      expect(controller.currentIndex, 1);
 
-      controller.goToNext();
       foregroundService.signalStepEnded(
         firstStepToken,
         NotificationMode.vibration,
@@ -74,8 +73,46 @@ void main() {
       await _flushAsyncInitialization();
 
       expect(stepEndService.vibrationCalls, 1);
+      expect(controller.currentIndex, 1);
+
+      final secondStepToken = foregroundService.stepToken;
+      foregroundService.signalStepEnded(
+        secondStepToken,
+        NotificationMode.vibration,
+      );
+      await _flushAsyncInitialization();
+
+      expect(stepEndService.vibrationCalls, 2);
+      expect(controller.currentIndex, 2);
     },
   );
+
+  test('le son est réarmé après chaque fin en arrière-plan', () async {
+    final stepEndService = _FakeStepEndNotificationService();
+    final foregroundService = _FakeSessionNotificationService();
+    final controller = _buildController(
+      mode: NotificationMode.sound,
+      stepEndService: stepEndService,
+      foregroundService: foregroundService,
+    );
+    addTearDown(controller.dispose);
+
+    await _flushAsyncInitialization();
+    controller.handleAppBackgrounded();
+    final firstStepToken = foregroundService.stepToken;
+
+    foregroundService.signalSoundThreshold(firstStepToken);
+    foregroundService.signalStepEnded(firstStepToken, NotificationMode.sound);
+    await _flushAsyncInitialization();
+
+    final secondStepToken = foregroundService.stepToken;
+    foregroundService.signalSoundThreshold(secondStepToken);
+    await _flushAsyncInitialization();
+
+    expect(stepEndService.soundCalls, 2);
+    expect(controller.currentIndex, 1);
+    expect(secondStepToken, isNot(firstStepToken));
+  });
 }
 
 SessionController _buildController({
@@ -95,6 +132,11 @@ SessionController _buildController({
       TrainingItem(
         type: ItemType.exercise,
         name: 'Exercice 2',
+        duration: const Duration(minutes: 1),
+      ),
+      TrainingItem(
+        type: ItemType.exercise,
+        name: 'Exercice 3',
         duration: const Duration(minutes: 1),
       ),
     ],

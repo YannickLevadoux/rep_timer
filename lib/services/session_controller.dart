@@ -163,7 +163,6 @@ class SessionController extends ChangeNotifier {
   int _notificationStepOccurrence = 0;
   final Set<String> _soundNotificationsSent = <String>{};
   final Set<String> _vibrationNotificationsSent = <String>{};
-  final Set<String> _taskReportedStepEnds = <String>{};
 
   // true dès que la dernière étape possible de la séance (dernier
   // exercice du dernier groupe) a été franchie alors qu'il reste des
@@ -308,7 +307,7 @@ class SessionController extends ChangeNotifier {
     _countdownTimer = null;
 
     if (_notificationMode != NotificationMode.sound) return;
-    if (_paused || _finished) return;
+    if (_paused || _finished || _backgroundedAt != null) return;
 
     final duration = currentStep.item.duration;
     if (duration == null) return;
@@ -362,13 +361,24 @@ class SessionController extends ChangeNotifier {
       return;
     }
 
-    _taskReportedStepEnds.add(stepToken);
+    if (_paused) return;
+
     _vibrateOnce(stepToken);
 
-    // En arrière-plan, les chronomètres du contrôleur sont volontairement
-    // figés. La fin sera appliquée juste au retour, après rattrapage du
-    // temps mural dans handleAppResumed().
-    if (_backgroundedAt != null || _paused) return;
+    // Les Stopwatch sont figés en arrière-plan. Avant de changer d'étape,
+    // on attribue donc à l'étape courante le temps mural écoulé depuis
+    // le dernier point de synchronisation. Le nouvel ancrage servira à
+    // mesurer l'étape suivante sans reporter tout l'arrière-plan sur elle.
+    final backgroundedAt = _backgroundedAt;
+    if (backgroundedAt != null) {
+      final now = DateTime.now();
+      final backgroundGap = now.difference(backgroundedAt);
+      if (backgroundGap > Duration.zero) {
+        _globalElapsedOffset += backgroundGap;
+        _stepElapsedOffset += backgroundGap;
+      }
+      _backgroundedAt = now;
+    }
 
     final duration = currentStep.item.duration;
     if (duration != null) completeCurrentStep();
@@ -514,15 +524,6 @@ class SessionController extends ChangeNotifier {
     _globalStopwatch.start();
     _stepStopwatch.start();
 
-    final currentToken = _notificationStepToken;
-    final duration = currentStep.item.duration;
-    if (_taskReportedStepEnds.contains(currentToken) &&
-        duration != null &&
-        stepElapsed >= duration) {
-      completeCurrentStep();
-      return;
-    }
-
     _armCountdownForCurrentStep();
     _syncForegroundNotification();
 
@@ -602,7 +603,7 @@ class SessionController extends ChangeNotifier {
       _stepStopwatch
         ..stop()
         ..reset();
-      if (!_paused) _stepStopwatch.start();
+      if (!_paused && _backgroundedAt == null) _stepStopwatch.start();
       // Nouvelle étape : on arme sa propre notification sans jamais
       // couper une séquence son encore en train de jouer suite à la fin
       // naturelle de l'étape précédente (voir _armCountdownForCurrentStep,
