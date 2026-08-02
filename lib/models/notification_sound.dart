@@ -3,7 +3,7 @@
 /// fin ("GO") démarre à l'intérieur de ce fichier. C'est cet offset,
 /// retranché du temps restant réel au moment où on arme la notification,
 /// qui détermine quand démarrer la lecture pour que le GO tombe pile à
-/// la fin naturelle de l'étape (voir SessionController._armCountdownForCurrentStep).
+/// la fin naturelle de l'étape.
 ///
 /// Un seul thème existe pour l'instant ([classic]) ; la structure est
 /// prévue pour en accueillir d'autres plus tard sans changer l'API du

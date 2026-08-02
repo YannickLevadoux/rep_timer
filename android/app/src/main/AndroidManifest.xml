@@ -50,9 +50,10 @@
              notification persistante pendant l'exécution d'une séance (voir
              lib/services/session_notification_service.dart). Ne fait rien
              d'autre que garder le processus actif et afficher/mettre à jour
-             cette notification : toute la logique de chronométrage reste
-             dans SessionController (isolate principal), jamais dupliquée
-             ici. android:stopWithTask="true" : la notification disparaît si
+             cette notification et détecte les seuils son/vibration de
+             l'étape courante. SessionController reste seul responsable de
+             la progression de la séance. android:stopWithTask="true" : la
+             notification disparaît si
              l'utilisateur retire l'application de la liste des apps
              récentes, plutôt que de laisser une notification orpheline sans
              application à rouvrir derrière.

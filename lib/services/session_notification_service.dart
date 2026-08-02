@@ -1,5 +1,7 @@
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
+import '../models/notification_mode.dart';
+import '../models/notification_sound.dart';
 import '../utils/formatters.dart';
 import 'session_notification_task_handler.dart';
 
@@ -40,8 +42,12 @@ class SessionNotificationService {
   static bool _pluginInitialized = false;
   static bool _autoPermissionsRequested = false;
   bool _dataCallbackRegistered = false;
+  int _pinRevision = 0;
+  Future<void> _pinQueue = Future<void>.value();
 
   void Function()? _onPausePressed;
+  void Function(String stepToken)? _onSoundThreshold;
+  void Function(String stepToken, NotificationMode mode)? _onTimedStepEnded;
 
   void _ensurePluginInitialized() {
     if (_pluginInitialized) return;
@@ -79,6 +85,22 @@ class SessionNotificationService {
   void _handleTaskData(dynamic data) {
     if (data == sessionNotificationPauseButtonId) {
       _onPausePressed?.call();
+      return;
+    }
+
+    if (data is! Map) return;
+
+    final event = data['event'] as String?;
+    final stepToken = data['stepToken'] as String?;
+    if (stepToken == null) return;
+
+    if (event == sessionNotificationSoundThresholdEvent) {
+      _onSoundThreshold?.call(stepToken);
+    } else if (event == sessionNotificationTimedStepEndedEvent) {
+      final mode = NotificationMode.fromName(
+        data['notificationMode'] as String?,
+      );
+      _onTimedStepEnded?.call(stepToken, mode);
     }
   }
 
@@ -135,7 +157,7 @@ class SessionNotificationService {
   }
 
   /// Affiche ou met à jour la notification persistante à partir d'un
-  /// "point de référence" : la valeur du chrono ([baseSeconds]) telle
+  /// "point de référence" : la valeur du chrono ([baseMilliseconds]) telle
   /// qu'elle est exacte au moment de l'appel, plus son sens
   /// ([isCountingDown]). Le TaskHandler du Foreground Service se charge
   /// ensuite de faire défiler l'affichage chaque seconde à partir de ce
@@ -153,46 +175,85 @@ class SessionNotificationService {
   Future<void> pin({
     required String stepLabel,
     required String nextStepLabel,
+    required String stepToken,
+    required NotificationMode notificationMode,
+    required NotificationSound notificationSound,
     required bool isPlaying,
     required bool isCountingDown,
-    required int baseSeconds,
+    required int baseMilliseconds,
     required void Function() onPausePressed,
-  }) async {
+    required void Function(String stepToken) onSoundThreshold,
+    required void Function(String stepToken, NotificationMode mode)
+    onTimedStepEnded,
+  }) {
     _ensurePluginInitialized();
     _onPausePressed = onPausePressed;
+    _onSoundThreshold = onSoundThreshold;
+    _onTimedStepEnded = onTimedStepEnded;
 
     if (!_dataCallbackRegistered) {
       _dataCallbackRegistered = true;
       FlutterForegroundTask.addTaskDataCallback(_handleTaskData);
     }
 
-    await _ensureAutoPermissionsRequested();
-
+    final revision = ++_pinRevision;
     final pinData = <String, dynamic>{
       'stepLabel': stepLabel,
       'nextStepLabel': nextStepLabel,
+      'stepToken': stepToken,
+      'notificationMode': notificationMode.name,
       'isPlaying': isPlaying,
       'isCountingDown': isCountingDown,
-      'baseSeconds': baseSeconds,
+      'baseMilliseconds': baseMilliseconds,
       'pinEpochMillis': DateTime.now().millisecondsSinceEpoch,
+      'soundGoOffsetMilliseconds': notificationSound.goOffset.inMilliseconds,
     };
+
+    final operation = _pinQueue.then(
+      (_) => _applyPin(
+        revision: revision,
+        pinData: pinData,
+        stepLabel: stepLabel,
+        isPlaying: isPlaying,
+        baseMilliseconds: baseMilliseconds,
+      ),
+    );
+    _pinQueue = operation.then<void>((_) {}, onError: (_) {});
+    return operation;
+  }
+
+  Future<void> _applyPin({
+    required int revision,
+    required Map<String, dynamic> pinData,
+    required String stepLabel,
+    required bool isPlaying,
+    required int baseMilliseconds,
+  }) async {
+    if (revision != _pinRevision) return;
+
+    await _ensureAutoPermissionsRequested();
+    if (revision != _pinRevision) return;
 
     try {
       if (await FlutterForegroundTask.isRunningService) {
+        if (revision != _pinRevision) return;
         FlutterForegroundTask.sendDataToTask(pinData);
         return;
       }
+      if (revision != _pinRevision) return;
 
       // Premier affichage : le TaskHandler n'est pas encore démarré, on
       // fournit donc un contenu initial correct directement à
       // startService (le TaskHandler prendra ensuite le relai dès qu'il
       // aura reçu ce même point de référence, envoyé juste après).
-      final chronoText = formatDuration(Duration(seconds: baseSeconds));
+      final chronoText = formatDuration(
+        Duration(milliseconds: baseMilliseconds),
+      );
 
       await FlutterForegroundTask.startService(
         serviceId: _serviceId,
         notificationTitle: "$chronoText — $stepLabel",
-        notificationText: nextStepLabel,
+        notificationText: pinData['nextStepLabel']! as String,
         notificationIcon: NotificationIcon(
           metaDataName: isPlaying
               ? 'session_notification_icon_play'
@@ -207,7 +268,9 @@ class SessionNotificationService {
         callback: sessionNotificationTaskHandlerCallback,
       );
 
-      FlutterForegroundTask.sendDataToTask(pinData);
+      if (revision == _pinRevision) {
+        FlutterForegroundTask.sendDataToTask(pinData);
+      }
     } catch (_) {
       // Cf. commentaire de classe : jamais bloquant pour la séance.
     }
@@ -216,13 +279,32 @@ class SessionNotificationService {
   /// Arrête le Foreground Service et retire la notification. Sans effet
   /// s'il n'était pas démarré (ex : séance entièrement en mode
   /// Répétitions, jamais affichée).
-  Future<void> stop() async {
+  Future<void> stop() {
+    final revision = ++_pinRevision;
+    final operation = _pinQueue.then((_) => _applyStop(revision));
+    _pinQueue = operation.then<void>((_) {}, onError: (_) {});
+    return operation;
+  }
+
+  Future<void> _applyStop(int revision) async {
+    if (revision != _pinRevision) return;
     try {
       if (await FlutterForegroundTask.isRunningService) {
+        if (revision != _pinRevision) return;
         await FlutterForegroundTask.stopService();
       }
     } catch (_) {
       // Best effort, comme pin() ci-dessus.
     }
+  }
+
+  void dispose() {
+    if (_dataCallbackRegistered) {
+      FlutterForegroundTask.removeTaskDataCallback(_handleTaskData);
+      _dataCallbackRegistered = false;
+    }
+    _onPausePressed = null;
+    _onSoundThreshold = null;
+    _onTimedStepEnded = null;
   }
 }

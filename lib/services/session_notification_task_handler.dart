@@ -9,6 +9,8 @@ import '../utils/formatters.dart';
 /// être traité par [SessionController] (isolate principal), seul à
 /// connaître l'état réel de la séance.
 const String sessionNotificationPauseButtonId = 'pause';
+const String sessionNotificationSoundThresholdEvent = 'soundThreshold';
+const String sessionNotificationTimedStepEndedEvent = 'timedStepEnded';
 
 /// Point d'entrée du Foreground Service : fonction de callback exigée par
 /// flutter_foreground_task, exécutée dans un isolate séparé de celui de
@@ -39,10 +41,10 @@ void sessionNotificationTaskHandlerCallback() {
 /// vit ici, directement rattaché au composant Service, qui reste la
 /// partie la plus protégée du processus.
 ///
-/// [SessionController] reste néanmoins l'unique source de vérité pour la
-/// logique de séance elle-même (détection de fin d'étape, son,
-/// vibration...) : ce isolate ne fait qu'afficher un chronomètre dérivé
-/// du dernier point de référence transmis, aucune logique dupliquée.
+/// [SessionController] reste l'unique source de vérité pour la progression
+/// de la séance. Ce TaskHandler prend seulement en charge les seuils de fin
+/// de l'étape chronométrée qui lui est confiée, puis les signale à l'isolate
+/// principal pour jouer le son/vibrer et synchroniser le contrôleur.
 ///
 /// Notification à un seul bouton (Pause/Reprendre) : un bouton "Voir la
 /// séance" a été essayé puis retiré — FlutterForegroundTask.launchApp()
@@ -56,10 +58,23 @@ void sessionNotificationTaskHandlerCallback() {
 class SessionNotificationTaskHandler extends TaskHandler {
   String _stepLabel = '';
   String _nextStepLabel = '';
+  String _stepToken = '';
+  String _notificationMode = 'none';
   bool _isPlaying = true;
   bool _isCountingDown = true;
-  int _baseSeconds = 0;
+  int _baseMilliseconds = 0;
   int _pinEpochMillis = 0;
+  int _soundGoOffsetMilliseconds = 0;
+
+  Timer? _soundTimer;
+  Timer? _stepEndTimer;
+
+  // Le TaskHandler peut recevoir plusieurs resynchronisations pour une
+  // même occurrence d'étape (pause, reprise, retour au premier plan...).
+  // Ces ensembles garantissent que chaque seuil n'est signalé qu'une fois.
+  final Set<String> _soundThresholdsSent = <String>{};
+  final Set<String> _soundThresholdsArmed = <String>{};
+  final Set<String> _stepEndsSent = <String>{};
 
   // Tant qu'aucun point de référence n'a été reçu (juste après le
   // démarrage du service, avant que le premier message n'arrive), on ne
@@ -73,7 +88,9 @@ class SessionNotificationTaskHandler extends TaskHandler {
 
   @override
   void onRepeatEvent(DateTime timestamp) {
-    if (_hasState) _updateNotification();
+    if (!_hasState) return;
+    _evaluateStepEndNotifications();
+    _updateNotification();
   }
 
   @override
@@ -82,35 +99,119 @@ class SessionNotificationTaskHandler extends TaskHandler {
 
     _stepLabel = data['stepLabel'] as String? ?? _stepLabel;
     _nextStepLabel = data['nextStepLabel'] as String? ?? _nextStepLabel;
+    _stepToken = data['stepToken'] as String? ?? _stepToken;
+    _notificationMode =
+        data['notificationMode'] as String? ?? _notificationMode;
     _isPlaying = data['isPlaying'] as bool? ?? _isPlaying;
     _isCountingDown = data['isCountingDown'] as bool? ?? _isCountingDown;
-    _baseSeconds = data['baseSeconds'] as int? ?? _baseSeconds;
+    _baseMilliseconds = data['baseMilliseconds'] as int? ?? _baseMilliseconds;
     _pinEpochMillis =
         data['pinEpochMillis'] as int? ?? DateTime.now().millisecondsSinceEpoch;
+    _soundGoOffsetMilliseconds =
+        data['soundGoOffsetMilliseconds'] as int? ?? _soundGoOffsetMilliseconds;
     _hasState = true;
 
+    _scheduleStepEndNotifications();
     _updateNotification();
   }
 
-  // Valeur courante du chrono (secondes), recalculée à partir du dernier
+  void _scheduleStepEndNotifications() {
+    _soundTimer?.cancel();
+    _stepEndTimer?.cancel();
+    _soundTimer = null;
+    _stepEndTimer = null;
+
+    if (!_isPlaying || !_isCountingDown || _stepToken.isEmpty) return;
+
+    final remainingMilliseconds = _currentMilliseconds();
+
+    // Comme dans le contrôleur historique, une séquence sonore dont le
+    // seuil est déjà dépassé n'est jamais jouée en retard.
+    if (_notificationMode == 'sound' &&
+        !_soundThresholdsSent.contains(_stepToken)) {
+      final soundDelay = remainingMilliseconds - _soundGoOffsetMilliseconds;
+      if (soundDelay >= 0) {
+        final stepToken = _stepToken;
+        _soundThresholdsArmed.add(stepToken);
+        _soundTimer = Timer(
+          Duration(milliseconds: soundDelay),
+          () => _sendSoundThreshold(stepToken),
+        );
+      }
+    } else if (_notificationMode != 'sound') {
+      _soundThresholdsArmed.remove(_stepToken);
+    }
+
+    if (!_stepEndsSent.contains(_stepToken)) {
+      final endDelay = remainingMilliseconds < 0 ? 0 : remainingMilliseconds;
+      final stepToken = _stepToken;
+      _stepEndTimer = Timer(
+        Duration(milliseconds: endDelay),
+        () => _sendStepEnd(stepToken),
+      );
+    }
+  }
+
+  void _evaluateStepEndNotifications() {
+    if (!_isPlaying || !_isCountingDown || _stepToken.isEmpty) return;
+
+    final remainingMilliseconds = _currentMilliseconds();
+    if (_notificationMode == 'sound' &&
+        _soundThresholdsArmed.contains(_stepToken) &&
+        remainingMilliseconds <= _soundGoOffsetMilliseconds) {
+      _sendSoundThreshold(_stepToken);
+    }
+    if (remainingMilliseconds <= 0) _sendStepEnd(_stepToken);
+  }
+
+  void _sendSoundThreshold(String stepToken) {
+    _soundTimer = null;
+    if (!_isPlaying ||
+        _notificationMode != 'sound' ||
+        stepToken != _stepToken ||
+        !_soundThresholdsSent.add(stepToken)) {
+      return;
+    }
+    FlutterForegroundTask.sendDataToMain(<String, Object>{
+      'event': sessionNotificationSoundThresholdEvent,
+      'stepToken': stepToken,
+    });
+  }
+
+  void _sendStepEnd(String stepToken) {
+    _stepEndTimer = null;
+    if (!_isPlaying ||
+        stepToken != _stepToken ||
+        !_stepEndsSent.add(stepToken)) {
+      return;
+    }
+    FlutterForegroundTask.sendDataToMain(<String, Object>{
+      'event': sessionNotificationTimedStepEndedEvent,
+      'stepToken': stepToken,
+      'notificationMode': _notificationMode,
+    });
+  }
+
+  // Valeur courante du chrono (millisecondes), recalculée à partir du dernier
   // point de référence reçu. En pause, la valeur reste figée à
-  // _baseSeconds (aucun temps ne s'écoule alors côté SessionController
+  // _baseMilliseconds (aucun temps ne s'écoule alors côté SessionController
   // non plus).
-  int _currentSeconds() {
-    if (!_isPlaying) return _baseSeconds;
+  int _currentMilliseconds() {
+    if (!_isPlaying) return _baseMilliseconds;
 
     final elapsedSincePin =
-        ((DateTime.now().millisecondsSinceEpoch - _pinEpochMillis) / 1000)
-            .floor();
-    final seconds = _isCountingDown
-        ? _baseSeconds - elapsedSincePin
-        : _baseSeconds + elapsedSincePin;
+        DateTime.now().millisecondsSinceEpoch - _pinEpochMillis;
+    final milliseconds = _isCountingDown
+        ? _baseMilliseconds - elapsedSincePin
+        : _baseMilliseconds + elapsedSincePin;
 
-    return _isCountingDown && seconds < 0 ? 0 : seconds;
+    return _isCountingDown && milliseconds < 0 ? 0 : milliseconds;
   }
 
   void _updateNotification() {
-    final chronoText = formatDuration(Duration(seconds: _currentSeconds()));
+    final chronoText = formatDuration(
+      Duration(milliseconds: _currentMilliseconds()),
+    );
 
     unawaited(
       FlutterForegroundTask.updateService(
@@ -151,5 +252,8 @@ class SessionNotificationTaskHandler extends TaskHandler {
   }
 
   @override
-  Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {}
+  Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {
+    _soundTimer?.cancel();
+    _stepEndTimer?.cancel();
+  }
 }

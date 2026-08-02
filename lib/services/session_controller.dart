@@ -32,7 +32,7 @@ class SessionController extends ChangeNotifier {
     TrainingStorage? trainingStorage,
     TrainingHistoryStorage? historyStorage,
     AppSettingsStorage? settingsStorage,
-    StepEndNotificationService? notificationService,
+    StepEndNotifier? notificationService,
     NotificationSound? notificationSound,
     SessionNotificationService? foregroundNotificationService,
     Future<void> Function()? enableWakelock,
@@ -154,6 +154,17 @@ class SessionController extends ChangeNotifier {
   bool _historySaved = false; // garantit un seul enregistrement historique
   bool _disposed = false;
 
+  // Une occurrence change à chaque navigation vers une nouvelle étape,
+  // y compris lorsqu'on revient manuellement sur le même index. Ce jeton
+  // permet au Foreground Service et au contrôleur de dédoublonner leurs
+  // déclenchements sans confondre deux passages sur le même exercice.
+  final String _notificationSessionToken = DateTime.now().microsecondsSinceEpoch
+      .toString();
+  int _notificationStepOccurrence = 0;
+  final Set<String> _soundNotificationsSent = <String>{};
+  final Set<String> _vibrationNotificationsSent = <String>{};
+  final Set<String> _taskReportedStepEnds = <String>{};
+
   // true dès que la dernière étape possible de la séance (dernier
   // exercice du dernier groupe) a été franchie alors qu'il reste des
   // exercices ou pauses non réalisés (ex : ordre changé manuellement en
@@ -179,7 +190,7 @@ class SessionController extends ChangeNotifier {
   final TrainingStorage _trainingStorage;
   final TrainingHistoryStorage _historyStorage;
   final AppSettingsStorage _settingsStorage;
-  final StepEndNotificationService _notificationService;
+  final StepEndNotifier _notificationService;
   final NotificationSound _notificationSound;
 
   // Notification Android persistante affichée pendant qu'un chronomètre
@@ -241,6 +252,9 @@ class SessionController extends ChangeNotifier {
   SessionStep? get nextStep =>
       _currentIndex + 1 < _steps.length ? _steps[_currentIndex + 1] : null;
 
+  String get _notificationStepToken =>
+      '$_notificationSessionToken:$_currentIndex:$_notificationStepOccurrence';
+
   Duration get globalElapsed => _globalElapsedOffset + _globalStopwatch.elapsed;
   Duration get stepElapsed => _stepElapsedOffset + _stepStopwatch.elapsed;
 
@@ -259,6 +273,7 @@ class SessionController extends ChangeNotifier {
     // chargement asynchrone, elle aurait été "consommée" silencieusement
     // avec le mode par défaut (Rien) armé au constructeur.
     _armCountdownForCurrentStep();
+    _syncForegroundNotification();
     notifyListeners();
   }
 
@@ -272,6 +287,7 @@ class SessionController extends ChangeNotifier {
     _notificationMode = _notificationMode.next;
     _cancelCountdown();
     _armCountdownForCurrentStep();
+    _syncForegroundNotification();
     notifyListeners();
   }
 
@@ -304,11 +320,58 @@ class SessionController extends ChangeNotifier {
     // retard (ex : reprise avec moins de goOffset restant sur l'étape).
     if (delay.isNegative) return;
 
+    final stepToken = _notificationStepToken;
     _countdownTimer = Timer(delay, () {
       _countdownTimer = null;
       if (_disposed) return;
-      unawaited(_notificationService.playCountdown(_notificationSound));
+      _playCountdownOnce(stepToken);
     });
+  }
+
+  void _playCountdownOnce(String stepToken) {
+    if (_disposed ||
+        stepToken != _notificationStepToken ||
+        _notificationMode != NotificationMode.sound ||
+        !_soundNotificationsSent.add(stepToken)) {
+      return;
+    }
+    unawaited(_notificationService.playCountdown(_notificationSound));
+  }
+
+  void _vibrateOnce(String stepToken) {
+    if (_disposed ||
+        stepToken != _notificationStepToken ||
+        _notificationMode != NotificationMode.vibration ||
+        !_vibrationNotificationsSent.add(stepToken)) {
+      return;
+    }
+    unawaited(_notificationService.vibrate());
+  }
+
+  void _handleTaskSoundThreshold(String stepToken) {
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
+    _playCountdownOnce(stepToken);
+  }
+
+  void _handleTaskStepEnded(String stepToken, NotificationMode mode) {
+    if (_disposed ||
+        _finished ||
+        stepToken != _notificationStepToken ||
+        mode != _notificationMode) {
+      return;
+    }
+
+    _taskReportedStepEnds.add(stepToken);
+    _vibrateOnce(stepToken);
+
+    // En arrière-plan, les chronomètres du contrôleur sont volontairement
+    // figés. La fin sera appliquée juste au retour, après rattrapage du
+    // temps mural dans handleAppResumed().
+    if (_backgroundedAt != null || _paused) return;
+
+    final duration = currentStep.item.duration;
+    if (duration != null) completeCurrentStep();
   }
 
   // Annule immédiatement toute notification son en cours ou programmée :
@@ -361,19 +424,24 @@ class SessionController extends ChangeNotifier {
     final currentDuration = isCountingDown
         ? (item.duration! - stepElapsed)
         : stepElapsed;
-    final baseSeconds = currentDuration.isNegative
+    final baseMilliseconds = currentDuration.isNegative
         ? 0
-        : currentDuration.inSeconds;
+        : currentDuration.inMilliseconds;
     final stepLabel = item.type == ItemType.rest ? "Pause" : item.name;
 
     unawaited(
       _foregroundNotification.pin(
         stepLabel: stepLabel,
         nextStepLabel: _nextStepNotificationLabel,
+        stepToken: _notificationStepToken,
+        notificationMode: _notificationMode,
+        notificationSound: _notificationSound,
         isPlaying: !_paused,
         isCountingDown: isCountingDown,
-        baseSeconds: baseSeconds,
+        baseMilliseconds: baseMilliseconds,
         onPausePressed: togglePause,
+        onSoundThreshold: _handleTaskSoundThreshold,
+        onTimedStepEnded: _handleTaskStepEnded,
       ),
     );
   }
@@ -390,6 +458,7 @@ class SessionController extends ChangeNotifier {
     // qu'aucun Foreground Service ne peut rester orphelin si l'écran est
     // fermé autrement.
     unawaited(_foregroundNotification.stop());
+    _foregroundNotification.dispose();
     super.dispose();
   }
 
@@ -444,6 +513,16 @@ class SessionController extends ChangeNotifier {
     }
     _globalStopwatch.start();
     _stepStopwatch.start();
+
+    final currentToken = _notificationStepToken;
+    final duration = currentStep.item.duration;
+    if (_taskReportedStepEnds.contains(currentToken) &&
+        duration != null &&
+        stepElapsed >= duration) {
+      completeCurrentStep();
+      return;
+    }
+
     _armCountdownForCurrentStep();
     _syncForegroundNotification();
 
@@ -503,17 +582,13 @@ class SessionController extends ChangeNotifier {
   void completeCurrentStep() {
     if (_finished) return;
 
-    // Vibration : déclenchée directement ici, au moment exact de la fin
-    // naturelle, plutôt que via un timer programmé à l'avance comme pour
-    // le son — une vibration unique n'a besoin d'aucune précision
-    // anticipée. currentStep.item.duration != null exclut à la fois les
-    // exercices Répétitions/Durée libre (jamais de notification, et
-    // c'est leur seul moyen d'appeler completeCurrentStep, via le bouton
-    // "Valider") ET garantit qu'on est bien sur un passage naturel (seul
-    // cas où completeCurrentStep est appelé pour une étape à durée).
-    if (_notificationMode == NotificationMode.vibration &&
-        currentStep.item.duration != null) {
-      unawaited(_notificationService.vibrate());
+    // Filet de sécurité de la vibration : le TaskHandler la signale
+    // normalement à zéro. Si le contrôleur termine l'étape en premier,
+    // le même jeton et _vibrateOnce garantissent tout de même exactement
+    // un déclenchement. duration != null exclut Répétitions/Durée libre.
+    final completedStepToken = _notificationStepToken;
+    if (currentStep.item.duration != null) {
+      _vibrateOnce(completedStepToken);
     }
 
     _recordCurrentStepDuration();
@@ -522,6 +597,7 @@ class SessionController extends ChangeNotifier {
 
     if (_currentIndex + 1 < _steps.length) {
       _currentIndex++;
+      _notificationStepOccurrence++;
       _stepElapsedOffset = Duration.zero;
       _stepStopwatch
         ..stop()
@@ -680,6 +756,7 @@ class SessionController extends ChangeNotifier {
     _recordCurrentStepDuration();
 
     _currentIndex = index;
+    _notificationStepOccurrence++;
     _stepElapsedOffset = Duration.zero;
     _stepStopwatch
       ..stop()
