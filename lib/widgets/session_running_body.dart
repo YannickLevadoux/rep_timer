@@ -3,20 +3,15 @@ import 'package:flutter/material.dart';
 import '../models/notification_mode.dart';
 import '../models/session_step.dart';
 import '../models/training_item.dart';
-import '../utils/exercise_icons.dart';
-import '../utils/formatters.dart';
-import '../utils/notification_mode_icons.dart';
 import 'section_divider.dart';
-import 'session_comment_section.dart';
+import 'session_command_row.dart';
+import 'session_current_step_section.dart';
+import 'session_progress_bar.dart';
 
-/// Corps principal de l'écran d'exécution d'une séance : exercice en
-/// cours (icône + nom clignotants), chronomètre/compte à rebours,
-/// commentaire, et actions (précédent/suivant, valider, pause).
+/// Assemble les différentes sections de l'écran d'exécution d'une séance.
 ///
-/// Widget purement d'affichage : toute la logique (progression, calcul
-/// des durées, pause, notifications de fin d'étape...) reste dans
-/// `SessionController` et l'écran parent, qui fournit ici l'état courant
-/// et les callbacks d'action.
+/// Toute la logique de séance reste dans le contrôleur et l'écran parent : ce
+/// widget ne fait qu'organiser l'état reçu et transmettre les actions.
 class SessionRunningBody extends StatelessWidget {
   final SessionStep step;
   final SessionStep? nextStep;
@@ -55,190 +50,54 @@ class SessionRunningBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final item = step.item;
-    final isDurationBased = item.duration != null;
-    final isFreeDuration = item.isFreeDuration;
-    final remaining = isDurationBased
-        ? (item.duration! - stepElapsed)
-        : Duration.zero;
-
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.skip_previous),
-                tooltip: "Exercice précédent",
-                onPressed: currentIndex > 0 ? onPrevious : null,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                formatDuration(globalElapsed),
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.skip_next),
-                tooltip: "Exercice suivant",
-                onPressed: currentIndex < totalSteps - 1 ? onNext : null,
-              ),
-            ],
+          SessionCommandRow(
+            globalElapsed: globalElapsed,
+            paused: paused,
+            notificationMode: notificationMode,
+            previousEnabled: currentIndex > 0,
+            nextEnabled: currentIndex < totalSteps - 1,
+            onPrevious: onPrevious,
+            onNext: onNext,
+            onTogglePause: onTogglePause,
+            onCycleNotificationMode: onCycleNotificationMode,
           ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: currentIndex / totalSteps,
-              minHeight: 6,
-            ),
+          const SizedBox(height: 4),
+          SessionProgressBar(
+            currentIndex: currentIndex,
+            totalSteps: totalSteps,
           ),
-          const SizedBox(height: 8),
-          // Icône de contrôle rapide des notifications, alignée
-          // complètement à droite sur la même ligne que la progression
-          // globale ; taille et contraintes compactes pour ne pas
-          // modifier la hauteur de cette section (même principe que le
-          // bouton d'édition du commentaire dans SessionCommentSection).
-          Row(
-            children: [
-              Text("Exercice ${currentIndex + 1} / $totalSteps"),
-              const Spacer(),
-              IconButton(
-                icon: Icon(iconForNotificationMode(notificationMode), size: 20),
-                tooltip: "Notifications : ${notificationMode.label}",
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                visualDensity: VisualDensity.compact,
-                onPressed: onCycleNotificationMode,
-              ),
-            ],
-          ),
-
-          // ---- Section "Prochain" ----
-          const SectionDivider(label: "Prochain"),
-
+          const SectionDivider(label: 'Prochain'),
           Text(
-            nextStep == null
-                ? "Fin de la session"
-                : nextStep!.item.type == ItemType.rest
-                ? "Pause"
-                : nextStep!.item.name,
+            _nextStepLabel(nextStep),
+            key: const Key('next-step-label'),
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodyLarge,
           ),
-
-          // ---- Section "En cours" ----
-          const SectionDivider(label: "En cours"),
-
-          Text(
-            "${step.group.name} — Répétition ${step.roundIndex} / ${step.totalRounds}",
-            style: Theme.of(context).textTheme.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 32),
-
-          // Zone principale : exercice en cours (icône + nom clignotent
-          // pendant que la séance tourne, se figent immédiatement en
-          // pause). Le commentaire, s'il existe, clignote avec eux.
-          FadeTransition(
-            opacity: blinkOpacity,
-            child: Column(
-              children: [
-                Icon(
-                  item.type == ItemType.exercise
-                      ? iconForExercise(item.iconName)
-                      : Icons.timer,
-                  size: 48,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  item.name,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          SessionCommentSection(
-            item: item,
+          const SectionDivider(label: 'En cours'),
+          SessionCurrentStepSection(
+            step: step,
+            stepElapsed: stepElapsed,
+            paused: paused,
             blinkOpacity: blinkOpacity,
+            onComplete: onComplete,
             onEditComment: onEditComment,
-          ),
-
-          const SizedBox(height: 24),
-
-          if (isFreeDuration)
-            // Durée libre : chronomètre qui monte, indépendant du
-            // chronomètre global, démarré automatiquement avec l'étape.
-            // Même présentation que le compte à rebours du mode Temps
-            // pour rester cohérent visuellement.
-            Text(
-              formatDuration(stepElapsed),
-              style: const TextStyle(fontSize: 72, fontWeight: FontWeight.bold),
-            )
-          else if (isDurationBased)
-            // Compte à rebours très visible : élément le plus proéminent
-            // de l'écran.
-            Text(
-              formatDuration(remaining),
-              style: const TextStyle(fontSize: 72, fontWeight: FontWeight.bold),
-            )
-          else ...[
-            Text(
-              "× ${item.repetitions ?? 0}",
-              style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: paused ? null : onComplete,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                child: Text(
-                  "Répétitions effectuées",
-                  style: TextStyle(fontSize: 16),
-                ),
-              ),
-            ),
-          ],
-
-          if (isFreeDuration) ...[
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: paused ? null : onComplete,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                child: Text(
-                  "Exercice effectué",
-                  style: TextStyle(fontSize: 16),
-                ),
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 40),
-
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: onTogglePause,
-              icon: Icon(paused ? Icons.play_arrow : Icons.pause),
-              label: Text(paused ? "Reprendre" : "Pause"),
-            ),
           ),
         ],
       ),
     );
+  }
+
+  String _nextStepLabel(SessionStep? nextStep) {
+    if (nextStep == null) return 'Fin de la séance';
+    final itemLabel = nextStep.item.type == ItemType.rest
+        ? 'Pause'
+        : nextStep.item.name;
+    return '${nextStep.group.name} — $itemLabel';
   }
 }
