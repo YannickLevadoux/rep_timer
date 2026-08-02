@@ -33,6 +33,7 @@ const int _serviceId = 4200;
 /// à configurer explicitement ici pour ça.
 class SessionNotificationService {
   static bool _pluginInitialized = false;
+  static bool _permissionRequested = false;
   bool _dataCallbackRegistered = false;
 
   void Function()? _onPausePressed;
@@ -124,9 +125,9 @@ class SessionNotificationService {
     final text = "$stepLabel — $chronoText\n$nextStepLabel";
 
     final icon = NotificationIcon(
-      resType: ResourceType.drawable,
-      resPrefix: ResourcePrefix.ic,
-      name: isPlaying ? 'notification_play' : 'notification_pause',
+      metaDataName: isPlaying
+          ? 'session_notification_icon_play'
+          : 'session_notification_icon_pause',
     );
 
     final buttons = [
@@ -141,6 +142,21 @@ class SessionNotificationService {
     ];
 
     try {
+      if (!_permissionRequested) {
+        _permissionRequested = true;
+        final permission =
+            await FlutterForegroundTask.checkNotificationPermission();
+        if (permission != NotificationPermission.granted) {
+          // Android 13+ : sans cette demande explicite, le Foreground
+          // Service démarre bien en interne mais Android n'affiche
+          // jamais la notification associée, sans la moindre erreur ni
+          // log — un comportement très facile à confondre avec un bug
+          // du plugin. Ne fait rien de plus si refusée : voir le
+          // commentaire de classe, jamais bloquant pour la séance.
+          await FlutterForegroundTask.requestNotificationPermission();
+        }
+      }
+
       if (await FlutterForegroundTask.isRunningService) {
         await FlutterForegroundTask.updateService(
           notificationTitle: title,

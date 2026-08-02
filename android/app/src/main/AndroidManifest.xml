@@ -33,6 +33,19 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- Icônes de la notification persistante (voir
+             SessionNotificationService), référencées depuis Dart via
+             NotificationIcon(metaDataName: ...) plutôt que par nom de
+             ressource dynamique : cette indirection survit correctement
+             au resource shrinker (R8), contrairement à une résolution
+             par nom en dur. -->
+        <meta-data
+            android:name="session_notification_icon_play"
+            android:resource="@drawable/ic_notification_play" />
+        <meta-data
+            android:name="session_notification_icon_pause"
+            android:resource="@drawable/ic_notification_pause" />
+
         <!-- Service de premier plan (flutter_foreground_task) affichant la
              notification persistante pendant l'exécution d'une séance (voir
              lib/services/session_notification_service.dart). Ne fait rien
