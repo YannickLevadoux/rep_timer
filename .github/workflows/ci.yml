@@ -19,3 +19,20 @@ jobs:
   validate:
 
     uses: ./.github/workflows/flutter-validate.yml
+  
+  release:
+
+    needs: validate
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Build Android APK (debug)
+        run: flutter build apk --debug
