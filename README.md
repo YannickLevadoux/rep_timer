@@ -1,5 +1,8 @@
 # RepTimer
 
+[![CI](https://github.com/YannickLevadoux/rep_timer/actions/workflows/ci.yml/badge.svg)](https://github.com/YannickLevadoux/rep_timer/actions/workflows/ci.yml)
+[![Release](https://github.com/YannickLevadoux/rep_timer/actions/workflows/release.yml/badge.svg)](https://github.com/YannickLevadoux/rep_timer/actions/workflows/release.yml)
+
 Application mobile (Android) de suivi et d'exécution de séances d'entraînement, développée avec Flutter.
 
 RepTimer permet de créer ses propres séances (échauffement, circuits, séries...), de les organiser en groupes d'exercices répétables, puis de les exécuter avec un système de minuteur, de progression et d'historique.
@@ -14,6 +17,9 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
   - **Durée libre** — aucun temps ni répétitions fixés à l'avance ; l'utilisateur décide lui-même de la fin de l'exercice, un chronomètre mesure le temps réellement passé.
 - Pauses chronométrées entre les exercices.
 - Réorganisation par glisser-déposer des groupes et des exercices.
+- Aperçu repliable du contenu de chaque groupe et écran dédié à l'édition de ses paramètres, exercices et pauses.
+- Option permettant de désactiver le préremplissage du nom des nouveaux exercices avec le nom du groupe.
+- Duplication d'une séance depuis l'écran d'accueil, avec choix du nom de la copie ; la nouvelle séance reste indépendante de l'originale.
 - Icône personnalisable par exercice, parmi une liste prédéfinie.
 - Commentaire libre et optionnel par exercice (poids, intensité...), modifiable aussi bien à l'édition que pendant l'exécution de la séance.
 - Détection des modifications non enregistrées à la fermeture de l'écran d'édition (proposition d'enregistrer, d'abandonner ou d'annuler).
@@ -22,14 +28,16 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Écran de résumé avant le lancement (aperçu des groupes et exercices).
 - Empêche la mise en veille de l'écran pendant toute la durée de la séance.
 - Chronomètre global de la séance, indépendant du minuteur de chaque exercice.
+- Écran organisé autour des commandes de séance, de la progression, du prochain élément et de l'exercice ou de la pause en cours.
 - Navigation manuelle entre les exercices (précédent/suivant), en plus de la progression automatique.
 - Mise en évidence visuelle (clignotement) de l'exercice en cours.
 - Pause/reprise de la séance à tout moment.
 - Écran de progression détaillée, avec possibilité de sauter directement à un exercice donné (avec confirmation).
 - Fin de séance anticipée ou normale, toutes deux enregistrées dans l'historique : le statut (`Terminée` / `Incomplète`) est toujours déterminé à partir de la progression réelle (mêmes coches que l'écran de progression détaillée), quel que soit le mode de fin de séance.
 - Si l'ordre d'exécution est modifié manuellement (exercices/pauses sautés, groupes réalisés dans un autre ordre) et que le dernier exercice du dernier groupe est terminé alors que des éléments restent non réalisés, la séance ne se termine pas automatiquement : elle se met en pause et propose de **reprendre à un exercice de son choix** (via l'écran de progression) ou de **terminer la séance** (enregistrée avec le statut `Incomplète`).
-- Si une pause est définie la fin de la séance (dernière pause du dernier groupe), cette pause sera ignorée.
-- Notification Android persistante pendant qu'un chronomètre est actif (pause, exercice Temps ou Durée libre — jamais pour un exercice Répétitions) : icône Play/Pause dans la barre d'état, nom de l'exercice/de la pause et temps restant (ou écoulé en Durée libre) dans la notification repliée, prochain élément de la séance et boutons **Pause** / **Voir la séance** une fois développée. Repose sur un vrai Foreground Service Android (et non une simple notification), afin que la mise à jour du chronomètre ainsi que le son/la vibration de fin d'exercice restent fiables même lorsque l'application est en arrière-plan. Disparaît automatiquement à la fin, à l'abandon, ou à l'arrêt de la séance.
+- Si une pause est définie à la fin de la séance (dernière pause du dernier groupe), cette pause sera ignorée.
+- Alerte de fin des exercices et pauses chronométrés, configurable sur **Son**, **Vibration** ou **Rien** depuis les paramètres et ajustable pendant la séance.
+- Notification Android persistante pendant qu'un chronomètre est actif (pause, exercice Temps ou Durée libre — jamais pour un exercice Répétitions) : icône Play/Pause dans la barre d'état, nom de l'exercice/de la pause et temps restant (ou écoulé en Durée libre), prochain élément de la séance et bouton **Pause** / **Reprendre**. Un appui sur la notification rouvre la séance. Repose sur un vrai Foreground Service Android (et non une simple notification), afin que la mise à jour du chronomètre ainsi que le son/la vibration de fin d'exercice restent fiables même lorsque l'application est en arrière-plan. Disparaît automatiquement à la fin, à l'abandon, ou à l'arrêt de la séance.
 
 ### Quick Tabata
 - Lancement rapide d'une séance travail/pause répétée, sans avoir à créer de séance au préalable (accessible depuis la barre de navigation de l'accueil).
