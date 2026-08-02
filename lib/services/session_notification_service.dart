@@ -38,7 +38,7 @@ const int _serviceId = 4200;
 /// à configurer explicitement ici pour ça.
 class SessionNotificationService {
   static bool _pluginInitialized = false;
-  static bool _permissionsRequested = false;
+  static bool _autoPermissionsRequested = false;
   bool _dataCallbackRegistered = false;
 
   void Function()? _onPausePressed;
@@ -90,19 +90,24 @@ class SessionNotificationService {
     FlutterForegroundTask.initCommunicationPort();
   }
 
-  /// Demande, une seule fois par installation, les permissions dont
-  /// dépendent les différentes actions de la notification. Best effort :
-  /// une permission refusée dégrade la fonctionnalité correspondante
-  /// (bouton sans effet, chrono moins fiable en arrière-plan...) mais ne
-  /// doit jamais empêcher la notification de base de s'afficher.
-  Future<void> _ensurePermissions() async {
-    if (_permissionsRequested) return;
-    _permissionsRequested = true;
+  /// Demande les permissions dont dépend la fiabilité de la notification
+  /// persistante : notification (Android 13+, sans laquelle le Foreground
+  /// Service démarre bien mais n'affiche jamais rien) et exemption
+  /// d'optimisation de batterie (nécessaire sur certains constructeurs,
+  /// ex. MIUI, dont la gestion de batterie peut ralentir l'app en
+  /// arrière-plan malgré le Foreground Service actif).
+  ///
+  /// Exposée publiquement (contrairement à une simple demande automatique
+  /// à usage unique) pour pouvoir être redéclenchée explicitement depuis
+  /// l'écran Paramètres ("Activer les notifications de séance"), par
+  /// exemple si l'utilisateur avait refusé une permission par erreur.
+  /// Best effort : une permission refusée dégrade la fiabilité
+  /// correspondante mais ne doit jamais empêcher le déroulement de la
+  /// séance.
+  Future<void> requestPermissions() async {
+    _ensurePluginInitialized();
 
     try {
-      // Android 13+ : sans cette demande explicite, le Foreground
-      // Service démarre bien en interne mais Android n'affiche jamais la
-      // notification associée, sans la moindre erreur ni log.
       final notificationPermission =
           await FlutterForegroundTask.checkNotificationPermission();
       if (notificationPermission != NotificationPermission.granted) {
@@ -111,27 +116,22 @@ class SessionNotificationService {
     } catch (_) {}
 
     try {
-      // Requise par FlutterForegroundTask.launchApp() (bouton "Voir la
-      // séance" et appui sur le corps de la notification) : sans elle,
-      // ces actions n'ont silencieusement aucun effet, sans la moindre
-      // erreur ni log — même symptôme que la permission ci-dessus.
-      final canDrawOverlays = await FlutterForegroundTask.canDrawOverlays;
-      if (!canDrawOverlays) {
-        await FlutterForegroundTask.openSystemAlertWindowSettings();
-      }
-    } catch (_) {}
-
-    try {
-      // Sur certains constructeurs (MIUI, etc.), l'app peut être
-      // ralentie/gelée en arrière-plan malgré le Foreground Service actif
-      // si elle reste soumise à l'optimisation de batterie : demande à
-      // en être exemptée pour fiabiliser le chronomètre.
       final ignoringBatteryOptimizations =
           await FlutterForegroundTask.isIgnoringBatteryOptimizations;
       if (!ignoringBatteryOptimizations) {
         await FlutterForegroundTask.requestIgnoreBatteryOptimization();
       }
     } catch (_) {}
+  }
+
+  // Déclenche requestPermissions() automatiquement, mais une seule fois
+  // par installation (voir pin()) : les demandes suivantes ne peuvent
+  // venir que d'un geste explicite de l'utilisateur, voir
+  // requestPermissions() ci-dessus.
+  Future<void> _ensureAutoPermissionsRequested() async {
+    if (_autoPermissionsRequested) return;
+    _autoPermissionsRequested = true;
+    await requestPermissions();
   }
 
   /// Affiche ou met à jour la notification persistante à partir d'un
@@ -166,7 +166,7 @@ class SessionNotificationService {
       FlutterForegroundTask.addTaskDataCallback(_handleTaskData);
     }
 
-    await _ensurePermissions();
+    await _ensureAutoPermissionsRequested();
 
     final pinData = <String, dynamic>{
       'stepLabel': stepLabel,
@@ -202,10 +202,6 @@ class SessionNotificationService {
           NotificationButton(
             id: sessionNotificationPauseButtonId,
             text: isPlaying ? "Pause" : "Reprendre",
-          ),
-          const NotificationButton(
-            id: sessionNotificationOpenButtonId,
-            text: "Voir la séance",
           ),
         ],
         callback: sessionNotificationTaskHandlerCallback,

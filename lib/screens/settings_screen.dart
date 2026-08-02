@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import '../models/notification_mode.dart';
 import '../models/notification_sound.dart';
 import '../services/app_settings_storage.dart';
+import '../services/session_notification_service.dart';
 import '../services/step_end_notification_service.dart';
 import '../services/training_export_service.dart';
 import '../utils/notification_mode_icons.dart';
@@ -45,6 +46,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final AppSettingsStorage _settingsStorage = AppSettingsStorage();
   final StepEndNotificationService _notificationService =
       StepEndNotificationService();
+  final SessionNotificationService _sessionNotificationService =
+      SessionNotificationService();
+
+  // Désactive le bouton pendant la demande de permissions (peut ouvrir un
+  // écran système et prendre quelques secondes), pour éviter tout
+  // double-déclenchement.
+  bool _requestingSessionNotificationPermissions = false;
 
   // Désactive les actions Importer/Exporter pendant qu'une opération est
   // en cours, pour éviter tout double-déclenchement.
@@ -119,6 +127,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case NotificationMode.none:
         break;
     }
+  }
+
+  // Redéclenche explicitement les demandes de permissions liées à la
+  // notification persistante de séance (voir SessionNotificationService.
+  // requestPermissions) : utile si l'utilisateur les avait refusées par
+  // erreur au premier lancement d'une séance, sans avoir à en relancer
+  // une pour réessayer. Peut ouvrir un écran système (exemption de
+  // batterie) : d'où la protection _requestingSessionNotificationPermissions
+  // le temps de l'opération.
+  Future<void> _requestSessionNotificationPermissions() async {
+    setState(() => _requestingSessionNotificationPermissions = true);
+
+    await _sessionNotificationService.requestPermissions();
+
+    if (!mounted) return;
+    setState(() => _requestingSessionNotificationPermissions = false);
+    showSnack(
+      context,
+      "Vérifie les autorisations demandées, puis relance une séance.",
+    );
   }
 
   // Logique de changement de thème réutilisée telle quelle depuis
@@ -284,6 +312,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPressed: _cycleNotificationMode,
                 ),
               ),
+              ListTile(
+                leading: const Icon(Icons.notifications_active_outlined),
+                title: const Text("Activer les notifications de séance"),
+                subtitle: const Text(
+                  "Notification persistante affichant le chronomètre "
+                  "pendant l'exécution d'une séance",
+                ),
+                enabled: !_requestingSessionNotificationPermissions,
+                onTap: _requestSessionNotificationPermissions,
+              ),
+              if (_requestingSessionNotificationPermissions)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ),
             ],
           ),
 

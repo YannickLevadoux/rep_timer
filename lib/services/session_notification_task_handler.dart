@@ -10,12 +10,6 @@ import '../utils/formatters.dart';
 /// connaître l'état réel de la séance.
 const String sessionNotificationPauseButtonId = 'pause';
 
-/// Identifiant du bouton "Voir la séance" de la notification étendue.
-/// Contrairement au bouton Pause, il ne nécessite aucune donnée de
-/// [SessionController] : ouvrir l'application suffit, donc traité
-/// entièrement ici, sans aller-retour vers l'isolate principal.
-const String sessionNotificationOpenButtonId = 'open';
-
 /// Point d'entrée du Foreground Service : fonction de callback exigée par
 /// flutter_foreground_task, exécutée dans un isolate séparé de celui de
 /// l'UI (voir la doc du plugin). Doit rester top-level avec l'annotation
@@ -49,6 +43,16 @@ void sessionNotificationTaskHandlerCallback() {
 /// logique de séance elle-même (détection de fin d'étape, son,
 /// vibration...) : ce isolate ne fait qu'afficher un chronomètre dérivé
 /// du dernier point de référence transmis, aucune logique dupliquée.
+///
+/// Notification à un seul bouton (Pause/Reprendre) : un bouton "Voir la
+/// séance" a été essayé puis retiré — FlutterForegroundTask.launchApp()
+/// appelé depuis un bouton d'action n'a silencieusement aucun effet sur
+/// certains appareils (restriction Android de démarrage d'activité en
+/// arrière-plan côté BroadcastReceiver d'action, contrairement au tap sur
+/// le corps de la notification qui passe par un PendingIntent standard,
+/// lui non restreint). Le tap sur le corps reste donc l'unique moyen de
+/// revenir à l'application depuis la notification (voir
+/// onNotificationPressed), pas besoin de bouton dédié pour ça.
 class SessionNotificationTaskHandler extends TaskHandler {
   String _stepLabel = '';
   String _nextStepLabel = '';
@@ -125,10 +129,6 @@ class SessionNotificationTaskHandler extends TaskHandler {
             id: sessionNotificationPauseButtonId,
             text: _isPlaying ? "Pause" : "Reprendre",
           ),
-          const NotificationButton(
-            id: sessionNotificationOpenButtonId,
-            text: "Voir la séance",
-          ),
         ],
       ),
     );
@@ -136,10 +136,6 @@ class SessionNotificationTaskHandler extends TaskHandler {
 
   @override
   void onNotificationButtonPressed(String id) {
-    if (id == sessionNotificationOpenButtonId) {
-      FlutterForegroundTask.launchApp();
-      return;
-    }
     if (id == sessionNotificationPauseButtonId) {
       FlutterForegroundTask.sendDataToMain(id);
     }
@@ -147,9 +143,10 @@ class SessionNotificationTaskHandler extends TaskHandler {
 
   @override
   void onNotificationPressed() {
-    // Appui sur le corps de la notification (hors boutons) : même
-    // comportement que le bouton "Voir la séance", ramène directement
-    // l'application au premier plan.
+    // Seul moyen de revenir à l'application depuis la notification (voir
+    // le commentaire de classe : contrairement à un bouton d'action, ce
+    // tap passe par un PendingIntent standard, non soumis aux
+    // restrictions Android de démarrage d'activité en arrière-plan.
     FlutterForegroundTask.launchApp();
   }
 

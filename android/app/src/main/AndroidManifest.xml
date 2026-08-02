@@ -87,14 +87,6 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
-    <!-- Requise par FlutterForegroundTask.launchApp() (bouton "Voir la
-         séance" et appui sur le corps de la notification) : sans elle,
-         ces actions n'ont silencieusement aucun effet. Permission
-         "spéciale" : ne peut pas être accordée par une simple boîte de
-         dialogue, l'utilisateur est renvoyé vers les Paramètres système
-         (voir SessionNotificationService._ensurePermissions). -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
-
     <!-- Requise par FlutterForegroundTask.requestIgnoreBatteryOptimization(),
          utilisée pour fiabiliser le chronomètre de la notification en
          arrière-plan sur les appareils dont le fabricant applique une
