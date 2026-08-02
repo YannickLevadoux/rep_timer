@@ -11,7 +11,6 @@ import '../models/session_step.dart';
 import '../models/training.dart';
 import '../models/training_history_entry.dart';
 import '../models/training_item.dart';
-import '../utils/formatters.dart';
 import 'app_settings_storage.dart';
 import 'session_checkpoint_storage.dart';
 import 'session_notification_service.dart';
@@ -358,18 +357,22 @@ class SessionController extends ChangeNotifier {
     }
 
     final item = currentStep.item;
-    final isTimeBased = item.duration != null;
-    final chronoText = formatDuration(
-      isTimeBased ? (item.duration! - stepElapsed) : stepElapsed,
-    );
+    final isCountingDown = item.duration != null;
+    final currentDuration = isCountingDown
+        ? (item.duration! - stepElapsed)
+        : stepElapsed;
+    final baseSeconds = currentDuration.isNegative
+        ? 0
+        : currentDuration.inSeconds;
     final stepLabel = item.type == ItemType.rest ? "Pause" : item.name;
 
     unawaited(
-      _foregroundNotification.show(
+      _foregroundNotification.pin(
         stepLabel: stepLabel,
-        chronoText: chronoText,
         nextStepLabel: _nextStepNotificationLabel,
         isPlaying: !_paused,
+        isCountingDown: isCountingDown,
+        baseSeconds: baseSeconds,
         onPausePressed: togglePause,
       ),
     );
@@ -486,9 +489,13 @@ class SessionController extends ChangeNotifier {
     if (duration != null && stepElapsed >= duration) {
       completeCurrentStep();
     } else {
-      // Rafraîchit l'affichage du chronomètre global / compte à rebours,
-      // ainsi que la notification persistante si elle est affichée.
-      _syncForegroundNotification();
+      // Rafraîchit l'affichage du chronomètre global / compte à rebours
+      // à l'écran. La notification persistante, elle, n'a plus besoin
+      // d'être resynchronisée ici : le TaskHandler du Foreground Service
+      // fait défiler son propre affichage à partir du dernier point de
+      // référence transmis (voir _syncForegroundNotification et
+      // session_notification_task_handler.dart), ce qui reste fiable
+      // même si l'isolate principal est ralenti en arrière-plan.
       notifyListeners();
     }
   }
