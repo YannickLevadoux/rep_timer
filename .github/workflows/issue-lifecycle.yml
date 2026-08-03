@@ -177,9 +177,13 @@ jobs:
   # --------------------------------------------------------------------------
   #
 
+  # Renovate branches contain dependency updates and are not linked to product issues.
   update-pr:
 
-    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.action == 'opened' &&
+      !startsWith(github.event.pull_request.head.ref, 'renovate/')
 
     runs-on: ubuntu-latest
 
@@ -253,7 +257,8 @@ jobs:
     if: >
       github.event_name == 'pull_request' &&
       github.event.action == 'closed' &&
-      github.event.pull_request.merged == true
+      github.event.pull_request.merged == true &&
+      !startsWith(github.event.pull_request.head.ref, 'renovate/')
 
     runs-on: ubuntu-latest
 
@@ -352,7 +357,8 @@ jobs:
 
     if: >
       github.event_name == 'delete' &&
-      github.event.ref_type == 'branch'
+      github.event.ref_type == 'branch' &&
+      !startsWith(github.event.ref, 'renovate/')
 
     runs-on: ubuntu-latest
 
