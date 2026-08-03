@@ -241,9 +241,16 @@ class SessionController extends ChangeNotifier {
   void goToNext() => jumpToStep(currentIndex + 1);
 
   Future<void> updateComment(String? comment) async {
+    final previousComment = currentStep.item.comment;
     currentStep.item.comment = comment;
     _notifyIfActive();
-    await _trainingStorage.addOrUpdateTraining(training);
+    try {
+      await _trainingStorage.addOrUpdateTraining(training);
+    } on Object {
+      currentStep.item.comment = previousComment;
+      _notifyIfActive();
+      rethrow;
+    }
   }
 
   Future<void> abandon() {

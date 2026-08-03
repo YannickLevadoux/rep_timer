@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../models/session_checkpoint.dart';
 import '../models/training.dart';
+import '../services/json_prefs_storage.dart';
 import '../services/session_checkpoint_storage.dart';
 import '../services/training_storage.dart';
 import '../utils/id_generator.dart';
+import '../utils/snack.dart';
 import '../widgets/dialogs/duplicate_training_dialog.dart';
 import 'quick_tabata_screen.dart';
 import 'settings_screen.dart';
@@ -32,6 +35,9 @@ class _HomePageState extends State<HomePage> {
 
   List<Training> _trainings = [];
   bool _loading = true;
+  bool _storageWarning = false;
+  bool _storageFailure = false;
+  bool _checkpointWarning = false;
 
   // Une seule séance développée à la fois (null = aucune).
   String? _expandedTrainingId;
@@ -50,8 +56,18 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _resumePendingSessionIfAny() async {
     final checkpointStorage = SessionCheckpointStorage();
-    final checkpoint = await checkpointStorage.loadCheckpoint();
-    if (checkpoint == null) return;
+    final checkpointResult = await checkpointStorage.loadCheckpoint();
+    final SessionCheckpoint? checkpoint;
+    switch (checkpointResult) {
+      case StorageNoData<SessionCheckpoint>():
+        return;
+      case StorageReadSuccess<SessionCheckpoint>(:final data):
+        checkpoint = data;
+      case StorageReadPartial<SessionCheckpoint>():
+      case StorageReadFailure<SessionCheckpoint>():
+        if (mounted) setState(() => _checkpointWarning = true);
+        return;
+    }
 
     // Un checkpoint de plus de 24h est considéré comme abandonné : on
     // l'efface silencieusement plutôt que de proposer une reprise qui
@@ -62,7 +78,25 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    final trainings = await _storage.loadTrainings();
+    final trainingsResult = await _storage.loadTrainings();
+    final List<Training> trainings;
+    final canConcludeTrainingIsMissing = switch (trainingsResult) {
+      StorageNoData<List<Training>>() => true,
+      StorageReadSuccess<List<Training>>() => true,
+      StorageReadPartial<List<Training>>() => false,
+      StorageReadFailure<List<Training>>() => false,
+    };
+    switch (trainingsResult) {
+      case StorageNoData<List<Training>>():
+        trainings = <Training>[];
+      case StorageReadSuccess<List<Training>>(:final data):
+        trainings = data;
+      case StorageReadPartial<List<Training>>(:final data):
+        trainings = data;
+        if (mounted) setState(() => _storageWarning = true);
+      case StorageReadFailure<List<Training>>():
+        return;
+    }
     Training? training;
     for (final t in trainings) {
       if (t.id == checkpoint.trainingId) {
@@ -73,10 +107,12 @@ class _HomePageState extends State<HomePage> {
 
     // La séance référencée n'existe plus (supprimée entre-temps) :
     // checkpoint devenu invalide, on l'efface.
-    if (training == null) {
+    if (training == null && canConcludeTrainingIsMissing) {
       await checkpointStorage.clearCheckpoint();
       return;
     }
+
+    if (training == null) return;
 
     if (!mounted) return;
 
@@ -96,12 +132,29 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadTrainings() async {
-    final trainings = await _storage.loadTrainings();
+    final result = await _storage.loadTrainings();
 
     if (!mounted) return;
 
     setState(() {
-      _trainings = trainings;
+      switch (result) {
+        case StorageNoData<List<Training>>():
+          _trainings = <Training>[];
+          _storageWarning = false;
+          _storageFailure = false;
+        case StorageReadSuccess<List<Training>>(:final data):
+          _trainings = data;
+          _storageWarning = false;
+          _storageFailure = false;
+        case StorageReadPartial<List<Training>>(:final data):
+          _trainings = data;
+          _storageWarning = true;
+          _storageFailure = false;
+        case StorageReadFailure<List<Training>>():
+          _trainings = <Training>[];
+          _storageWarning = false;
+          _storageFailure = true;
+      }
       _loading = false;
     });
   }
@@ -145,7 +198,17 @@ class _HomePageState extends State<HomePage> {
     if (name == null || !mounted) return;
 
     final duplicate = training.duplicate(name: name, newId: _idGenerator.next);
-    await _storage.addOrUpdateTraining(duplicate);
+    try {
+      await _storage.addOrUpdateTraining(duplicate);
+    } on StorageMutationBlockedException {
+      if (!mounted) return;
+      setState(() => _storageWarning = true);
+      showSnack(
+        context,
+        "Duplication impossible : certaines séances n'ont pas pu être lues.",
+      );
+      return;
+    }
 
     if (!mounted) return;
     _loadTrainings();
@@ -194,57 +257,87 @@ class _HomePageState extends State<HomePage> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _trainings.isEmpty
-          ? const Center(child: Text("Aucune séance enregistrée"))
-          : ListView.builder(
-              itemCount: _trainings.length,
-              itemBuilder: (context, index) {
-                final training = _trainings[index];
+          : _storageFailure
+          ? _StorageError(onRetry: _loadTrainings)
+          : Column(
+              children: [
+                if (_storageWarning || _checkpointWarning)
+                  const _StorageWarning(),
+                Expanded(
+                  child: _trainings.isEmpty
+                      ? const Center(child: Text("Aucune séance enregistrée"))
+                      : ListView.builder(
+                          itemCount: _trainings.length,
+                          itemBuilder: (context, index) {
+                            final training = _trainings[index];
 
-                return Card(
-                  key: ValueKey(training.id),
-                  margin: const EdgeInsets.symmetric(vertical: 4),
-                  child: Column(
-                    children: [
-                      ListTile(
-                        title: Text(training.name),
-                        subtitle: Text("${training.groups.length} groupe(s)"),
-                        onTap: () => _toggleExpanded(training.id),
-                      ),
-                      if (_expandedTrainingId == training.id)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                          child: Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.copy),
-                                tooltip: "Dupliquer la séance",
-                                onPressed: () => _duplicateTraining(training),
+                            return Card(
+                              key: ValueKey(training.id),
+                              margin: const EdgeInsets.symmetric(vertical: 4),
+                              child: Column(
+                                children: [
+                                  ListTile(
+                                    title: Text(training.name),
+                                    subtitle: Text(
+                                      "${training.groups.length} groupe(s)",
+                                    ),
+                                    onTap: () => _toggleExpanded(training.id),
+                                  ),
+                                  if (_expandedTrainingId == training.id)
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        16,
+                                        0,
+                                        16,
+                                        12,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(Icons.copy),
+                                            tooltip: "Dupliquer la séance",
+                                            onPressed: _storageWarning
+                                                ? null
+                                                : () => _duplicateTraining(
+                                                    training,
+                                                  ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: OutlinedButton.icon(
+                                              onPressed: _storageWarning
+                                                  ? null
+                                                  : () => _openEditor(
+                                                      training: training,
+                                                    ),
+                                              icon: const Icon(Icons.edit),
+                                              label: const Text("Éditer"),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: FilledButton.icon(
+                                              onPressed: _checkpointWarning
+                                                  ? null
+                                                  : () => _startTraining(
+                                                      training,
+                                                    ),
+                                              icon: const Icon(
+                                                Icons.play_arrow,
+                                              ),
+                                              label: const Text("Commencer"),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
                               ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: () =>
-                                      _openEditor(training: training),
-                                  icon: const Icon(Icons.edit),
-                                  label: const Text("Éditer"),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: FilledButton.icon(
-                                  onPressed: () => _startTraining(training),
-                                  icon: const Icon(Icons.play_arrow),
-                                  label: const Text("Commencer"),
-                                ),
-                              ),
-                            ],
-                          ),
+                            );
+                          },
                         ),
-                    ],
-                  ),
-                );
-              },
+                ),
+              ],
             ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: 0,
@@ -273,8 +366,53 @@ class _HomePageState extends State<HomePage> {
       ),
       // Ajout d'un bouton flottant pour créer une nouvelle séance
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _openEditor(),
+        onPressed: _storageWarning || _storageFailure
+            ? null
+            : () => _openEditor(),
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+class _StorageWarning extends StatelessWidget {
+  const _StorageWarning();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: Theme.of(context).colorScheme.errorContainer,
+      padding: const EdgeInsets.all(12),
+      child: const Text(
+        "Certaines données n'ont pas pu être lues. Les actions pouvant les "
+        "remplacer sont désactivées pour protéger les données enregistrées.",
+      ),
+    );
+  }
+}
+
+class _StorageError extends StatelessWidget {
+  const _StorageError({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "Les séances enregistrées n'ont pas pu être lues.",
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            FilledButton(onPressed: onRetry, child: const Text("Réessayer")),
+          ],
+        ),
       ),
     );
   }
