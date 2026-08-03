@@ -17,7 +17,8 @@ class SessionCheckpointStorage {
   Future<void> saveCheckpoint(SessionCheckpoint checkpoint) =>
       _storage.save(checkpoint);
 
-  Future<SessionCheckpoint?> loadCheckpoint() => _storage.load();
+  Future<StorageReadResult<SessionCheckpoint>> loadCheckpoint() =>
+      _storage.load();
 
   Future<void> clearCheckpoint() => _storage.clear();
 }

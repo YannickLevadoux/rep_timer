@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
 import '../models/training.dart';
+import 'json_prefs_storage.dart';
 import 'training_storage.dart';
 
 /// Identifiant de format, présent dans chaque fichier exporté. Permet de
@@ -43,7 +44,7 @@ class TrainingExportService {
   /// Écrit un fichier d'export dans le répertoire temporaire de l'app et
   /// retourne son chemin, prêt à être partagé.
   Future<String> exportToFile() async {
-    final trainings = await _storage.loadTrainings();
+    final trainings = _healthyTrainings(await _storage.loadTrainings());
 
     final payload = {
       'app': _appIdentifier,
@@ -95,7 +96,7 @@ class TrainingExportService {
 
     final rawTrainings = decoded['trainings'] as List<dynamic>;
 
-    final existing = await _storage.loadTrainings();
+    final existing = _healthyTrainings(await _storage.loadTrainings());
     final imported = <Training>[];
 
     for (final raw in rawTrainings) {
@@ -121,6 +122,22 @@ class TrainingExportService {
   }
 
   int _idCounter = 0;
+
+  List<Training> _healthyTrainings(StorageReadResult<List<Training>> result) {
+    return switch (result) {
+      StorageNoData<List<Training>>() => <Training>[],
+      StorageReadSuccess<List<Training>>(:final data) => data,
+      StorageReadPartial<List<Training>>() =>
+        throw const StorageMutationBlockedException(
+          StorageBlockedState.partial,
+        ),
+      StorageReadFailure<List<Training>>(:final error) =>
+        throw StorageMutationBlockedException(
+          StorageBlockedState.unreadable,
+          readError: error,
+        ),
+    };
+  }
 
   // Horodatage + compteur : évite toute collision même si plusieurs
   // identifiants sont générés dans la même microseconde (import de

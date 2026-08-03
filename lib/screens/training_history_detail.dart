@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../models/history_step_entry.dart';
 import '../models/training_history_entry.dart';
 import '../models/training_item.dart';
+import '../services/json_prefs_storage.dart';
 import '../services/training_history_storage.dart';
 import '../utils/formatters.dart';
+import '../utils/snack.dart';
 import '../widgets/dialogs/confirm_dialog.dart';
 
 /// Écran de détail d'une séance de l'historique : KPI globaux puis détail
@@ -12,8 +14,13 @@ import '../widgets/dialogs/confirm_dialog.dart';
 /// la présentation générale de TrainingSummaryScreen pour rester cohérent.
 class TrainingHistoryDetailScreen extends StatefulWidget {
   final TrainingHistoryEntry entry;
+  final bool allowDelete;
 
-  const TrainingHistoryDetailScreen({super.key, required this.entry});
+  const TrainingHistoryDetailScreen({
+    super.key,
+    required this.entry,
+    this.allowDelete = true,
+  });
 
   @override
   State<TrainingHistoryDetailScreen> createState() =>
@@ -29,13 +36,24 @@ class _TrainingHistoryDetailScreenState
   Future<void> _confirmDelete() async {
     final entry = widget.entry;
 
-    final deleted = await confirmAndDelete(
-      context,
-      title: "Supprimer cette séance ?",
-      content:
-          'Cette action est irréversible. Supprimer "${entry.trainingName}" de l\'historique ?',
-      onDelete: () => TrainingHistoryStorage().deleteEntry(entry.id),
-    );
+    final bool deleted;
+    try {
+      deleted = await confirmAndDelete(
+        context,
+        title: "Supprimer cette séance ?",
+        content:
+            'Cette action est irréversible. Supprimer "${entry.trainingName}" de l\'historique ?',
+        onDelete: () => TrainingHistoryStorage().deleteEntry(entry.id),
+      );
+    } on StorageMutationBlockedException {
+      if (!mounted) return;
+      showSnack(
+        context,
+        "Suppression impossible : certaines données de l'historique n'ont "
+        "pas pu être lues.",
+      );
+      return;
+    }
 
     if (!deleted || !mounted) return;
 
@@ -97,7 +115,7 @@ class _TrainingHistoryDetailScreenState
           IconButton(
             icon: const Icon(Icons.delete),
             tooltip: "Supprimer",
-            onPressed: _confirmDelete,
+            onPressed: widget.allowDelete ? _confirmDelete : null,
           ),
         ],
       ),

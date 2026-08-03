@@ -13,17 +13,37 @@ class TrainingHistoryStorage {
         toJson: (e) => e.toJson(),
       );
 
-  Future<List<TrainingHistoryEntry>> loadHistory() => _storage.loadList();
+  Future<StorageReadResult<List<TrainingHistoryEntry>>> loadHistory() =>
+      _storage.loadList();
 
   Future<void> addEntry(TrainingHistoryEntry entry) async {
-    final history = await loadHistory();
+    final history = await _healthyHistoryForMutation();
     history.add(entry);
     await _storage.saveList(history);
   }
 
   Future<void> deleteEntry(String id) async {
-    final history = await loadHistory();
+    final history = await _healthyHistoryForMutation();
     history.removeWhere((entry) => entry.id == id);
     await _storage.saveList(history);
+  }
+
+  Future<List<TrainingHistoryEntry>> _healthyHistoryForMutation() async {
+    final result = await loadHistory();
+    return switch (result) {
+      StorageNoData<List<TrainingHistoryEntry>>() => <TrainingHistoryEntry>[],
+      StorageReadSuccess<List<TrainingHistoryEntry>>(:final data) => List.of(
+        data,
+      ),
+      StorageReadPartial<List<TrainingHistoryEntry>>() =>
+        throw const StorageMutationBlockedException(
+          StorageBlockedState.partial,
+        ),
+      StorageReadFailure<List<TrainingHistoryEntry>>(:final error) =>
+        throw StorageMutationBlockedException(
+          StorageBlockedState.unreadable,
+          readError: error,
+        ),
+    };
   }
 }

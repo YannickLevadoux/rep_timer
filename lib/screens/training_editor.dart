@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/exercise_group.dart';
 import '../models/training.dart';
+import '../services/json_prefs_storage.dart';
 import '../services/training_storage.dart';
 import '../utils/snack.dart';
 import '../widgets/dialogs/confirm_dialog.dart';
@@ -101,7 +102,18 @@ class _TrainingEditorState extends State<TrainingEditor> {
       createdAt: widget.training?.createdAt ?? DateTime.now(),
     );
 
-    await _storage.addOrUpdateTraining(training);
+    try {
+      await _storage.addOrUpdateTraining(training);
+    } on StorageMutationBlockedException {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      showSnack(
+        context,
+        "Enregistrement impossible : certaines séances n'ont pas pu être "
+        "lues. Les données existantes ont été conservées.",
+      );
+      return;
+    }
     if (!mounted) return;
 
     setState(() => _saving = false);
@@ -136,12 +148,23 @@ class _TrainingEditorState extends State<TrainingEditor> {
     final training = widget.training;
     if (training == null) return;
 
-    final deleted = await confirmAndDelete(
-      context,
-      title: "Supprimer la séance ?",
-      content: 'Cette action est irréversible. Supprimer "${training.name}" ?',
-      onDelete: () => _storage.deleteTraining(training.id),
-    );
+    final bool deleted;
+    try {
+      deleted = await confirmAndDelete(
+        context,
+        title: "Supprimer la séance ?",
+        content:
+            'Cette action est irréversible. Supprimer "${training.name}" ?',
+        onDelete: () => _storage.deleteTraining(training.id),
+      );
+    } on StorageMutationBlockedException {
+      if (!mounted) return;
+      showSnack(
+        context,
+        "Suppression impossible : certaines séances n'ont pas pu être lues.",
+      );
+      return;
+    }
 
     if (!deleted || !mounted) return;
     Navigator.pop(context, true);

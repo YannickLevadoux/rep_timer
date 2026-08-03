@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../models/training_history_entry.dart';
+import '../services/json_prefs_storage.dart';
 import '../services/training_history_storage.dart';
 import '../utils/formatters.dart';
+import '../utils/snack.dart';
 import '../widgets/dialogs/confirm_dialog.dart';
+import '../widgets/storage_read_feedback.dart';
 import 'training_history_detail.dart';
 
 /// Écran listant les séances effectuées, du plus récent au plus ancien.
@@ -24,6 +27,8 @@ class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
   List<TrainingHistoryEntry> _allEntries = [];
   bool _loading = true;
   bool _showAll = false;
+  bool _storageWarning = false;
+  bool _storageFailure = false;
 
   @override
   void initState() {
@@ -32,7 +37,25 @@ class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
   }
 
   Future<void> _loadHistory() async {
-    final entries = await _storage.loadHistory();
+    final result = await _storage.loadHistory();
+    final List<TrainingHistoryEntry> entries;
+    switch (result) {
+      case StorageNoData<List<TrainingHistoryEntry>>():
+        entries = <TrainingHistoryEntry>[];
+      case StorageReadSuccess<List<TrainingHistoryEntry>>(:final data):
+        entries = data;
+      case StorageReadPartial<List<TrainingHistoryEntry>>(:final data):
+        entries = data;
+      case StorageReadFailure<List<TrainingHistoryEntry>>():
+        if (!mounted) return;
+        setState(() {
+          _allEntries = <TrainingHistoryEntry>[];
+          _storageWarning = false;
+          _storageFailure = true;
+          _loading = false;
+        });
+        return;
+    }
 
     // Plus récent au plus ancien.
     entries.sort((a, b) => b.date.compareTo(a.date));
@@ -40,19 +63,36 @@ class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
     if (!mounted) return;
     setState(() {
       _allEntries = entries;
+      _storageWarning =
+          result is StorageReadPartial<List<TrainingHistoryEntry>>;
+      _storageFailure = false;
       _loading = false;
     });
   }
 
   Future<void> _confirmDelete(TrainingHistoryEntry entry) async {
-    final deleted = await confirmAndDelete(
-      context,
-      title: "Supprimer cette séance ?",
-      content:
-          'Cette action est irréversible. Supprimer "${entry.trainingName}" '
-          'du ${formatDateTime(entry.date)} de l\'historique ?',
-      onDelete: () => _storage.deleteEntry(entry.id),
-    );
+    if (_storageWarning || _storageFailure) return;
+
+    final bool deleted;
+    try {
+      deleted = await confirmAndDelete(
+        context,
+        title: "Supprimer cette séance ?",
+        content:
+            'Cette action est irréversible. Supprimer "${entry.trainingName}" '
+            'du ${formatDateTime(entry.date)} de l\'historique ?',
+        onDelete: () => _storage.deleteEntry(entry.id),
+      );
+    } on StorageMutationBlockedException {
+      if (!mounted) return;
+      setState(() => _storageWarning = true);
+      showSnack(
+        context,
+        "Suppression impossible : certaines données de l'historique n'ont "
+        "pas pu être lues.",
+      );
+      return;
+    }
 
     if (!deleted || !mounted) return;
     setState(() {
@@ -64,7 +104,10 @@ class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
     final deleted = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => TrainingHistoryDetailScreen(entry: entry),
+        builder: (context) => TrainingHistoryDetailScreen(
+          entry: entry,
+          allowDelete: !_storageWarning && !_storageFailure,
+        ),
       ),
     );
 
@@ -86,25 +129,41 @@ class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
       appBar: AppBar(title: const Text("Historique")),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _allEntries.isEmpty
-          ? const Center(child: Text("Aucune séance effectuée pour l'instant"))
+          : _storageFailure
+          ? StorageReadErrorView(
+              message: "L'historique enregistré n'a pas pu être lu.",
+              onRetry: _loadHistory,
+            )
           : Column(
               children: [
-                Expanded(
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: displayedEntries.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final entry = displayedEntries[index];
-                      return _HistoryEntryCard(
-                        entry: entry,
-                        onTap: () => _openDetail(entry),
-                        onDelete: () => _confirmDelete(entry),
-                      );
-                    },
+                if (_storageWarning)
+                  const StorageReadWarningBanner(
+                    message:
+                        "Certaines séances de l'historique n'ont pas pu être "
+                        "lues. La suppression est désactivée pour protéger "
+                        "les données.",
                   ),
+                Expanded(
+                  child: _allEntries.isEmpty
+                      ? const Center(
+                          child: Text("Aucune séance effectuée pour l'instant"),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.all(12),
+                          itemCount: displayedEntries.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 8),
+                          itemBuilder: (context, index) {
+                            final entry = displayedEntries[index];
+                            return _HistoryEntryCard(
+                              entry: entry,
+                              onTap: () => _openDetail(entry),
+                              onDelete: _storageWarning
+                                  ? null
+                                  : () => _confirmDelete(entry),
+                            );
+                          },
+                        ),
                 ),
                 if (hasMore)
                   Padding(
@@ -126,7 +185,7 @@ class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
 class _HistoryEntryCard extends StatelessWidget {
   final TrainingHistoryEntry entry;
   final VoidCallback onTap;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
 
   const _HistoryEntryCard({
     required this.entry,

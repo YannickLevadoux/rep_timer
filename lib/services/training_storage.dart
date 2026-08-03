@@ -12,13 +12,14 @@ class TrainingStorage {
     toJson: (t) => t.toJson(),
   );
 
-  Future<List<Training>> loadTrainings() => _storage.loadList();
+  Future<StorageReadResult<List<Training>>> loadTrainings() =>
+      _storage.loadList();
 
   Future<void> saveTrainings(List<Training> trainings) =>
       _storage.saveList(trainings);
 
   Future<void> addOrUpdateTraining(Training training) async {
-    final trainings = await loadTrainings();
+    final trainings = await _healthyTrainingsForMutation();
     final index = trainings.indexWhere((t) => t.id == training.id);
 
     if (index >= 0) {
@@ -31,8 +32,25 @@ class TrainingStorage {
   }
 
   Future<void> deleteTraining(String id) async {
-    final trainings = await loadTrainings();
+    final trainings = await _healthyTrainingsForMutation();
     trainings.removeWhere((t) => t.id == id);
     await saveTrainings(trainings);
+  }
+
+  Future<List<Training>> _healthyTrainingsForMutation() async {
+    final result = await loadTrainings();
+    return switch (result) {
+      StorageNoData<List<Training>>() => <Training>[],
+      StorageReadSuccess<List<Training>>(:final data) => List.of(data),
+      StorageReadPartial<List<Training>>() =>
+        throw const StorageMutationBlockedException(
+          StorageBlockedState.partial,
+        ),
+      StorageReadFailure<List<Training>>(:final error) =>
+        throw StorageMutationBlockedException(
+          StorageBlockedState.unreadable,
+          readError: error,
+        ),
+    };
   }
 }

@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import '../models/notification_mode.dart';
 import '../models/notification_sound.dart';
 import '../services/app_settings_storage.dart';
+import '../services/json_prefs_storage.dart';
 import '../services/session_notification_permission_service.dart';
 import '../services/step_end_notification_service.dart';
 import '../services/training_export_service.dart';
@@ -176,6 +177,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           subject: "Export des séances RepTimer",
         ),
       );
+    } on StorageMutationBlockedException {
+      if (!mounted) return;
+      showSnack(
+        context,
+        "Les séances enregistrées sont illisibles. L'export a été interrompu "
+        "pour protéger les données.",
+      );
     } catch (e) {
       if (!mounted) return;
       showSnack(context, "Erreur lors de l'export : $e");
@@ -210,6 +218,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } on FormatException catch (e) {
       if (!mounted) return;
       showSnack(context, e.message);
+    } on StorageMutationBlockedException {
+      if (!mounted) return;
+      showSnack(
+        context,
+        "L'import est impossible car certaines séances enregistrées n'ont "
+        "pas pu être lues.",
+      );
     } catch (e) {
       if (!mounted) return;
       showSnack(context, "Erreur lors de l'import : $e");

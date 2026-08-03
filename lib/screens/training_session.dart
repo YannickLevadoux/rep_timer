@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../models/session_checkpoint.dart';
 import '../models/training.dart';
+import '../services/json_prefs_storage.dart';
 import '../services/session_controller.dart';
+import '../utils/snack.dart';
 import '../widgets/dialogs/comment_dialog.dart';
 import '../widgets/dialogs/exit_session_dialog.dart';
 import '../widgets/session_finished_view.dart';
@@ -182,7 +184,16 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     if (result == null) return;
 
     final trimmed = result.trim();
-    await _controller.updateComment(trimmed.isEmpty ? null : trimmed);
+    try {
+      await _controller.updateComment(trimmed.isEmpty ? null : trimmed);
+    } on StorageMutationBlockedException {
+      if (!mounted) return;
+      showSnack(
+        context,
+        "Commentaire non enregistré : les séances stockées n'ont pas pu "
+        "être lues intégralement.",
+      );
+    }
   }
 
   Future<void> _showExitMenu() async {
