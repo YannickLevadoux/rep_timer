@@ -51,7 +51,7 @@ dependencies:
   # persistante affichée pendant l'exécution d'une séance (chronomètre/
   # compte à rebours), afin qu'elle reste fiable même lorsque l'application
   # est en arrière-plan (voir lib/services/session_notification_service.dart).
-  flutter_foreground_task: ^9.0.0
+  flutter_foreground_task: ^10.0.0
 
 dev_dependencies:
   flutter_test:
