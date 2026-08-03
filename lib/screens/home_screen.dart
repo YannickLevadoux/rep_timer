@@ -8,6 +8,8 @@ import '../services/training_storage.dart';
 import '../utils/id_generator.dart';
 import '../utils/snack.dart';
 import '../widgets/dialogs/duplicate_training_dialog.dart';
+import '../widgets/home_training_list.dart';
+import '../widgets/storage_read_feedback.dart';
 import 'quick_tabata_screen.dart';
 import 'settings_screen.dart';
 import 'training_editor.dart';
@@ -258,84 +260,30 @@ class _HomePageState extends State<HomePage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _storageFailure
-          ? _StorageError(onRetry: _loadTrainings)
+          ? StorageReadErrorView(
+              message: "Les séances enregistrées n'ont pas pu être lues.",
+              onRetry: _loadTrainings,
+            )
           : Column(
               children: [
                 if (_storageWarning || _checkpointWarning)
-                  const _StorageWarning(),
+                  const StorageReadWarningBanner(
+                    message:
+                        "Certaines données n'ont pas pu être lues. Les actions "
+                        "pouvant les remplacer sont désactivées pour protéger "
+                        "les données enregistrées.",
+                  ),
                 Expanded(
-                  child: _trainings.isEmpty
-                      ? const Center(child: Text("Aucune séance enregistrée"))
-                      : ListView.builder(
-                          itemCount: _trainings.length,
-                          itemBuilder: (context, index) {
-                            final training = _trainings[index];
-
-                            return Card(
-                              key: ValueKey(training.id),
-                              margin: const EdgeInsets.symmetric(vertical: 4),
-                              child: Column(
-                                children: [
-                                  ListTile(
-                                    title: Text(training.name),
-                                    subtitle: Text(
-                                      "${training.groups.length} groupe(s)",
-                                    ),
-                                    onTap: () => _toggleExpanded(training.id),
-                                  ),
-                                  if (_expandedTrainingId == training.id)
-                                    Padding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                        16,
-                                        0,
-                                        16,
-                                        12,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          IconButton(
-                                            icon: const Icon(Icons.copy),
-                                            tooltip: "Dupliquer la séance",
-                                            onPressed: _storageWarning
-                                                ? null
-                                                : () => _duplicateTraining(
-                                                    training,
-                                                  ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Expanded(
-                                            child: OutlinedButton.icon(
-                                              onPressed: _storageWarning
-                                                  ? null
-                                                  : () => _openEditor(
-                                                      training: training,
-                                                    ),
-                                              icon: const Icon(Icons.edit),
-                                              label: const Text("Éditer"),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: FilledButton.icon(
-                                              onPressed: _checkpointWarning
-                                                  ? null
-                                                  : () => _startTraining(
-                                                      training,
-                                                    ),
-                                              icon: const Icon(
-                                                Icons.play_arrow,
-                                              ),
-                                              label: const Text("Commencer"),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+                  child: HomeTrainingList(
+                    trainings: _trainings,
+                    expandedTrainingId: _expandedTrainingId,
+                    mutationsBlocked: _storageWarning,
+                    startBlocked: _checkpointWarning,
+                    onToggleExpanded: _toggleExpanded,
+                    onDuplicate: _duplicateTraining,
+                    onEdit: (training) => _openEditor(training: training),
+                    onStart: _startTraining,
+                  ),
                 ),
               ],
             ),
@@ -370,49 +318,6 @@ class _HomePageState extends State<HomePage> {
             ? null
             : () => _openEditor(),
         child: const Icon(Icons.add),
-      ),
-    );
-  }
-}
-
-class _StorageWarning extends StatelessWidget {
-  const _StorageWarning();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      color: Theme.of(context).colorScheme.errorContainer,
-      padding: const EdgeInsets.all(12),
-      child: const Text(
-        "Certaines données n'ont pas pu être lues. Les actions pouvant les "
-        "remplacer sont désactivées pour protéger les données enregistrées.",
-      ),
-    );
-  }
-}
-
-class _StorageError extends StatelessWidget {
-  const _StorageError({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              "Les séances enregistrées n'ont pas pu être lues.",
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            FilledButton(onPressed: onRetry, child: const Text("Réessayer")),
-          ],
-        ),
       ),
     );
   }

@@ -6,6 +6,7 @@ import '../services/training_history_storage.dart';
 import '../utils/formatters.dart';
 import '../utils/snack.dart';
 import '../widgets/dialogs/confirm_dialog.dart';
+import '../widgets/storage_read_feedback.dart';
 import 'training_history_detail.dart';
 
 /// Écran listant les séances effectuées, du plus récent au plus ancien.
@@ -129,10 +130,19 @@ class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _storageFailure
-          ? _HistoryStorageError(onRetry: _loadHistory)
+          ? StorageReadErrorView(
+              message: "L'historique enregistré n'a pas pu être lu.",
+              onRetry: _loadHistory,
+            )
           : Column(
               children: [
-                if (_storageWarning) const _HistoryStorageWarning(),
+                if (_storageWarning)
+                  const StorageReadWarningBanner(
+                    message:
+                        "Certaines séances de l'historique n'ont pas pu être "
+                        "lues. La suppression est désactivée pour protéger "
+                        "les données.",
+                  ),
                 Expanded(
                   child: _allEntries.isEmpty
                       ? const Center(
@@ -237,43 +247,6 @@ class _HistoryEntryCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _HistoryStorageWarning extends StatelessWidget {
-  const _HistoryStorageWarning();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      color: Theme.of(context).colorScheme.errorContainer,
-      padding: const EdgeInsets.all(12),
-      child: const Text(
-        "Certaines séances de l'historique n'ont pas pu être lues. "
-        "La suppression est désactivée pour protéger les données.",
-      ),
-    );
-  }
-}
-
-class _HistoryStorageError extends StatelessWidget {
-  const _HistoryStorageError({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text("L'historique enregistré n'a pas pu être lu."),
-          const SizedBox(height: 12),
-          FilledButton(onPressed: onRetry, child: const Text("Réessayer")),
-        ],
       ),
     );
   }

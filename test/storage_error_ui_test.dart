@@ -52,6 +52,23 @@ void main() {
         find.byType(FloatingActionButton),
       );
       expect(addButton.onPressed, isNull);
+
+      await tester.tap(find.text('Séance valide'));
+      await tester.pump();
+      expect(
+        tester
+            .widget<IconButton>(find.widgetWithIcon(IconButton, Icons.copy))
+            .onPressed,
+        isNull,
+      );
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.widgetWithText(OutlinedButton, 'Éditer'),
+            )
+            .onPressed,
+        isNull,
+      );
     },
   );
 
@@ -120,6 +137,15 @@ void main() {
     expect(
       (await SharedPreferences.getInstance()).getString('session_checkpoint'),
       'sensitive-checkpoint-json',
+    );
+
+    await tester.tap(find.text('Séance checkpoint'));
+    await tester.pump();
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Commencer'))
+          .onPressed,
+      isNull,
     );
   });
 }
