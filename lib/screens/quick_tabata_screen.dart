@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../models/exercise_group.dart';
+import '../models/session_step.dart';
 import '../models/training.dart';
 import '../models/training_item.dart';
 import '../services/session_controller.dart';
 import '../utils/formatters.dart';
+import '../widgets/contextual_help_button.dart';
 import '../widgets/duration_minutes_seconds_picker.dart';
 import 'training_session.dart';
 
@@ -57,18 +59,16 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
     return (parsed == null || parsed < 1) ? 1 : parsed;
   }
 
-  // (work + pause) x répétitions, comme demandé.
-  Duration get _totalDuration =>
-      (_workDuration + _pauseDuration) * _repetitions;
+  String get _trainingName => _nameController.text.trim().isEmpty
+      ? _defaultName
+      : _nameController.text.trim();
 
-  void _start() {
+  Training _buildQuickTraining() {
     // Valeur saisie, ou "Quick Tabata" si le champ a été vidé — couvre
     // aussi bien "jamais modifié" que "modifié puis effacé", sans jamais
     // bloquer l'utilisateur avec un message d'erreur pour un flux qui se
     // veut rapide.
-    final name = _nameController.text.trim().isEmpty
-        ? _defaultName
-        : _nameController.text.trim();
+    final name = _trainingName;
 
     final group = ExerciseGroup(
       id: 'quick_group_${DateTime.now().microsecondsSinceEpoch}',
@@ -90,12 +90,21 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
 
     // Séance générée entièrement en mémoire : jamais écrite dans
     // TrainingStorage, donc jamais visible dans la liste des séances.
-    final quickTraining = Training(
+    return Training(
       id: 'quick_${DateTime.now().microsecondsSinceEpoch}',
       name: name,
       groups: [group],
       createdAt: DateTime.now(),
     );
+  }
+
+  Duration? get _estimatedDuration =>
+      estimatePlannedDuration(_buildQuickTraining());
+
+  void _start() {
+    // La séance lancée est construite par la même méthode que celle utilisée
+    // pour l'estimation, afin que leurs structures restent alignées.
+    final quickTraining = _buildQuickTraining();
 
     // Lance directement le moteur d'exécution existant, exactement comme
     // pour une séance classique — aucune logique spécifique ajoutée.
@@ -112,6 +121,8 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final estimatedDuration = _estimatedDuration;
+
     return Scaffold(
       appBar: AppBar(title: const Text("Quick Tabata")),
       body: SingleChildScrollView(
@@ -173,12 +184,34 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 12,
+                  runSpacing: 8,
                   children: [
-                    const Text("Temps total estimé"),
+                    const Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text("Temps total estimé"),
+                        ContextualHelpButton(
+                          title: "À propos de l'estimation",
+                          tooltip: "Informations sur la durée estimée",
+                          content: Text(
+                            "Cette estimation correspond à la durée "
+                            "programmée de la séance. Les pauses "
+                            "intermédiaires sont comptabilisées, mais la "
+                            "dernière pause de la séance n'est pas exécutée. "
+                            "Les pauses manuelles et la navigation pendant "
+                            "la séance ne sont pas incluses.",
+                          ),
+                        ),
+                      ],
+                    ),
                     Text(
-                      formatDuration(_totalDuration),
+                      estimatedDuration == null
+                          ? "Non estimable"
+                          : formatDuration(estimatedDuration),
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,

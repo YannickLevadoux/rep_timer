@@ -52,3 +52,21 @@ List<SessionStep> buildSessionSteps(Training training) {
 
   return steps;
 }
+
+/// Calcule la durée programmée d'une séance à partir de la séquence exacte
+/// produite par [buildSessionSteps].
+///
+/// Une séance vide a une durée programmée nulle. En revanche, dès qu'une
+/// étape n'a pas de durée fixe, la durée complète ne peut pas être estimée et
+/// la fonction retourne `null`.
+Duration? estimatePlannedDuration(Training training) {
+  var total = Duration.zero;
+
+  for (final step in buildSessionSteps(training)) {
+    final duration = step.item.duration;
+    if (duration == null) return null;
+    total += duration;
+  }
+
+  return total;
+}
