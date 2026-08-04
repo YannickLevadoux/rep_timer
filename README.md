@@ -128,18 +128,20 @@ flowchart LR
     A[Issue avec label ready]
     B[Push sur une branche conforme]
     C[Issue avec label in-progress]
-    D[Pull Request vers main]
+    D[Pull Request créée ou vérifiée vers main]
     E[Validation et APK debug]
     F[Merge]
     G[Issue fermée]
 
-    A --> B --> C --> D --> E --> F
+    A --> B
+    B --> C
+    B --> D --> E --> F
     F -->|Close ou Closes présent| G
 ```
 
 Les automatisations sont réparties entre quatre workflows :
 
-- `issue-lifecycle.yml` gère la convention des branches, les labels et la liaison entre les Pull Requests et les issues ;
+- `issue-lifecycle.yml` gère la convention des branches, les labels, la création des Pull Requests et leur liaison avec les issues ;
 - `flutter-validate.yml` centralise les contrôles Flutter réutilisés par la CI et les releases ;
 - `ci.yml` valide les Pull Requests vers `main` et construit un APK debug ;
 - `release.yml` construit et publie un APK signé lors de l'envoi d'un tag `v*`.
@@ -167,36 +169,66 @@ hotfix/85-crash-startup
 clean/76-refacto-whatever
 ```
 
-Le workflow de cycle de vie surveille les pushes sur ces quatre familles de branches. Il vérifie leur nom avec l'expression `<type>/<numéro>-<description>` et échoue si le numéro d'issue ne peut pas être extrait. La même convention est contrôlée lors de l'ouverture et de la fusion d'une Pull Request, ainsi que lors de la suppression d'une branche.
+Le workflow de cycle de vie surveille uniquement les pushes sur ces quatre familles de branches. Il vérifie leur nom avec l'expression `<type>/<numéro>-<description>` et échoue si le nom complet n'est pas conforme. Les autres branches ne bénéficient pas de cette automatisation et ne sont pas considérées comme des erreurs.
+
+Lors de la fusion d'une Pull Request ou de la suppression d'une branche, le traitement est exécuté uniquement si une issue peut être extraite d'un nom conforme. Dans le cas contraire, le workflow publie une information puis termine sans erreur. Les branches Renovate sont exclues du cycle de vie.
 
 ### Cycle de vie d'une issue
 
 Une issue prête à être développée doit d'abord porter le label `ready`.
 
-Lors d'un push sur une branche conforme :
+Au premier push sur une branche conforme, le job `sync-issue-and-pr` :
 
 - le numéro de l'issue est extrait du nom de la branche ;
+- le label `in-progress` est ajouté ;
 - le label `ready` est supprimé ;
-- le label `in-progress` est ajouté.
+- une Pull Request est créée vers `main`, avec le titre `#<issue> - <titre de l'issue>`.
 
-L'opération est idempotente si l'issue porte déjà le label `in-progress`. En revanche, le workflow échoue si l'issue ne possède ni `ready` ni `in-progress`.
+L'issue doit être ouverte et porter `ready` ou `in-progress`. Le workflow échoue si ces préconditions ne sont pas respectées.
 
-À l'ouverture d'une Pull Request, le workflow ajoute automatiquement la directive suivante au début de sa description si elle n'est pas déjà présente :
+La description d'une Pull Request créée par le workflow contient :
 
 ```text
 Closes #<issue>
+
+> 🤖 Pull request créée automatiquement par GitHub Actions.
 ```
+
+À chaque push suivant, le workflow vérifie de manière idempotente le label, la Pull Request vers `main` et la directive `Closes #<issue>`. Si tous les éléments sont déjà présents, il ne les modifie pas et publie simplement leur état dans GitHub Actions.
+
+Si une Pull Request vers `main` a été créée manuellement, le workflow conserve sa description et ajoute uniquement `Closes #<issue>` si nécessaire. La mention de création automatique n'est jamais ajoutée à une Pull Request existante et ne peut donc pas être dupliquée lors des pushes suivants.
 
 Lors de la fusion de la Pull Request :
 
 - le label `in-progress` est retiré ;
 - l'issue est fermée si la description ou un commentaire de la Pull Request contient `Close #<issue>` ou `Closes #<issue>`, sans distinction de casse.
 
-Lorsqu'une branche est supprimée, le label `in-progress` est retiré si l'issue associée est encore ouverte. Les actions du workflow sont également publiées sous forme d'annotations et de tableaux récapitulatifs dans GitHub Actions.
+Lorsqu'une branche est supprimée, le label `in-progress` est retiré si l'issue associée est encore ouverte. Tous les changements, éléments déjà présents et traitements ignorés sont publiés dans les logs et dans des tableaux récapitulatifs GitHub Actions. Les véritables erreurs d'API ou d'exécution font échouer le job.
+
+### Authentification de la création des Pull Requests
+
+Le step `Sync issue and pull request` utilise un PAT fine-grained stocké dans le secret GitHub Actions `PR_AUTOMATION_TOKEN`. L'utilisation de ce PAT, plutôt que de `GITHUB_TOKEN`, permet aux validations de la Pull Request créée automatiquement de démarrer sans approbation manuelle du workflow.
+
+Le PAT doit être limité à ce dépôt et disposer uniquement des permissions suivantes :
+
+- `Issues` : `Read and write` ;
+- `Pull requests` : `Read and write`.
+
+Les jobs de fusion et de suppression continuent d'utiliser `GITHUB_TOKEN`. Le PAT ne doit jamais être ajouté directement au dépôt ; lors de son renouvellement, seule la valeur du secret `PR_AUTOMATION_TOKEN` doit être mise à jour dans `Settings` → `Secrets and variables` → `Actions`.
 
 ### Validation des Pull Requests
 
-Le workflow `ci.yml` s'exécute uniquement pour les Pull Requests ciblant `main`. Il appelle d'abord le workflow réutilisable `flutter-validate.yml`, qui effectue :
+Le workflow `ci.yml` s'exécute uniquement pour les Pull Requests ciblant `main`. Il appelle d'abord le workflow réutilisable `flutter-validate.yml`.
+
+Après le checkout, un rapport non bloquant recense les fichiers Dart suivis par Git sous `lib/`. Il affiche directement dans le résumé de l'Action trois tableaux triés par nombre de lignes :
+
+- plus de 300 lignes ;
+- entre 250 et 300 lignes ;
+- entre 200 et 249 lignes.
+
+Le comptage comprend les commentaires et les lignes vides. Les fichiers de tests et les fichiers générés ne sont pas inclus. Une erreur lors de la génération de ce rapport ne fait pas échouer la validation.
+
+Le workflow poursuit ensuite les contrôles Flutter :
 
 1. la récupération des dépendances avec `flutter pub get` ;
 2. la vérification du formatage avec `dart format --output=none --set-exit-if-changed .` ;
@@ -230,7 +262,7 @@ Le workflow `release.yml` se déclenche lors de l'envoi de tout tag correspondan
 
 Après validation, le workflow :
 
-1. configure Java 17 et Flutter 3.44.4 ;
+1. configure Java 17 et Flutter 3.44.8 ;
 2. récupère les dépendances ;
 3. décode le keystore Android depuis le secret `KEYSTORE_BASE64` ;
 4. génère `android/key.properties` à partir des secrets `KEYSTORE_PASSWORD`, `KEY_PASSWORD` et de la variable `KEY_ALIAS` ;
