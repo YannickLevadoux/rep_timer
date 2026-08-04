@@ -11,8 +11,6 @@ import 'editable_item_tile.dart';
 class GroupItemsList extends StatelessWidget {
   final List<TrainingItem> items;
   final void Function(int oldIndex, int newIndex) onReorder;
-  final void Function(int index) onMoveUp;
-  final void Function(int index) onMoveDown;
   final void Function(int index) onEdit;
   final void Function(int index) onDelete;
 
@@ -20,8 +18,6 @@ class GroupItemsList extends StatelessWidget {
     super.key,
     required this.items,
     required this.onReorder,
-    required this.onMoveUp,
-    required this.onMoveDown,
     required this.onEdit,
     required this.onDelete,
   });
@@ -42,10 +38,6 @@ class GroupItemsList extends StatelessWidget {
         return EditableItemTile(
           key: ValueKey(item),
           item: item,
-          isFirst: index == 0,
-          isLast: index == items.length - 1,
-          onMoveUp: () => onMoveUp(index),
-          onMoveDown: () => onMoveDown(index),
           onEdit: () => onEdit(index),
           onDelete: () => onDelete(index),
           dragIndex: index,

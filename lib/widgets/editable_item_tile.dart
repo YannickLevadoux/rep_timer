@@ -4,15 +4,11 @@ import '../models/training_item.dart';
 import '../utils/exercise_icons.dart';
 
 /// Ligne éditable d'un exercice ou d'une pause dans [GroupEditor] :
-/// aperçu (icône, nom, valeur), et actions (monter/descendre, modifier,
-/// supprimer, glisser pour réordonner). Extrait de group_editor.dart pour
+/// aperçu (icône, nom, valeur), et actions (modifier, supprimer, glisser
+/// pour réordonner). Extrait de group_editor.dart pour
 /// garder ce dernier concentré sur l'orchestration de l'écran.
 class EditableItemTile extends StatelessWidget {
   final TrainingItem item;
-  final bool isFirst;
-  final bool isLast;
-  final VoidCallback onMoveUp;
-  final VoidCallback onMoveDown;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final int dragIndex;
@@ -20,10 +16,6 @@ class EditableItemTile extends StatelessWidget {
   const EditableItemTile({
     super.key,
     required this.item,
-    required this.isFirst,
-    required this.isLast,
-    required this.onMoveUp,
-    required this.onMoveDown,
     required this.onEdit,
     required this.onDelete,
     required this.dragIndex,
@@ -33,78 +25,61 @@ class EditableItemTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 3),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(
-                item.type == ItemType.exercise
-                    ? iconForExercise(item.iconName)
-                    : Icons.timer,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    Text(
-                      _itemValue(item),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Icon(
+            item.type == ItemType.exercise
+                ? iconForExercise(item.iconName)
+                : Icons.timer,
+            size: 20,
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              _actionButton(
-                icon: Icons.arrow_upward,
-                tooltip: "Monter",
-                onPressed: isFirst ? null : onMoveUp,
-              ),
-              _actionButton(
-                icon: Icons.arrow_downward,
-                tooltip: "Descendre",
-                onPressed: isLast ? null : onMoveDown,
-              ),
-              _actionButton(
-                icon: Icons.edit,
-                tooltip: "Modifier",
-                onPressed: onEdit,
-              ),
-              _actionButton(
-                icon: Icons.delete,
-                tooltip: "Supprimer",
-                onPressed: onDelete,
-              ),
-              ReorderableDragStartListener(
-                index: dragIndex,
-                child: const Padding(
-                  padding: EdgeInsets.all(6),
-                  child: Icon(Icons.drag_handle, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
+                Text(
+                  _itemValue(item),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _actionButton(
+            icon: Icons.edit,
+            tooltip: "Modifier",
+            onPressed: onEdit,
+          ),
+          _actionButton(
+            icon: Icons.delete,
+            tooltip: "Supprimer",
+            onPressed: onDelete,
+          ),
+          Tooltip(
+            message: "Réordonner",
+            child: ReorderableDragStartListener(
+              index: dragIndex,
+              child: const SizedBox.square(
+                dimension: 48,
+                child: Icon(Icons.drag_handle, size: 28),
               ),
-            ],
+            ),
           ),
         ],
       ),

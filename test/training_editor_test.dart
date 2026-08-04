@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
@@ -5,8 +7,12 @@ import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/screens/group_editor.dart';
 import 'package:rep_timer/screens/training_editor.dart';
+import 'package:rep_timer/widgets/editable_item_tile.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   testWidgets('la séance affiche les groupes en lecture seule et repliables', (
     tester,
   ) async {
@@ -72,20 +78,97 @@ void main() {
 
     expect(find.text('Groupe libre'), findsNWidgets(2));
     expect(find.text('Répétitions : 2'), findsOneWidget);
+    expect(find.text('Squats'), findsNothing);
+    expect(find.text('Gainage'), findsNothing);
+    expect(find.byTooltip('Modifier'), findsNothing);
+    expect(find.byTooltip('Éditer le groupe'), findsNWidgets(2));
+    expect(find.byTooltip('Supprimer le groupe'), findsNWidgets(2));
+
+    await tester.tap(find.text('Jambes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Squats'), findsOneWidget);
     expect(find.text('12 répétitions'), findsOneWidget);
     expect(find.text('00:30'), findsOneWidget);
     expect(find.text('01:30'), findsOneWidget);
-    expect(find.text('Durée libre'), findsOneWidget);
-    expect(find.byTooltip('Modifier'), findsNothing);
+    expect(find.text('Gainage'), findsNothing);
+    expect(find.text('Groupe libre'), findsNWidgets(2));
 
     await tester.tap(find.text('Jambes'));
     await tester.pumpAndSettle();
 
     expect(find.text('Squats'), findsNothing);
-    expect(find.text('Gainage'), findsOneWidget);
-    expect(find.text('Groupe libre'), findsNWidgets(2));
-    expect(find.byTooltip('Éditer le groupe'), findsNWidgets(2));
-    expect(find.byTooltip('Supprimer le groupe'), findsNWidgets(2));
+    expect(find.text('Gainage'), findsNothing);
+  });
+
+  testWidgets(
+    'l’expansion est locale, ne salit pas la séance et repart repliée',
+    (tester) async {
+      final training = _training([
+        ExerciseGroup(
+          id: 'group',
+          name: 'Circuit',
+          items: [
+            TrainingItem(
+              type: ItemType.exercise,
+              name: 'Burpees',
+              repetitions: 8,
+            ),
+          ],
+        ),
+      ]);
+
+      await _pumpTrainingLauncher(tester, training);
+      await tester.tap(find.text('Ouvrir la séance'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Burpees'), findsNothing);
+      await tester.tap(find.text('Circuit'));
+      await tester.pumpAndSettle();
+      expect(find.text('Burpees'), findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Modifications non enregistrées'), findsNothing);
+      expect(find.text('Ouvrir la séance'), findsOneWidget);
+      expect(training.groups.single.expanded, isTrue);
+
+      await tester.tap(find.text('Ouvrir la séance'));
+      await tester.pumpAndSettle();
+      expect(find.text('Burpees'), findsNothing);
+    },
+  );
+
+  testWidgets('l’expansion n’est pas incluse dans la sauvegarde', (
+    tester,
+  ) async {
+    final group = ExerciseGroup(
+      id: 'group',
+      name: 'Circuit',
+      expanded: false,
+      items: [
+        TrainingItem(type: ItemType.exercise, name: 'Burpees', repetitions: 8),
+      ],
+    );
+    final training = _training([group]);
+
+    await _pumpTrainingLauncher(tester, training);
+    await tester.tap(find.text('Ouvrir la séance'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Circuit'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Enregistrer'));
+    await tester.pumpAndSettle();
+
+    final raw = (await SharedPreferences.getInstance()).getString('trainings');
+    final saved = jsonDecode(raw!) as List<dynamic>;
+    final savedTraining = saved.single as Map<String, dynamic>;
+    final savedGroups = savedTraining['groups'] as List<dynamic>;
+    final savedGroup = savedGroups.single as Map<String, dynamic>;
+
+    expect(savedGroup, isNot(contains('expanded')));
+    expect(group.expanded, isFalse);
   });
 
   testWidgets('ajouter, éditer et annuler un groupe reste transactionnel', (
@@ -107,8 +190,6 @@ void main() {
     ]);
 
     await _pumpTrainingEditor(tester, training);
-    await tester.tap(find.text('Initial'));
-    await tester.pumpAndSettle();
     expect(find.text('Élément'), findsNothing);
 
     await tester.tap(find.byTooltip('Éditer le groupe'));
@@ -171,9 +252,7 @@ void main() {
     expect(find.text('À supprimer'), findsNothing);
   });
 
-  testWidgets('l’éditeur gère répétitions, déplacements et suppression', (
-    tester,
-  ) async {
+  testWidgets('l’éditeur gère répétitions et suppression', (tester) async {
     ExerciseGroup? savedGroup;
     final original = ExerciseGroup(
       id: 'group',
@@ -198,8 +277,6 @@ void main() {
     expect(minus.onPressed, isNull);
 
     await tester.tap(find.byTooltip('Plus de répétitions'));
-    await tester.tap(find.byTooltip('Descendre').first);
-    await tester.pump();
 
     await tester.tap(find.byTooltip('Supprimer').first);
     await tester.pumpAndSettle();
@@ -216,10 +293,54 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(savedGroup!.rounds, 2);
-    expect(savedGroup!.items.single.name, 'Premier');
+    expect(savedGroup!.items.single.name, 'Second');
     expect(original.rounds, 1);
     expect(original.items.map((item) => item.name), ['Premier', 'Second']);
   });
+
+  testWidgets(
+    'un élément unique garde ses actions et une poignée accessible de 48 px',
+    (tester) async {
+      await _pumpGroupLauncher(
+        tester,
+        ExerciseGroup(
+          id: 'group',
+          name: 'Circuit',
+          items: [
+            TrainingItem(
+              type: ItemType.rest,
+              name: 'Pause',
+              duration: const Duration(seconds: 30),
+            ),
+          ],
+        ),
+        onResult: (_) {},
+      );
+      await tester.tap(find.text('Ouvrir'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EditableItemTile), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(EditableItemTile),
+          matching: find.text('Pause'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byTooltip('Monter'), findsNothing);
+      expect(find.byTooltip('Descendre'), findsNothing);
+      expect(find.byTooltip('Modifier'), findsOneWidget);
+      expect(find.byTooltip('Supprimer'), findsOneWidget);
+      expect(find.byTooltip('Réordonner'), findsOneWidget);
+
+      final dragHandle = find.byType(ReorderableDragStartListener);
+      expect(dragHandle, findsOneWidget);
+      expect(tester.getSize(dragHandle), const Size(48, 48));
+
+      final handleIcon = tester.widget<Icon>(find.byIcon(Icons.drag_handle));
+      expect(handleIcon.size, 28);
+    },
+  );
 
   testWidgets('les éléments peuvent être réordonnés par glisser-déposer', (
     tester,
@@ -265,8 +386,8 @@ void main() {
 
     expect(savedGroup!.items.map((item) => item.name), [
       'Second',
-      'Premier',
       'Troisième',
+      'Premier',
     ]);
   });
 
@@ -312,6 +433,30 @@ Training _training(List<ExerciseGroup> groups) {
 Future<void> _pumpTrainingEditor(WidgetTester tester, Training training) async {
   await tester.pumpWidget(
     MaterialApp(home: TrainingEditor(training: training)),
+  );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _pumpTrainingLauncher(
+  WidgetTester tester,
+  Training training,
+) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: Builder(
+          builder: (context) => FilledButton(
+            onPressed: () => Navigator.push<bool>(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TrainingEditor(training: training),
+              ),
+            ),
+            child: const Text('Ouvrir la séance'),
+          ),
+        ),
+      ),
+    ),
   );
   await tester.pumpAndSettle();
 }
