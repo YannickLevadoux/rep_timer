@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/screens/permissions_screen.dart';
 import 'package:rep_timer/screens/settings_screen.dart';
 import 'package:rep_timer/services/session_notification_permission_service.dart';
-import 'package:rep_timer/widgets/settings_section.dart';
+import 'package:rep_timer/widgets/settings/settings_sections.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -114,13 +114,16 @@ void main() {
     expect(find.text('Activer les notifications de séance'), findsNothing);
     expect(find.text('Autorisations'), findsNWidgets(2));
     expect(find.text('Notifications désactivées'), findsOneWidget);
-    final sectionTitles = tester
-        .widgetList<SettingsSection>(find.byType(SettingsSection))
-        .map((section) => section.title)
-        .toList();
+    final settingsList = tester.widget<ListView>(find.byType(ListView));
+    final settingsChildren =
+        (settingsList.childrenDelegate as SliverChildListDelegate).children;
     expect(
-      sectionTitles,
-      containsAllInOrder(['Import / Export', 'Autorisations', 'À propos']),
+      settingsChildren.map((child) => child.runtimeType),
+      containsAllInOrder([
+        TransferSettingsSection,
+        PermissionsSettingsSection,
+        AboutSettingsSection,
+      ]),
     );
 
     await tester.tap(
