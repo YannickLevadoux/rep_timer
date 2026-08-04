@@ -13,6 +13,14 @@ module.exports = function(core) {
   /**
    * Add an informational message to the logs and the Step Summary.
    */
+  function info(message) {
+    core.info(message);
+    summaryRows.push(["ℹ️", message]);
+  }
+
+  /**
+   * Add a warning message to the logs and the Step Summary.
+   */
   function warning(message) {
     core.warning(message);
     summaryRows.push(["ℹ️", message]);
@@ -91,6 +99,7 @@ module.exports = function(core) {
 
   return {
     notice,
+    info,
     warning,
     failure,
     writeSummary,

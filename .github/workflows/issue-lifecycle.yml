@@ -10,7 +10,6 @@ on:
 
   pull_request:
     types:
-      - opened
       - closed
 
   delete:
@@ -28,15 +27,14 @@ jobs:
 
   #
   # --------------------------------------------------------------------------
-  # mark-in-progress: when pushing a branch
-  # - Extract issue number : Check branch naming convention (issue number should be present) 
-  #     Fails if naming convention is not followed
-  # - Update issue labels : Update label of issue from ready => in-progress
-  #     Fails if issue does not have label ready or in-progress
+  # sync-issue-and-pr: when pushing a product branch
+  # - Validate the branch naming convention and extract the issue number
+  # - Move the issue from ready to in-progress
+  # - Create or verify a pull request to main with a closing directive
   # --------------------------------------------------------------------------
   #
 
-  mark-in-progress:
+  sync-issue-and-pr:
 
     if: github.event_name == 'push'
 
@@ -47,59 +45,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.1
 
-      - name: Extract issue number
-        id: extract
-        shell: bash
-        run: |
-          BRANCH="${GITHUB_REF_NAME}"
-          PATTERN='^(feature|bugfix|hotfix|clean)/([0-9]+)-.*$'
-
-          if [[ ! "$BRANCH" =~ $PATTERN ]]; then
-            MESSAGE="Branch '$BRANCH' does not follow the required naming convention."
-
-            echo "::error::$MESSAGE"
-
-            {
-              echo "## Issue lifecycle"
-              echo
-              echo "| Status | Action |"
-              echo "| ------ | ------ |"
-              echo "| ❌ | $MESSAGE |"
-              echo
-              echo "**Expected format:**"
-              echo
-              echo "- feature/33-my-feature"
-              echo "- bugfix/61-my-bugfix"
-              echo "- hotfix/85-my-hotfix"
-              echo "- clean/76-my-cleanup"
-            } >> "$GITHUB_STEP_SUMMARY"
-
-            exit 1
-          fi
-
-          ISSUE="${BASH_REMATCH[2]}"
-
-          echo "issue=$ISSUE" >> "$GITHUB_OUTPUT"
-
-          echo "::notice::Branch '$BRANCH' is linked to issue #$ISSUE."
-
-          {
-            echo "## Issue lifecycle"
-            echo
-            echo "| Status | Action |"
-            echo "| ------ | ------ |"
-            echo "| ✅ | Branch '$BRANCH' linked to issue #$ISSUE |"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Update issue labels
+      - name: Sync issue and pull request
         uses: actions/github-script@v9.0.0
         with:
+          github-token: ${{ secrets.PR_AUTOMATION_TOKEN }}
           script: |
             const path = require("path");
 
             const {
               notice,
-              warning,
+              info,
               failure,
               writeSummary,
             } = require(path.join(
@@ -109,33 +64,56 @@ jobs:
               "workflow-utils.js"
             ))(core);
 
-            const issue = Number("${{ steps.extract.outputs.issue }}");
             const { owner, repo } = context.repo;
+            const branch = context.ref.replace("refs/heads/", "");
+            const match = branch.match(
+              /^(feature|bugfix|hotfix|clean)\/([0-9]+)-.+$/
+            );
 
-            const { data } = await github.rest.issues.get({
-              owner,
-              repo,
-              issue_number: issue,
-            });
+            let summaryTitle = "Issue lifecycle";
 
-            const labels = data.labels.map(label => label.name);
+            try {
+              if (!match) {
+                failure(
+                  `Branch '${branch}' does not follow the required naming convention.`
+                );
+                core.setFailed("Invalid branch name.");
+                return;
+              }
 
-            const hasReady = labels.includes("ready");
-            const hasInProgress = labels.includes("in-progress");
+              const issue = Number(match[2]);
+              summaryTitle = `Issue lifecycle - Issue #${issue}`;
 
-            if (hasReady) {
+              info(`Branch '${branch}' is linked to issue #${issue}.`);
 
-              await github.rest.issues.removeLabel({
+              const { data: issueData } = await github.rest.issues.get({
                 owner,
                 repo,
                 issue_number: issue,
-                name: "ready",
               });
 
-              notice(`Issue #${issue}: removed label 'ready'.`);
+              if (issueData.state !== "open") {
+                failure(`Issue #${issue}: expected an open issue.`);
+                core.setFailed("Invalid issue state.");
+                return;
+              }
+
+              const labels = issueData.labels.map(label =>
+                typeof label === "string" ? label : label.name
+              );
+
+              const hasReady = labels.includes("ready");
+              const hasInProgress = labels.includes("in-progress");
+
+              if (!hasReady && !hasInProgress) {
+                failure(
+                  `Issue #${issue}: expected label 'ready' or 'in-progress'.`
+                );
+                core.setFailed("Invalid issue state.");
+                return;
+              }
 
               if (!hasInProgress) {
-
                 await github.rest.issues.addLabels({
                   owner,
                   repo,
@@ -144,104 +122,89 @@ jobs:
                 });
 
                 notice(`Issue #${issue}: added label 'in-progress'.`);
-
               } else {
-
-                warning(`Issue #${issue}: label 'in-progress' already exists.`);
-
+                info(`Issue #${issue}: label 'in-progress' already exists.`);
               }
 
-              await writeSummary(`Issue lifecycle - Issue #${issue}`);
-              return;
+              if (hasReady) {
+                await github.rest.issues.removeLabel({
+                  owner,
+                  repo,
+                  issue_number: issue,
+                  name: "ready",
+                });
+
+                notice(`Issue #${issue}: removed label 'ready'.`);
+              }
+
+              const { data: pullRequests } = await github.rest.pulls.list({
+                owner,
+                repo,
+                state: "open",
+                head: `${owner}:${branch}`,
+                base: "main",
+                per_page: 100,
+              });
+
+              let pullRequest = pullRequests[0];
+
+              if (!pullRequest) {
+                const { data: createdPullRequest } = await github.rest.pulls.create({
+                  owner,
+                  repo,
+                  title: `#${issue} - ${issueData.title}`,
+                  head: branch,
+                  base: "main",
+                  body: `Closes #${issue}\n\n> 🤖 Pull request créée automatiquement par GitHub Actions.`,
+                });
+
+                pullRequest = createdPullRequest;
+                notice(
+                  `Pull request #${pullRequest.number}: created towards 'main'.`
+                );
+                notice(
+                  `Pull request #${pullRequest.number}: added 'Closes #${issue}'.`
+                );
+              } else {
+                info(
+                  `Pull request #${pullRequest.number}: already targets 'main'.`
+                );
+
+                const closeRegex = new RegExp(
+                  `\\bcloses\\s+#${issue}\\b`,
+                  "i"
+                );
+
+                if (closeRegex.test(pullRequest.body ?? "")) {
+                  info(
+                    `Pull request #${pullRequest.number}: already references issue #${issue}.`
+                  );
+                } else {
+                  const currentBody = pullRequest.body ?? "";
+                  const body = currentBody.trim()
+                    ? `Closes #${issue}\n\n${currentBody}`
+                    : `Closes #${issue}`;
+
+                  await github.rest.pulls.update({
+                    owner,
+                    repo,
+                    pull_number: pullRequest.number,
+                    body,
+                  });
+
+                  notice(
+                    `Pull request #${pullRequest.number}: added 'Closes #${issue}'.`
+                  );
+                }
+              }
+            } catch (error) {
+              failure(
+                `Issue and pull request synchronization failed: ${error.message}`
+              );
+              core.setFailed(error.message);
+            } finally {
+              await writeSummary(summaryTitle);
             }
-
-            if (hasInProgress) {
-
-              warning(`Issue #${issue}: already in progress.`);
-
-              await writeSummary(`Issue lifecycle - Issue #${issue}`);
-              return;
-            }
-
-            failure(`Issue #${issue}: expected label 'ready' or 'in-progress'.`);
-
-            await writeSummary(`Issue lifecycle - Issue #${issue}`);
-
-            core.setFailed("Invalid issue state.");
-
-  #
-  # --------------------------------------------------------------------------
-  # update-pr: when a PR is opened
-  # - Add mention "Closes #${issue} in PR description if not already present
-  # - Add link between PR and issue (TODO!) 
-  # --------------------------------------------------------------------------
-  #
-
-  # Renovate branches contain dependency updates and are not linked to product issues.
-  update-pr:
-
-    if: >
-      github.event_name == 'pull_request' &&
-      github.event.action == 'opened' &&
-      !startsWith(github.event.pull_request.head.ref, 'renovate/')
-
-    runs-on: ubuntu-latest
-
-    steps:
-
-    - name: Checkout
-      uses: actions/checkout@v7.0.1
-
-    - name: Update PR description
-      uses: actions/github-script@v9.0.0
-      with:
-        script: |
-          const path = require("path");
-
-          const {
-            notice,
-            warning,
-            failure,
-            writeSummary,
-          } = require(path.join(
-            process.env.GITHUB_WORKSPACE,
-            ".github",
-            "scripts",
-            "workflow-utils.js"
-          ))(core);
-
-          const branch = context.payload.pull_request.head.ref;
-
-          const match = branch.match(/^(feature|bugfix|hotfix|clean)\/([0-9]+)-/);
-
-          if (!match) {
-            failure(`Branch '${branch}' does not follow the required naming convention.`);
-            await writeSummary("Issue lifecycle");
-            core.setFailed("Invalid branch name.");
-            return;
-          }
-
-          const issue = match[2];
-
-          let body = context.payload.pull_request.body ?? "";
-
-          if (body.includes(`Closes #${issue}`)) {
-            warning(`PR already references issue #${issue}.`);
-            await writeSummary(`Issue lifecycle - Issue #${issue}`);
-            return;
-          }
-
-          body = `Closes #${issue}\n\n${body}`;
-
-          await github.rest.pulls.update({
-            ...context.repo,
-            pull_number: context.payload.pull_request.number,
-            body,
-          });
-
-          notice(`PR description updated with 'Closes #${issue}'.`);
-
-          await writeSummary(`Issue lifecycle - Issue #${issue}`);
 
   #
   # --------------------------------------------------------------------------
@@ -267,7 +230,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v7.0.1
 
-    - name: Remove in-progress label
+    - name: Complete linked issue
       uses: actions/github-script@v9.0.0
       with:
         script: |
@@ -275,7 +238,7 @@ jobs:
 
           const {
             notice,
-            warning,
+            info,
             failure,
             writeSummary,
           } = require(path.join(
@@ -286,65 +249,86 @@ jobs:
           ))(core);
 
           const branch = context.payload.pull_request.head.ref;
+          const match = branch.match(
+            /^(feature|bugfix|hotfix|clean)\/([0-9]+)-.+$/
+          );
 
-          const match = branch.match(/^(feature|bugfix|hotfix|clean)\/([0-9]+)-/);
+          let summaryTitle = "Issue lifecycle";
 
-          if (!match) {
-            failure(`Branch '${branch}' does not follow the required naming convention.`);
-            await writeSummary("Issue lifecycle");
-            core.setFailed("Invalid branch name.");
-            return;
-          }
+          try {
+            if (!match) {
+              info(`Branch '${branch}': no linked issue, nothing to do.`);
+              return;
+            }
 
-          const issue = Number(match[2]);
+            const issue = Number(match[2]);
+            summaryTitle = `Issue lifecycle - Issue #${issue}`;
 
-          const { data } = await github.rest.issues.get({
-            ...context.repo,
-            issue_number: issue,
-          });
+            info(`Branch '${branch}' is linked to issue #${issue}.`);
 
-          const labels = data.labels.map(label => label.name);
-
-          if (!labels.includes("in-progress")) {
-            warning(`Issue #${issue}: label 'in-progress' is already absent.`);
-          } else {
-            await github.rest.issues.removeLabel({
+            const { data: issueData } = await github.rest.issues.get({
               ...context.repo,
               issue_number: issue,
-              name: "in-progress",
             });
 
-            notice(`Issue #${issue}: removed label 'in-progress'.`);
-          }
-
-          const closeRegex = new RegExp(`\\bcloses?\\s+#${issue}\\b`, "i");
-
-          let shouldClose = closeRegex.test(context.payload.pull_request.body ?? "");
-
-          if (!shouldClose) {
-            const { data: comments } = await github.rest.issues.listComments({
-              ...context.repo,
-              issue_number: context.payload.pull_request.number,
-            });
-
-            shouldClose = comments.some(comment =>
-              closeRegex.test(comment.body ?? "")
+            const labels = issueData.labels.map(label =>
+              typeof label === "string" ? label : label.name
             );
+
+            if (!labels.includes("in-progress")) {
+              info(`Issue #${issue}: label 'in-progress' is already absent.`);
+            } else {
+              await github.rest.issues.removeLabel({
+                ...context.repo,
+                issue_number: issue,
+                name: "in-progress",
+              });
+
+              notice(`Issue #${issue}: removed label 'in-progress'.`);
+            }
+
+            const closeRegex = new RegExp(`\\bcloses?\\s+#${issue}\\b`, "i");
+
+            let shouldClose = closeRegex.test(
+              context.payload.pull_request.body ?? ""
+            );
+
+            if (!shouldClose) {
+              const comments = await github.paginate(
+                github.rest.issues.listComments,
+                {
+                  ...context.repo,
+                  issue_number: context.payload.pull_request.number,
+                  per_page: 100,
+                }
+              );
+
+              shouldClose = comments.some(comment =>
+                closeRegex.test(comment.body ?? "")
+              );
+            }
+
+            if (!shouldClose) {
+              info(
+                `Issue #${issue}: no 'Close #${issue}' or 'Closes #${issue}' directive found, nothing to close.`
+              );
+            } else if (issueData.state === "closed") {
+              info(`Issue #${issue}: already closed.`);
+            } else {
+              await github.rest.issues.update({
+                ...context.repo,
+                issue_number: issue,
+                state: "closed",
+              });
+
+              notice(`Issue #${issue}: closed.`);
+            }
+          } catch (error) {
+            failure(`Linked issue completion failed: ${error.message}`);
+            core.setFailed(error.message);
+          } finally {
+            await writeSummary(summaryTitle);
           }
-
-          if (shouldClose) {
-            await github.rest.issues.update({
-              ...context.repo,
-              issue_number: issue,
-              state: "closed",
-            });
-
-            notice(`Issue #${issue}: closed.`);
-          } else {
-            warning(`Issue #${issue}: no 'Close #${issue}' or 'Closes #${issue}' directive found in PR description or comments.`);
-          }
-
-          await writeSummary(`Issue lifecycle - Issue #${issue}`);
 
   #
   # --------------------------------------------------------------------------
@@ -367,7 +351,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v7.0.1
 
-    - name: Remove in-progress label
+    - name: Clean up linked issue
       uses: actions/github-script@v9.0.0
       with:
         script: |
@@ -375,7 +359,7 @@ jobs:
 
           const {
             notice,
-            warning,
+            info,
             failure,
             writeSummary,
           } = require(path.join(
@@ -386,43 +370,54 @@ jobs:
           ))(core);
 
           const branch = context.payload.ref;
+          const match = branch.match(
+            /^(feature|bugfix|hotfix|clean)\/([0-9]+)-.+$/
+          );
 
-          const match = branch.match(/^(feature|bugfix|hotfix|clean)\/([0-9]+)-/);
+          let summaryTitle = "Issue lifecycle";
 
-          if (!match) {
-            failure(`Branch '${branch}' does not follow the required naming convention.`);
-            await writeSummary("Issue lifecycle");
-            core.setFailed("Invalid branch name.");
-            return;
+          try {
+            if (!match) {
+              info(`Branch '${branch}': no linked issue, nothing to do.`);
+              return;
+            }
+
+            const issue = Number(match[2]);
+            summaryTitle = `Issue lifecycle - Issue #${issue}`;
+
+            info(`Branch '${branch}' is linked to issue #${issue}.`);
+
+            const { data: issueData } = await github.rest.issues.get({
+              ...context.repo,
+              issue_number: issue,
+            });
+
+            if (issueData.state !== "open") {
+              info(`Issue #${issue}: already closed, nothing to clean up.`);
+              return;
+            }
+
+            const labels = issueData.labels.map(label =>
+              typeof label === "string" ? label : label.name
+            );
+
+            if (!labels.includes("in-progress")) {
+              info(
+                `Issue #${issue}: label 'in-progress' is already absent, nothing to clean up.`
+              );
+              return;
+            }
+
+            await github.rest.issues.removeLabel({
+              ...context.repo,
+              issue_number: issue,
+              name: "in-progress",
+            });
+
+            notice(`Issue #${issue}: removed label 'in-progress'.`);
+          } catch (error) {
+            failure(`Linked issue cleanup failed: ${error.message}`);
+            core.setFailed(error.message);
+          } finally {
+            await writeSummary(summaryTitle);
           }
-
-          const issue = Number(match[2]);
-
-          const { data } = await github.rest.issues.get({
-            ...context.repo,
-            issue_number: issue,
-          });
-
-          if (data.state !== "open") {
-            warning(`Issue #${issue}: already closed.`);
-            await writeSummary(`Issue lifecycle - Issue #${issue}`);
-            return;
-          }
-
-          const labels = data.labels.map(label => label.name);
-
-          if (!labels.includes("in-progress")) {
-            warning(`Issue #${issue}: label 'in-progress' is already absent.`);
-            await writeSummary(`Issue lifecycle - Issue #${issue}`);
-            return;
-          }
-
-          await github.rest.issues.removeLabel({
-            ...context.repo,
-            issue_number: issue,
-            name: "in-progress",
-          });
-
-          notice(`Issue #${issue}: removed label 'in-progress'.`);
-
-          await writeSummary(`Issue lifecycle - Issue #${issue}`);
