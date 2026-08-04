@@ -64,25 +64,13 @@ class EditingSettingsSection extends StatelessWidget {
 
 class NotificationSettingsSection extends StatelessWidget {
   final NotificationMode notificationMode;
-  final SessionNotificationPermissionStatus? permissionStatus;
   final VoidCallback onCycleMode;
-  final VoidCallback onOpenPermissions;
 
   const NotificationSettingsSection({
     super.key,
     required this.notificationMode,
-    required this.permissionStatus,
     required this.onCycleMode,
-    required this.onOpenPermissions,
   });
-
-  String? get _permissionLabel => switch (permissionStatus) {
-    SessionNotificationPermissionStatus.granted => 'Configurées',
-    SessionNotificationPermissionStatus.denied ||
-    SessionNotificationPermissionStatus.permanentlyDenied =>
-      'Notifications désactivées',
-    SessionNotificationPermissionStatus.unavailable || null => null,
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -102,6 +90,34 @@ class NotificationSettingsSection extends StatelessWidget {
             onPressed: onCycleMode,
           ),
         ),
+      ],
+    );
+  }
+}
+
+class PermissionsSettingsSection extends StatelessWidget {
+  final SessionNotificationPermissionStatus? permissionStatus;
+  final VoidCallback onOpenPermissions;
+
+  const PermissionsSettingsSection({
+    super.key,
+    required this.permissionStatus,
+    required this.onOpenPermissions,
+  });
+
+  String? get _permissionLabel => switch (permissionStatus) {
+    SessionNotificationPermissionStatus.granted => 'Configurées',
+    SessionNotificationPermissionStatus.denied ||
+    SessionNotificationPermissionStatus.permanentlyDenied =>
+      'Notifications désactivées',
+    SessionNotificationPermissionStatus.unavailable || null => null,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return SettingsSection(
+      title: 'Autorisations',
+      children: [
         Semantics(
           button: true,
           label: _permissionLabel == null

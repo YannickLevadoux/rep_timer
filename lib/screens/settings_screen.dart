@@ -218,14 +218,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           NotificationSettingsSection(
             notificationMode: _notificationMode,
-            permissionStatus: _sessionPermissionStatus,
             onCycleMode: _cycleNotificationMode,
-            onOpenPermissions: _openPermissions,
           ),
           TransferSettingsSection(
             busy: _busy,
             onImport: _handleImport,
             onExport: _handleExport,
+          ),
+          PermissionsSettingsSection(
+            permissionStatus: _sessionPermissionStatus,
+            onOpenPermissions: _openPermissions,
           ),
           AboutSettingsSection(onOpenAbout: _showAboutDialog),
         ],

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/screens/permissions_screen.dart';
 import 'package:rep_timer/screens/settings_screen.dart';
 import 'package:rep_timer/services/session_notification_permission_service.dart';
+import 'package:rep_timer/widgets/settings_section.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -111,10 +112,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Activer les notifications de séance'), findsNothing);
-    expect(find.text('Autorisations'), findsOneWidget);
+    expect(find.text('Autorisations'), findsNWidgets(2));
     expect(find.text('Notifications désactivées'), findsOneWidget);
+    final sectionTitles = tester
+        .widgetList<SettingsSection>(find.byType(SettingsSection))
+        .map((section) => section.title)
+        .toList();
+    expect(
+      sectionTitles,
+      containsAllInOrder(['Import / Export', 'Autorisations', 'À propos']),
+    );
 
-    await tester.tap(find.text('Autorisations'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(ListTile),
+        matching: find.text('Autorisations'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.byType(PermissionsScreen), findsOneWidget);
   });
