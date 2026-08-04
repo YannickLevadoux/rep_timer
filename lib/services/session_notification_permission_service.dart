@@ -1,21 +1,35 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 const String _channelId = 'session_progress';
 const String _channelName = 'Progression de la séance';
+const MethodChannel _permissionsChannel = MethodChannel(
+  'com.yannicklevadoux.reptimer/permissions',
+);
 
-/// Accès Android minimal requis par la politique de permissions. Cette
-/// interface garde la décision de demander une permission testable sans canal
-/// de plateforme.
-abstract interface class SessionNotificationPermissionPlatform {
-  void initialize();
-  Future<bool> hasNotificationPermission();
-  Future<void> requestNotificationPermission();
-  Future<bool> isIgnoringBatteryOptimizations();
-  Future<void> requestIgnoreBatteryOptimization();
+enum SessionNotificationPermissionStatus {
+  granted,
+  denied,
+  permanentlyDenied,
+  unavailable,
 }
 
-/// Gère l'initialisation du canal Android et les permissions nécessaires au
-/// Foreground Service de séance.
+enum BatteryOptimizationStatus { optimized, exempt, unavailable }
+
+/// Toutes les interactions système sont regroupées derrière ce contrat afin
+/// que les parcours puissent être testés sans ouvrir d'interface Android.
+abstract interface class SessionNotificationPermissionPlatform {
+  void initialize();
+  Future<SessionNotificationPermissionStatus> notificationPermissionStatus();
+  Future<SessionNotificationPermissionStatus> requestNotificationPermission();
+  Future<bool> openNotificationSettings();
+  Future<BatteryOptimizationStatus> batteryOptimizationStatus();
+  Future<void> requestBatteryOptimizationExemption();
+}
+
+/// Initialise le canal et expose séparément chaque lecture ou action liée aux
+/// notifications de séance. Une erreur de plateforme est toujours convertie
+/// en état exploitable : elle ne remonte jamais jusqu'au parcours de séance.
 class SessionNotificationPermissionService {
   factory SessionNotificationPermissionService({
     SessionNotificationPermissionPlatform? platform,
@@ -26,34 +40,71 @@ class SessionNotificationPermissionService {
   SessionNotificationPermissionService._(this._platform);
 
   final SessionNotificationPermissionPlatform _platform;
-  static bool _autoPermissionsRequested = false;
 
-  void ensureInitialized() => _platform.initialize();
-
-  /// Best effort : un refus ne doit jamais interrompre la séance.
-  Future<void> requestPermissions() async {
-    ensureInitialized();
-
+  bool ensureInitialized() {
     try {
-      if (!await _platform.hasNotificationPermission()) {
-        await _platform.requestNotificationPermission();
-      }
-    } catch (_) {}
-
-    try {
-      if (!await _platform.isIgnoringBatteryOptimizations()) {
-        await _platform.requestIgnoreBatteryOptimization();
-      }
-    } catch (_) {}
+      _platform.initialize();
+      return true;
+    } on Object {
+      return false;
+    }
   }
 
-  /// Déclenche la demande implicite une seule fois pendant la vie du
-  /// processus. L'écran Paramètres peut toujours relancer explicitement
-  /// [requestPermissions].
-  Future<void> ensureAutoPermissionsRequested() async {
-    if (_autoPermissionsRequested) return;
-    _autoPermissionsRequested = true;
-    await requestPermissions();
+  Future<SessionNotificationPermissionStatus>
+  notificationPermissionStatus() async {
+    ensureInitialized();
+    try {
+      return await _platform.notificationPermissionStatus();
+    } on Object {
+      return SessionNotificationPermissionStatus.unavailable;
+    }
+  }
+
+  Future<SessionNotificationPermissionStatus>
+  requestNotificationPermission() async {
+    final current = await notificationPermissionStatus();
+    if (current == SessionNotificationPermissionStatus.granted ||
+        current == SessionNotificationPermissionStatus.permanentlyDenied ||
+        current == SessionNotificationPermissionStatus.unavailable) {
+      return current;
+    }
+
+    try {
+      return await _platform.requestNotificationPermission();
+    } on Object {
+      return SessionNotificationPermissionStatus.unavailable;
+    }
+  }
+
+  Future<bool> openNotificationSettings() async {
+    ensureInitialized();
+    try {
+      return await _platform.openNotificationSettings();
+    } on Object {
+      return false;
+    }
+  }
+
+  Future<BatteryOptimizationStatus> batteryOptimizationStatus() async {
+    ensureInitialized();
+    try {
+      return await _platform.batteryOptimizationStatus();
+    } on Object {
+      return BatteryOptimizationStatus.unavailable;
+    }
+  }
+
+  Future<BatteryOptimizationStatus>
+  requestBatteryOptimizationExemption() async {
+    final current = await batteryOptimizationStatus();
+    if (current != BatteryOptimizationStatus.optimized) return current;
+
+    try {
+      await _platform.requestBatteryOptimizationExemption();
+      return await batteryOptimizationStatus();
+    } on Object {
+      return BatteryOptimizationStatus.unavailable;
+    }
   }
 }
 
@@ -92,21 +143,42 @@ class _ForegroundTaskPermissionPlatform
   }
 
   @override
-  Future<bool> hasNotificationPermission() async =>
-      await FlutterForegroundTask.checkNotificationPermission() ==
-      NotificationPermission.granted;
+  Future<SessionNotificationPermissionStatus>
+  notificationPermissionStatus() async => _mapNotificationStatus(
+    await FlutterForegroundTask.checkNotificationPermission(),
+  );
 
   @override
-  Future<void> requestNotificationPermission() async {
-    await FlutterForegroundTask.requestNotificationPermission();
-  }
+  Future<SessionNotificationPermissionStatus>
+  requestNotificationPermission() async => _mapNotificationStatus(
+    await FlutterForegroundTask.requestNotificationPermission(),
+  );
+
+  SessionNotificationPermissionStatus _mapNotificationStatus(
+    NotificationPermission status,
+  ) => switch (status) {
+    NotificationPermission.granted =>
+      SessionNotificationPermissionStatus.granted,
+    NotificationPermission.denied => SessionNotificationPermissionStatus.denied,
+    NotificationPermission.permanently_denied =>
+      SessionNotificationPermissionStatus.permanentlyDenied,
+  };
 
   @override
-  Future<bool> isIgnoringBatteryOptimizations() =>
-      FlutterForegroundTask.isIgnoringBatteryOptimizations;
+  Future<bool> openNotificationSettings() async =>
+      await _permissionsChannel.invokeMethod<bool>(
+        'openNotificationSettings',
+      ) ??
+      false;
 
   @override
-  Future<void> requestIgnoreBatteryOptimization() async {
+  Future<BatteryOptimizationStatus> batteryOptimizationStatus() async =>
+      await FlutterForegroundTask.isIgnoringBatteryOptimizations
+      ? BatteryOptimizationStatus.exempt
+      : BatteryOptimizationStatus.optimized;
+
+  @override
+  Future<void> requestBatteryOptimizationExemption() async {
     await FlutterForegroundTask.requestIgnoreBatteryOptimization();
   }
 }

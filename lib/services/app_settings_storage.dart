@@ -10,9 +10,16 @@ import '../models/notification_mode.dart';
 /// JSON : on utilise ici directement SharedPreferences.getBool/setBool
 /// et getString/setString, qui restent le même mécanisme de stockage que
 /// le reste de l'application.
-class AppSettingsStorage {
+abstract interface class SessionPermissionPromptStorage {
+  Future<bool> loadSessionNotificationExplanationPresented();
+  Future<void> saveSessionNotificationExplanationPresented(bool value);
+}
+
+class AppSettingsStorage implements SessionPermissionPromptStorage {
   static const _prefillExerciseNameKey = 'prefill_exercise_name';
   static const _notificationModeKey = 'notification_mode';
+  static const _sessionNotificationExplanationPresentedKey =
+      'session_notification_explanation_presented';
 
   /// Valeur par défaut : préremplissage activé, pour conserver le
   /// comportement historique de l'application sur toute installation qui
@@ -50,5 +57,17 @@ class AppSettingsStorage {
   Future<void> saveNotificationMode(NotificationMode mode) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_notificationModeKey, mode.name);
+  }
+
+  @override
+  Future<bool> loadSessionNotificationExplanationPresented() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_sessionNotificationExplanationPresentedKey) ?? false;
+  }
+
+  @override
+  Future<void> saveSessionNotificationExplanationPresented(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_sessionNotificationExplanationPresentedKey, value);
   }
 }

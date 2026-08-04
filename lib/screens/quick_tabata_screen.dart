@@ -4,7 +4,10 @@ import '../models/exercise_group.dart';
 import '../models/session_step.dart';
 import '../models/training.dart';
 import '../models/training_item.dart';
+import '../services/app_settings_storage.dart';
+import '../services/session_notification_permission_service.dart';
 import '../services/session_controller.dart';
+import '../services/session_start_permission_gate.dart';
 import '../widgets/quick_tabata_sections.dart';
 import '../widgets/rounds_editor.dart';
 import 'training_session.dart';
@@ -14,7 +17,14 @@ import 'training_session.dart';
 /// d'une séance classique. La séance générée n'est jamais persistée dans
 /// le stockage local — elle n'existe que le temps de son exécution.
 class QuickTabataScreen extends StatefulWidget {
-  const QuickTabataScreen({super.key});
+  final SessionNotificationPermissionService? permissionService;
+  final SessionPermissionPromptStorage? settingsStorage;
+
+  const QuickTabataScreen({
+    super.key,
+    this.permissionService,
+    this.settingsStorage,
+  });
 
   @override
   State<QuickTabataScreen> createState() => _QuickTabataScreenState();
@@ -30,6 +40,7 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
   Duration _workDuration = const Duration(seconds: 20);
   Duration _pauseDuration = const Duration(seconds: 10);
   int _repetitions = 1;
+  bool _starting = false;
 
   @override
   void dispose() {
@@ -84,10 +95,21 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
   Duration? get _estimatedDuration =>
       estimatePlannedDuration(_buildQuickTraining());
 
-  void _start() {
+  Future<void> _start() async {
+    if (_starting) return;
+    setState(() => _starting = true);
+
     // La séance lancée est construite par la même méthode que celle utilisée
     // pour l'estimation, afin que leurs structures restent alignées.
     final quickTraining = _buildQuickTraining();
+
+    await SessionStartPermissionGate(
+      permissionService: widget.permissionService,
+      settingsStorage: widget.settingsStorage,
+    ).prepare(context, quickTraining);
+
+    if (!mounted) return;
+    setState(() => _starting = false);
 
     // Lance directement le moteur d'exécution existant, exactement comme
     // pour une séance classique — aucune logique spécifique ajoutée.
@@ -149,9 +171,9 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
             const SizedBox(height: 28),
 
             FilledButton.icon(
-              onPressed: _start,
+              onPressed: _starting ? null : _start,
               icon: const Icon(Icons.play_arrow),
-              label: const Text("Commencer"),
+              label: Text(_starting ? "Préparation…" : "Commencer"),
             ),
           ],
         ),
