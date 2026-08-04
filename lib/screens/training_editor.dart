@@ -1,114 +1,57 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 
+import '../controllers/training_editor_controller.dart';
 import '../models/exercise_group.dart';
 import '../models/training.dart';
 import '../services/json_prefs_storage.dart';
 import '../services/training_storage.dart';
+import '../utils/editor_back_handler.dart';
 import '../utils/snack.dart';
 import '../widgets/dialogs/confirm_dialog.dart';
-import '../widgets/exercise_group_card.dart';
+import '../widgets/training_editor_view.dart';
 import 'group_editor.dart';
 
 class TrainingEditor extends StatefulWidget {
-  final Training? training;
-
   const TrainingEditor({super.key, this.training});
+
+  final Training? training;
 
   @override
   State<TrainingEditor> createState() => _TrainingEditorState();
 }
 
 class _TrainingEditorState extends State<TrainingEditor> {
-  final TextEditingController _nameController = TextEditingController();
-  final ScrollController _groupsScrollController = ScrollController();
   final TrainingStorage _storage = TrainingStorage();
-  final List<ExerciseGroup> groups = [];
-
-  // État de présentation propre à cette ouverture de l'écran. Il ne fait
-  // volontairement partie ni des groupes édités, ni de leur snapshot JSON.
-  final Set<String> _expandedGroupIds = {};
-
-  late final String _initialSnapshot;
-  bool _saving = false;
+  late final TrainingEditorController _controller;
 
   @override
   void initState() {
     super.initState();
-
-    final existing = widget.training;
-    if (existing != null) {
-      _nameController.text = existing.name;
-      // Copie profonde (voir ExerciseGroup.copyWith) : les groupes édités
-      // ici ne doivent jamais partager leurs items avec la séance
-      // d'origine tant que "Enregistrer" n'a pas été pressé.
-      groups.addAll(existing.groups.map((group) => group.copyWith()));
-    }
-
-    _nameController.addListener(_onNameChanged);
-    _initialSnapshot = _currentSnapshot();
+    _controller = TrainingEditorController(widget.training);
   }
 
   @override
   void dispose() {
-    _nameController.removeListener(_onNameChanged);
-    _nameController.dispose();
-    _groupsScrollController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
-  void _onNameChanged() => setState(() {});
-
-  String _currentSnapshot() {
-    return jsonEncode({
-      'name': _nameController.text.trim(),
-      'groups': groups.map((group) => group.toJson()).toList(),
-    });
-  }
-
-  bool get _hasUnsavedChanges => _currentSnapshot() != _initialSnapshot;
-
-  void _scrollGroupsListToEnd() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_groupsScrollController.hasClients) return;
-      _groupsScrollController.animateTo(
-        _groupsScrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    });
-  }
-
   Future<void> _saveTraining() async {
-    final name = _nameController.text.trim();
-
-    if (name.isEmpty) {
+    if (_controller.name.isEmpty) {
       showSnack(context, "Merci de donner un nom à la séance");
       return;
     }
-
-    if (groups.isEmpty) {
+    if (_controller.groups.isEmpty) {
       showSnack(context, "Ajoute au moins un groupe d'exercices");
       return;
     }
 
-    setState(() => _saving = true);
-
-    final training = Training(
-      id:
-          widget.training?.id ??
-          DateTime.now().microsecondsSinceEpoch.toString(),
-      name: name,
-      groups: groups,
-      createdAt: widget.training?.createdAt ?? DateTime.now(),
-    );
-
+    _controller.setSaving(true);
     try {
-      await _storage.addOrUpdateTraining(training);
+      await _storage.addOrUpdateTraining(_controller.buildTraining());
     } on StorageMutationBlockedException {
       if (!mounted) return;
-      setState(() => _saving = false);
+      _controller.setSaving(false);
       showSnack(
         context,
         "Enregistrement impossible : certaines séances n'ont pas pu être "
@@ -118,63 +61,42 @@ class _TrainingEditorState extends State<TrainingEditor> {
     }
     if (!mounted) return;
 
-    setState(() => _saving = false);
+    _controller.setSaving(false);
     showSnack(context, "Séance enregistrée");
     Navigator.pop(context, true);
   }
 
-  Future<void> _handleBackPressed() async {
-    if (!_hasUnsavedChanges) {
-      Navigator.pop(context);
-      return;
-    }
-
-    final choice = await showUnsavedChangesDialog(context);
-
-    switch (choice) {
-      case 'save':
-        await _saveTraining();
-        break;
-      case 'discard':
-        if (mounted) Navigator.pop(context);
-        break;
-      case 'cancel':
-      default:
-        break;
-    }
-  }
+  Future<void> _handleBackPressed() => handleEditorBack(
+    context,
+    hasUnsavedChanges: _controller.hasUnsavedChanges,
+    onSave: _saveTraining,
+  );
 
   Future<void> _confirmDeleteTraining() async {
     FocusScope.of(context).unfocus();
-
     final training = widget.training;
     if (training == null) return;
 
-    final bool deleted;
     try {
-      deleted = await confirmAndDelete(
+      final deleted = await confirmAndDelete(
         context,
         title: "Supprimer la séance ?",
         content:
             'Cette action est irréversible. Supprimer "${training.name}" ?',
         onDelete: () => _storage.deleteTraining(training.id),
       );
+      if (deleted && mounted) Navigator.pop(context, true);
     } on StorageMutationBlockedException {
       if (!mounted) return;
       showSnack(
         context,
         "Suppression impossible : certaines séances n'ont pas pu être lues.",
       );
-      return;
     }
-
-    if (!deleted || !mounted) return;
-    Navigator.pop(context, true);
   }
 
   Future<void> _addGroup() async {
     FocusScope.of(context).unfocus();
-
     final group = await Navigator.push<ExerciseGroup>(
       context,
       MaterialPageRoute(
@@ -188,41 +110,34 @@ class _TrainingEditorState extends State<TrainingEditor> {
         ),
       ),
     );
-
     if (group == null || !mounted) return;
 
-    setState(() => groups.add(group));
-    _scrollGroupsListToEnd();
+    _controller.addGroup(group);
+    _controller.scrollGroupsListToEnd();
   }
 
   Future<void> _editGroup(int index) async {
     FocusScope.of(context).unfocus();
-
-    final currentGroup = groups[index];
     final editedGroup = await Navigator.push<ExerciseGroup>(
       context,
-      MaterialPageRoute(builder: (_) => GroupEditor(group: currentGroup)),
+      MaterialPageRoute(
+        builder: (_) => GroupEditor(group: _controller.groups[index]),
+      ),
     );
-
-    if (editedGroup == null || !mounted) return;
-
-    setState(() => groups[index] = editedGroup);
+    if (editedGroup != null && mounted) {
+      _controller.replaceGroup(index, editedGroup);
+    }
   }
 
   Future<void> _deleteGroup(int index) async {
-    final group = groups[index];
+    final group = _controller.groups[index];
     final confirmed = await showConfirmDialog(
       context,
       title: "Supprimer le groupe ?",
       content: 'Supprimer "${group.name}" de la séance ?',
       confirmLabel: "Supprimer",
     );
-
-    if (!confirmed || !mounted) return;
-    setState(() {
-      groups.removeAt(index);
-      _expandedGroupIds.remove(group.id);
-    });
+    if (confirmed && mounted) _controller.removeGroup(index);
   }
 
   @override
@@ -230,101 +145,18 @@ class _TrainingEditorState extends State<TrainingEditor> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        await _handleBackPressed();
+        if (!didPop) await _handleBackPressed();
       },
-      child: Scaffold(
-        appBar: AppBar(
-          centerTitle: true,
-          title: Text(
-            _nameController.text.trim().isEmpty
-                ? "Nouvelle séance"
-                : _nameController.text.trim(),
-            overflow: TextOverflow.ellipsis,
-          ),
-          actions: [
-            if (widget.training != null)
-              IconButton(
-                icon: const Icon(Icons.delete),
-                tooltip: "Supprimer la séance",
-                onPressed: _confirmDeleteTraining,
-              )
-            else
-              const SizedBox(width: 48),
-          ],
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: "Nom de la séance",
-                  hintText: "Ex : Full Body",
-                ),
-              ),
-              const SizedBox(height: 26),
-              Expanded(
-                child: ReorderableListView.builder(
-                  scrollController: _groupsScrollController,
-                  buildDefaultDragHandles: false,
-                  itemCount: groups.length,
-                  onReorderItem: (oldIndex, newIndex) {
-                    setState(() {
-                      final group = groups.removeAt(oldIndex);
-                      groups.insert(newIndex, group);
-                    });
-                  },
-                  itemBuilder: (context, index) {
-                    final group = groups[index];
-
-                    return ExerciseGroupCard(
-                      key: ValueKey(group.id),
-                      group: group,
-                      index: index,
-                      expanded: _expandedGroupIds.contains(group.id),
-                      onExpanded: (expanded) {
-                        setState(() {
-                          if (expanded) {
-                            _expandedGroupIds.add(group.id);
-                          } else {
-                            _expandedGroupIds.remove(group.id);
-                          }
-                        });
-                      },
-                      onDelete: () => _deleteGroup(index),
-                      onEdit: () => _editGroup(index),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _addGroup,
-                  icon: const Icon(Icons.add),
-                  label: const Text("Ajouter un groupe"),
-                ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _saving ? null : _saveTraining,
-                  child: _saving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text("Enregistrer"),
-                ),
-              ),
-            ],
-          ),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) => TrainingEditorView(
+          controller: _controller,
+          canDeleteTraining: widget.training != null,
+          onDeleteTraining: _confirmDeleteTraining,
+          onAddGroup: _addGroup,
+          onEditGroup: _editGroup,
+          onDeleteGroup: _deleteGroup,
+          onSave: _saveTraining,
         ),
       ),
     );
