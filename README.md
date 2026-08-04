@@ -90,21 +90,39 @@ flutter pub get
 
 Sur un appareil Android connecté :
 ```bash
-flutter run
+./tool/flutter_with_build_metadata.sh run
 ```
 
 Sur Linux desktop :
 ```bash
-flutter run -d linux
+./tool/flutter_with_build_metadata.sh run -d linux
 ```
+
+Ce script transmet le canal `dev` et la date de compilation UTC avec les
+`--dart-define` centralisés dans `BuildMetadata`. Les arguments placés après le
+nom du script sont transmis à Flutter. Un lancement direct avec `flutter run`
+reste possible : il est considéré comme DEV, mais le dialogue « À propos »
+indique alors que la date de build est indisponible.
 
 ## Build
 
 APK release :
 ```bash
-flutter build apk --release
+./tool/flutter_with_build_metadata.sh build apk --release
 ```
 L'APK généré se trouve dans `build/app/outputs/flutter-apk/app-release.apk`.
+
+Pour construire un APK debug local :
+
+```bash
+./tool/flutter_with_build_metadata.sh build apk --debug
+```
+
+Le mode Flutter (`--debug` ou `--release`) ne détermine pas le canal de
+distribution : même un APK release construit avec ce script porte le badge
+DEV. Seule la CI de publication transmet explicitement
+`REP_TIMER_DISTRIBUTION=release`. Elle n'injecte pas de date et ne modifie ni la
+version ni le numéro de build définis dans `pubspec.yaml`.
 
 ## Structure du projet
 
@@ -266,7 +284,7 @@ Après validation, le workflow :
 2. récupère les dépendances ;
 3. décode le keystore Android depuis le secret `KEYSTORE_BASE64` ;
 4. génère `android/key.properties` à partir des secrets `KEYSTORE_PASSWORD`, `KEY_PASSWORD` et de la variable `KEY_ALIAS` ;
-5. construit l'APK release signé avec `flutter build apk --release` ;
+5. construit l'APK release signé avec `flutter build apk --release --dart-define=REP_TIMER_DISTRIBUTION=release` ;
 6. renomme l'artefact en `RepTimer-<tag>.apk` ;
 7. crée une GitHub Release avec des notes générées automatiquement et y joint l'APK.
 
@@ -300,7 +318,20 @@ Documentation — où modifier chaque information
 | Nom de l'app | `android/app/src/main/AndroidManifest.xml`, attribut `android:label` | Lu au runtime par PackageInfo.fromPlatform().appName | 
 | Icône | `assets/icon/app_icon.png` (le fichier source utilisé par flutter_launcher_icons pour générer les icônes natives) | Chargée via Image.asset(), une fois déclarée dans pubspec.yaml | 
 | Version | `pubspec.yaml`, champ `version`: X.Y.Z+B | Lue via PackageInfo.fromPlatform().version/.buildNumber — c'est ce même champ que Flutter utilise pour générer versionName/versionCode Android à la compilation| 
-| Copyright | Constante _copyright en haut de settings_screen.dart | Aucun autre endroit du projet ne porte cette info : c'est le seul point à éditer | 
+| Copyright | Constante `_copyright` dans `lib/widgets/settings/app_about_dialog.dart` | Aucun autre endroit du projet ne porte cette info : c'est le seul point à éditer |
+
+Les métadonnées de distribution sont centralisées dans
+`lib/models/build_metadata.dart` :
+
+| Variable de compilation | Valeur | Effet |
+| ----------------------- | ------ | ----- |
+| `REP_TIMER_DISTRIBUTION` | `dev` par défaut, `release` pour une publication officielle | Affiche ou masque le badge DEV et les informations de build local |
+| `REP_TIMER_BUILD_TIMESTAMP` | Date ISO 8601 en UTC, optionnelle | Est convertie dans le fuseau local de l'appareil avant affichage |
+
+`kReleaseMode` ne permet pas cette distinction : un développeur peut produire
+localement un APK optimisé avec `flutter build apk --release`. Le workflow de
+release garantit l'absence du badge DEV en transmettant explicitement le canal
+`release` au build signé.
 
 ## Auteur
 

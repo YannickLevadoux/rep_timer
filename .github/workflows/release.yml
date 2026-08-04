@@ -65,7 +65,9 @@ jobs:
           EOF
 
       - name: Build signed APK
-        run: flutter build apk --release
+        run: >-
+          flutter build apk --release
+          --dart-define=REP_TIMER_DISTRIBUTION=release
 
       - name: Rename APK
         run: |
