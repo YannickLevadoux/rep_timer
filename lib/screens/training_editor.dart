@@ -26,6 +26,10 @@ class _TrainingEditorState extends State<TrainingEditor> {
   final TrainingStorage _storage = TrainingStorage();
   final List<ExerciseGroup> groups = [];
 
+  // État de présentation propre à cette ouverture de l'écran. Il ne fait
+  // volontairement partie ni des groupes édités, ni de leur snapshot JSON.
+  final Set<String> _expandedGroupIds = {};
+
   late final String _initialSnapshot;
   bool _saving = false;
 
@@ -39,9 +43,7 @@ class _TrainingEditorState extends State<TrainingEditor> {
       // Copie profonde (voir ExerciseGroup.copyWith) : les groupes édités
       // ici ne doivent jamais partager leurs items avec la séance
       // d'origine tant que "Enregistrer" n'a pas été pressé.
-      groups.addAll(
-        existing.groups.map((group) => group.copyWith(expanded: true)),
-      );
+      groups.addAll(existing.groups.map((group) => group.copyWith()));
     }
 
     _nameController.addListener(_onNameChanged);
@@ -204,7 +206,6 @@ class _TrainingEditorState extends State<TrainingEditor> {
 
     if (editedGroup == null || !mounted) return;
 
-    editedGroup.expanded = currentGroup.expanded;
     setState(() => groups[index] = editedGroup);
   }
 
@@ -218,7 +219,10 @@ class _TrainingEditorState extends State<TrainingEditor> {
     );
 
     if (!confirmed || !mounted) return;
-    setState(() => groups.removeAt(index));
+    setState(() {
+      groups.removeAt(index);
+      _expandedGroupIds.remove(group.id);
+    });
   }
 
   @override
@@ -280,8 +284,15 @@ class _TrainingEditorState extends State<TrainingEditor> {
                       key: ValueKey(group.id),
                       group: group,
                       index: index,
+                      expanded: _expandedGroupIds.contains(group.id),
                       onExpanded: (expanded) {
-                        setState(() => group.expanded = expanded);
+                        setState(() {
+                          if (expanded) {
+                            _expandedGroupIds.add(group.id);
+                          } else {
+                            _expandedGroupIds.remove(group.id);
+                          }
+                        });
                       },
                       onDelete: () => _deleteGroup(index),
                       onEdit: () => _editGroup(index),

@@ -11,6 +11,7 @@ class ExerciseGroupCard extends StatelessWidget {
   final VoidCallback onEdit;
   final ValueChanged<bool> onExpanded;
   final int index;
+  final bool expanded;
 
   const ExerciseGroupCard({
     super.key,
@@ -19,6 +20,7 @@ class ExerciseGroupCard extends StatelessWidget {
     required this.onEdit,
     required this.onExpanded,
     required this.index,
+    required this.expanded,
   });
 
   @override
@@ -27,7 +29,7 @@ class ExerciseGroupCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       margin: const EdgeInsets.only(bottom: 12),
       child: ExpansionTile(
-        initiallyExpanded: group.expanded,
+        initiallyExpanded: expanded,
         onExpansionChanged: onExpanded,
         title: Text(
           group.name,
@@ -87,7 +89,7 @@ class ExerciseGroupCard extends StatelessWidget {
         // (on ne le fixe donc plus explicitement à true), ce qui suffit
         // à ExpansionTile pour retirer lui-même ce sous-arbre une fois
         // l'animation de repli terminée. Un rendu conditionnel ici (sur
-        // group.expanded) est redondant avec ce mécanisme et néfaste :
+        // expanded) est redondant avec ce mécanisme et néfaste :
         // onExpansionChanged étant appelé de façon synchrone au tap (pas
         // en fin d'animation), il viderait children dès la frame 0 et
         // l'animation de repli se jouerait sur une boîte déjà vide.

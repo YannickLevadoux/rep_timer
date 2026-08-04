@@ -168,18 +168,6 @@ class _GroupEditorState extends State<GroupEditor> {
     setState(() => _group.items.removeAt(index));
   }
 
-  // Factorise "monter" (delta -1) et "descendre" (delta +1) : même
-  // opération de déplacement, seul le sens change.
-  void _moveItem(int index, int delta) {
-    final target = index + delta;
-    if (target < 0 || target >= _group.items.length) return;
-
-    setState(() {
-      final item = _group.items.removeAt(index);
-      _group.items.insert(target, item);
-    });
-  }
-
   void _reorderItems(int oldIndex, int newIndex) {
     setState(() {
       final item = _group.items.removeAt(oldIndex);
@@ -249,8 +237,6 @@ class _GroupEditorState extends State<GroupEditor> {
                 child: GroupItemsList(
                   items: _group.items,
                   onReorder: _reorderItems,
-                  onMoveUp: (index) => _moveItem(index, -1),
-                  onMoveDown: (index) => _moveItem(index, 1),
                   onEdit: _editItem,
                   onDelete: _deleteItem,
                 ),
