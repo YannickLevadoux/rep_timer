@@ -1,17 +1,62 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/screens/quick_tabata_screen.dart';
+import 'package:rep_timer/screens/training_session.dart';
 import 'package:rep_timer/widgets/duration_minutes_seconds_picker.dart';
+import 'package:rep_timer/widgets/rounds_editor.dart';
 
 void main() {
+  testWidgets('démarre à 1 avec le bouton moins désactivé', (tester) async {
+    await _pumpScreen(tester);
+
+    expect(_rounds(tester), 1);
+    expect(
+      _roundsButton(tester, Icons.remove_circle_outline).onPressed,
+      isNull,
+    );
+
+    tester.widget<RoundsEditor>(find.byType(RoundsEditor)).onChanged(0);
+    await tester.pump();
+    expect(_rounds(tester), 1);
+  });
+
+  testWidgets('le bouton plus incrémente les répétitions', (tester) async {
+    await _pumpScreen(tester);
+
+    await _tapRoundsButton(tester, Icons.add_circle_outline);
+
+    expect(_rounds(tester), 2);
+  });
+
+  testWidgets('le bouton moins décrémente sans passer sous 1', (tester) async {
+    await _pumpScreen(tester);
+
+    await _tapRoundsButton(tester, Icons.add_circle_outline);
+    await _tapRoundsButton(tester, Icons.remove_circle_outline);
+
+    expect(_rounds(tester), 1);
+    expect(
+      _roundsButton(tester, Icons.remove_circle_outline).onPressed,
+      isNull,
+    );
+  });
+
+  testWidgets('aucun champ textuel de répétitions ne subsiste', (tester) async {
+    await _pumpScreen(tester);
+
+    expect(find.byType(RoundsEditor), findsOneWidget);
+    expect(
+      find.widgetWithText(TextField, 'Nombre de répétitions'),
+      findsNothing,
+    );
+    expect(find.byType(TextField), findsOneWidget);
+  });
+
   testWidgets('affiche 01:20 pour 20 s, 10 s et 3 répétitions', (tester) async {
     await _pumpScreen(tester);
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre de répétitions'),
-      '3',
-    );
-    await tester.pump();
+    await _tapRoundsButton(tester, Icons.add_circle_outline);
+    await _tapRoundsButton(tester, Icons.add_circle_outline);
 
     expect(find.text('01:20'), findsOneWidget);
   });
@@ -20,12 +65,10 @@ void main() {
     tester,
   ) async {
     await _pumpScreen(tester);
-    final repetitions = find.widgetWithText(TextField, 'Nombre de répétitions');
 
     expect(find.text('00:20'), findsOneWidget);
 
-    await tester.enterText(repetitions, '2');
-    await tester.pump();
+    await _tapRoundsButton(tester, Icons.add_circle_outline);
     expect(find.text('00:50'), findsOneWidget);
 
     tester
@@ -43,6 +86,24 @@ void main() {
         .onChanged(const Duration(seconds: 20));
     await tester.pump();
     expect(find.text('01:20'), findsOneWidget);
+  });
+
+  testWidgets('la séance lancée utilise les répétitions sélectionnées', (
+    tester,
+  ) async {
+    await _pumpScreen(tester);
+    await _tapRoundsButton(tester, Icons.add_circle_outline);
+    await _tapRoundsButton(tester, Icons.add_circle_outline);
+
+    final start = find.text('Commencer');
+    await tester.ensureVisible(start);
+    await tester.tap(start);
+    await tester.pump();
+
+    final session = tester.widget<TrainingSessionScreen>(
+      find.byType(TrainingSessionScreen, skipOffstage: false),
+    );
+    expect(session.training.groups.single.rounds, 3);
   });
 
   testWidgets('l’aide explique l’estimation et peut être fermée', (
@@ -95,4 +156,19 @@ void main() {
 
 Future<void> _pumpScreen(WidgetTester tester) {
   return tester.pumpWidget(const MaterialApp(home: QuickTabataScreen()));
+}
+
+int _rounds(WidgetTester tester) {
+  return tester.widget<RoundsEditor>(find.byType(RoundsEditor)).rounds;
+}
+
+IconButton _roundsButton(WidgetTester tester, IconData icon) {
+  return tester.widget<IconButton>(find.widgetWithIcon(IconButton, icon));
+}
+
+Future<void> _tapRoundsButton(WidgetTester tester, IconData icon) async {
+  final button = find.widgetWithIcon(IconButton, icon);
+  await tester.ensureVisible(button);
+  await tester.tap(button);
+  await tester.pump();
 }
