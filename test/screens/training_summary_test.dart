@@ -6,6 +6,7 @@ import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/screens/training_session.dart';
 import 'package:rep_timer/screens/training_summary.dart';
 import 'package:rep_timer/services/session_notification_permission_service.dart';
+import 'package:rep_timer/widgets/statistic_badge.dart';
 
 import '../support/fake_session_permission_platform.dart';
 
@@ -182,6 +183,7 @@ void _expectBadge(
 }) {
   final badge = find.byKey(key);
   expect(badge, findsOneWidget);
+  expect(tester.widget(badge), isA<StatisticBadge>());
   expect(
     find.descendant(of: badge, matching: find.byIcon(icon)),
     findsOneWidget,
