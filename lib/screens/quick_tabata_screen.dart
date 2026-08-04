@@ -5,9 +5,8 @@ import '../models/session_step.dart';
 import '../models/training.dart';
 import '../models/training_item.dart';
 import '../services/session_controller.dart';
-import '../utils/formatters.dart';
-import '../widgets/contextual_help_button.dart';
-import '../widgets/duration_minutes_seconds_picker.dart';
+import '../widgets/quick_tabata_sections.dart';
+import '../widgets/rounds_editor.dart';
 import 'training_session.dart';
 
 /// Écran de préparation d'une séance "Quick Tabata" : permet de lancer
@@ -27,36 +26,20 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
   final TextEditingController _nameController = TextEditingController(
     text: _defaultName,
   );
-  final TextEditingController _repsController = TextEditingController(
-    text: "1",
-  );
 
   Duration _workDuration = const Duration(seconds: 20);
   Duration _pauseDuration = const Duration(seconds: 10);
-
-  @override
-  void initState() {
-    super.initState();
-    // Le temps total affiché dépend du nombre de répétitions saisi : il
-    // faut se reconstruire à chaque frappe pour le tenir à jour en temps
-    // réel (le nom n'a pas besoin d'un listener, il n'influence aucun
-    // calcul affiché).
-    _repsController.addListener(_onRepsChanged);
-  }
-
-  void _onRepsChanged() => setState(() {});
+  int _repetitions = 1;
 
   @override
   void dispose() {
-    _repsController.removeListener(_onRepsChanged);
     _nameController.dispose();
-    _repsController.dispose();
     super.dispose();
   }
 
-  int get _repetitions {
-    final parsed = int.tryParse(_repsController.text);
-    return (parsed == null || parsed < 1) ? 1 : parsed;
+  void _setRepetitions(int repetitions) {
+    if (repetitions < 1) return;
+    setState(() => _repetitions = repetitions);
   }
 
   String get _trainingName => _nameController.text.trim().isEmpty
@@ -140,87 +123,28 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
 
             const SizedBox(height: 28),
 
-            Text(
-              "Work",
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Center(
-              child: DurationMinutesSecondsPicker(
-                value: _workDuration,
-                onChanged: (d) => setState(() => _workDuration = d),
-              ),
+            QuickTabataDurationSection(
+              title: "Work",
+              value: _workDuration,
+              onChanged: (duration) => setState(() => _workDuration = duration),
             ),
 
             const SizedBox(height: 28),
 
-            Text(
-              "Pause",
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Center(
-              child: DurationMinutesSecondsPicker(
-                value: _pauseDuration,
-                onChanged: (d) => setState(() => _pauseDuration = d),
-              ),
+            QuickTabataDurationSection(
+              title: "Pause",
+              value: _pauseDuration,
+              onChanged: (duration) =>
+                  setState(() => _pauseDuration = duration),
             ),
 
             const SizedBox(height: 28),
 
-            TextField(
-              controller: _repsController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: "Nombre de répétitions",
-              ),
-            ),
+            RoundsEditor(rounds: _repetitions, onChanged: _setRepetitions),
 
             const SizedBox(height: 24),
 
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 12,
-                  runSpacing: 8,
-                  children: [
-                    const Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text("Temps total estimé"),
-                        ContextualHelpButton(
-                          title: "À propos de l'estimation",
-                          tooltip: "Informations sur la durée estimée",
-                          content: Text(
-                            "Cette estimation correspond à la durée "
-                            "programmée de la séance. Les pauses "
-                            "intermédiaires sont comptabilisées, mais la "
-                            "dernière pause de la séance n'est pas exécutée. "
-                            "Les pauses manuelles et la navigation pendant "
-                            "la séance ne sont pas incluses.",
-                          ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      estimatedDuration == null
-                          ? "Non estimable"
-                          : formatDuration(estimatedDuration),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            QuickTabataEstimatedDurationCard(duration: estimatedDuration),
 
             const SizedBox(height: 28),
 

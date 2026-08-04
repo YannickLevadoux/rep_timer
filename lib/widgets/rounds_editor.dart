@@ -15,20 +15,30 @@ class RoundsEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 12,
       children: [
         const Text("Répétitions"),
-        const Spacer(),
-        IconButton(
-          icon: const Icon(Icons.remove_circle_outline),
-          tooltip: "Moins de répétitions",
-          onPressed: rounds > 1 ? () => onChanged(rounds - 1) : null,
-        ),
-        Text('$rounds', style: const TextStyle(fontWeight: FontWeight.bold)),
-        IconButton(
-          icon: const Icon(Icons.add_circle_outline),
-          tooltip: "Plus de répétitions",
-          onPressed: () => onChanged(rounds + 1),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.remove_circle_outline),
+              tooltip: "Moins de répétitions",
+              onPressed: rounds > 1 ? () => onChanged(rounds - 1) : null,
+            ),
+            Text(
+              '$rounds',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline),
+              tooltip: "Plus de répétitions",
+              onPressed: () => onChanged(rounds + 1),
+            ),
+          ],
         ),
       ],
     );
