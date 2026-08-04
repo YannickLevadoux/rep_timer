@@ -155,7 +155,7 @@ jobs:
                   title: `#${issue} - ${issueData.title}`,
                   head: branch,
                   base: "main",
-                  body: `Closes #${issue}`,
+                  body: `Closes #${issue}\n\n> 🤖 Pull request créée automatiquement par GitHub Actions.`,
                 });
 
                 pullRequest = createdPullRequest;
