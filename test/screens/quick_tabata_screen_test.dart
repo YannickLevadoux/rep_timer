@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/screens/quick_tabata_screen.dart';
 import 'package:rep_timer/screens/training_session.dart';
+import 'package:rep_timer/services/session_notification_permission_service.dart';
 import 'package:rep_timer/widgets/duration_minutes_seconds_picker.dart';
 import 'package:rep_timer/widgets/rounds_editor.dart';
+
+import '../support/fake_session_permission_platform.dart';
 
 void main() {
   testWidgets('démarre à 1 avec le bouton moins désactivé', (tester) async {
@@ -98,7 +101,7 @@ void main() {
     final start = find.text('Commencer');
     await tester.ensureVisible(start);
     await tester.tap(start);
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
     final session = tester.widget<TrainingSessionScreen>(
       find.byType(TrainingSessionScreen, skipOffstage: false),
@@ -155,7 +158,15 @@ void main() {
 }
 
 Future<void> _pumpScreen(WidgetTester tester) {
-  return tester.pumpWidget(const MaterialApp(home: QuickTabataScreen()));
+  return tester.pumpWidget(
+    MaterialApp(
+      home: QuickTabataScreen(
+        permissionService: SessionNotificationPermissionService(
+          platform: GrantedSessionPermissionPlatform(),
+        ),
+      ),
+    ),
+  );
 }
 
 int _rounds(WidgetTester tester) {

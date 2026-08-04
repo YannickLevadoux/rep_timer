@@ -6,7 +6,10 @@ import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/screens/quick_tabata_screen.dart';
 import 'package:rep_timer/screens/training_session.dart';
 import 'package:rep_timer/services/session_controller.dart';
+import 'package:rep_timer/services/session_notification_permission_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../support/fake_session_permission_platform.dart';
 
 void main() {
   testWidgets('annuler le dialogue ne modifie pas le commentaire', (
@@ -48,11 +51,19 @@ void main() {
   });
 
   testWidgets('Quick Tabata lance une séance temporaire', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: QuickTabataScreen()));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: QuickTabataScreen(
+          permissionService: SessionNotificationPermissionService(
+            platform: GrantedSessionPermissionPlatform(),
+          ),
+        ),
+      ),
+    );
 
     await tester.ensureVisible(find.text('Commencer'));
     await tester.tap(find.text('Commencer'));
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
     final session = tester.widget<TrainingSessionScreen>(
       find.byType(TrainingSessionScreen, skipOffstage: false),

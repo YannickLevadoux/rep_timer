@@ -3,21 +3,58 @@ import 'package:flutter/material.dart';
 import '../models/exercise_group.dart';
 import '../models/training.dart';
 import '../models/training_item.dart';
+import '../services/app_settings_storage.dart';
+import '../services/session_notification_permission_service.dart';
+import '../services/session_start_permission_gate.dart';
 import '../utils/exercise_icons.dart';
 import 'training_session.dart';
 
 /// Écran affiché quand l'utilisateur clique sur "Commencer" depuis
 /// l'accueil : informations principales de la séance, puis un bouton
 /// pour lancer réellement l'exécution.
-class TrainingSummaryScreen extends StatelessWidget {
+class TrainingSummaryScreen extends StatefulWidget {
   final Training training;
+  final SessionNotificationPermissionService? permissionService;
+  final SessionPermissionPromptStorage? settingsStorage;
 
-  const TrainingSummaryScreen({super.key, required this.training});
+  const TrainingSummaryScreen({
+    super.key,
+    required this.training,
+    this.permissionService,
+    this.settingsStorage,
+  });
+
+  @override
+  State<TrainingSummaryScreen> createState() => _TrainingSummaryScreenState();
+}
+
+class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
+  bool _starting = false;
 
   int _roundsOf(ExerciseGroup group) => group.rounds < 1 ? 1 : group.rounds;
 
+  Future<void> _start() async {
+    if (_starting) return;
+    setState(() => _starting = true);
+
+    await SessionStartPermissionGate(
+      permissionService: widget.permissionService,
+      settingsStorage: widget.settingsStorage,
+    ).prepare(context, widget.training);
+
+    if (!mounted) return;
+    setState(() => _starting = false);
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TrainingSessionScreen(training: widget.training),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final training = widget.training;
     final totalItems = training.groups.fold<int>(
       0,
       (sum, group) => sum + group.items.length * _roundsOf(group),
@@ -160,18 +197,8 @@ class TrainingSummaryScreen extends StatelessWidget {
 
             FilledButton.icon(
               icon: const Icon(Icons.play_arrow),
-              label: const Text("Commencer"),
-              onPressed: canStart
-                  ? () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              TrainingSessionScreen(training: training),
-                        ),
-                      );
-                    }
-                  : null,
+              label: Text(_starting ? "Préparation…" : "Commencer"),
+              onPressed: canStart && !_starting ? _start : null,
             ),
           ],
         ),

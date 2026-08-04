@@ -119,9 +119,6 @@ class SessionNotificationService {
   }) async {
     if (revision != _pinRevision) return;
 
-    await _permissionService.ensureAutoPermissionsRequested();
-    if (revision != _pinRevision) return;
-
     try {
       if (await FlutterForegroundTask.isRunningService) {
         if (revision != _pinRevision) return;
