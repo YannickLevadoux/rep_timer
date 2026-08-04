@@ -88,35 +88,43 @@ flutter pub get
 
 ## Lancer l'application
 
-Sur un appareil Android connecté :
-```bash
-./tool/flutter_with_build_metadata.sh run
-```
+Les builds locaux doivent de préférence passer par le script
+`tool/flutter_with_build_metadata.sh`. Le premier argument est directement la
+sous-commande Flutter (`run` ou `build`) : il ne faut pas ajouter le mot
+`flutter` après le nom du script.
 
-Sur Linux desktop :
+Commandes disponibles :
+
 ```bash
+# Afficher l'aide du script
+./tool/flutter_with_build_metadata.sh --help
+
+# Lancer l'application sur un appareil Android connecté
+./tool/flutter_with_build_metadata.sh run
+
+# Lancer l'application sur Linux desktop
 ./tool/flutter_with_build_metadata.sh run -d linux
 ```
 
 Ce script transmet le canal `dev` et la date de compilation UTC avec les
-`--dart-define` centralisés dans `BuildMetadata`. Les arguments placés après le
-nom du script sont transmis à Flutter. Un lancement direct avec `flutter run`
-reste possible : il est considéré comme DEV, mais le dialogue « À propos »
-indique alors que la date de build est indisponible.
+`--dart-define` centralisés dans `BuildMetadata`. Les options placées après
+`run` sont transmises à cette commande Flutter. Un lancement direct avec
+`flutter run` reste possible : il est considéré comme DEV, mais le dialogue
+« À propos » indique alors que la date de build est indisponible.
 
 ## Build
 
-APK release :
+Le script accepte les options Flutter après la cible `apk` :
+
 ```bash
+# APK debug local
+./tool/flutter_with_build_metadata.sh build apk --debug
+
+# APK release local, toujours identifié comme DEV
 ./tool/flutter_with_build_metadata.sh build apk --release
 ```
-L'APK généré se trouve dans `build/app/outputs/flutter-apk/app-release.apk`.
 
-Pour construire un APK debug local :
-
-```bash
-./tool/flutter_with_build_metadata.sh build apk --debug
-```
+Les APK générés se trouvent dans `build/app/outputs/flutter-apk/`.
 
 Le mode Flutter (`--debug` ou `--release`) ne détermine pas le canal de
 distribution : même un APK release construit avec ce script porte le badge
