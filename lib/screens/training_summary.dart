@@ -78,38 +78,18 @@ class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      training.name,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 12),
-                    _InfoRow(
-                      icon: Icons.layers,
-                      label: "Groupes",
-                      value: "${training.groups.length}",
-                    ),
-                    _InfoRow(
-                      icon: Icons.fitness_center,
-                      label: "Exercices",
-                      value: "$exerciseCount",
-                    ),
-                    _InfoRow(
-                      icon: Icons.timer,
-                      label: "Pauses",
-                      value: "$restCount",
-                    ),
-                  ],
-                ),
+            ColoredBox(
+              key: const Key('training-summary-statistics'),
+              color: Theme.of(context).scaffoldBackgroundColor,
+              child: _StatisticsBadges(
+                groupCount: training.groups.length,
+                exerciseCount: exerciseCount,
+                restCount: restCount,
               ),
             ),
-
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
+            Text("Prêt ?", style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
 
             Expanded(
               child: training.groups.isEmpty
@@ -207,12 +187,59 @@ class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
   }
 }
 
-class _InfoRow extends StatelessWidget {
+class _StatisticsBadges extends StatelessWidget {
+  final int groupCount;
+  final int exerciseCount;
+  final int restCount;
+
+  const _StatisticsBadges({
+    required this.groupCount,
+    required this.exerciseCount,
+    required this.restCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _StatisticBadge(
+            key: const Key('summary-groups-badge'),
+            icon: Icons.layers,
+            label: "Groupes",
+            value: groupCount,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: _StatisticBadge(
+            key: const Key('summary-exercises-badge'),
+            icon: Icons.fitness_center,
+            label: "Exercices",
+            value: exerciseCount,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: _StatisticBadge(
+            key: const Key('summary-rests-badge'),
+            icon: Icons.timer,
+            label: "Pauses",
+            value: restCount,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatisticBadge extends StatelessWidget {
   final IconData icon;
   final String label;
-  final String value;
+  final int value;
 
-  const _InfoRow({
+  const _StatisticBadge({
+    super.key,
     required this.icon,
     required this.label,
     required this.value,
@@ -220,16 +247,42 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 8),
-          Text(label),
-          const Spacer(),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
+    final description = "$label : $value";
+
+    return Semantics(
+      container: true,
+      label: description,
+      excludeSemantics: true,
+      child: Tooltip(
+        message: description,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 20),
+                  const SizedBox(width: 5),
+                  Text(
+                    "$value",
+                    maxLines: 1,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
