@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'statistic_badge.dart';
+
 class TrainingSummaryStatistics extends StatelessWidget {
   const TrainingSummaryStatistics({
     super.key,
@@ -17,99 +19,35 @@ class TrainingSummaryStatistics extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: _StatisticBadge(
+          child: StatisticBadge(
             key: const Key('summary-groups-badge'),
             icon: Icons.layers,
             label: "Groupes",
-            value: groupCount,
+            value: "$groupCount",
+            description: "Groupes : $groupCount",
           ),
         ),
         const SizedBox(width: 6),
         Expanded(
-          child: _StatisticBadge(
+          child: StatisticBadge(
             key: const Key('summary-exercises-badge'),
             icon: Icons.fitness_center,
             label: "Exercices",
-            value: exerciseCount,
+            value: "$exerciseCount",
+            description: "Exercices : $exerciseCount",
           ),
         ),
         const SizedBox(width: 6),
         Expanded(
-          child: _StatisticBadge(
+          child: StatisticBadge(
             key: const Key('summary-rests-badge'),
             icon: Icons.timer,
             label: "Pauses",
-            value: restCount,
+            value: "$restCount",
+            description: "Pauses : $restCount",
           ),
         ),
       ],
-    );
-  }
-}
-
-class _StatisticBadge extends StatelessWidget {
-  const _StatisticBadge({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final int value;
-
-  @override
-  Widget build(BuildContext context) {
-    final description = "$label : $value";
-
-    return Semantics(
-      container: true,
-      label: description,
-      excludeSemantics: true,
-      child: Tooltip(
-        message: description,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(icon, size: 20),
-                      const SizedBox(width: 5),
-                      Text(
-                        "$value",
-                        maxLines: 1,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    label,
-                    maxLines: 1,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
