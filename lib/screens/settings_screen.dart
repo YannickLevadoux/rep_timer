@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/notification_mode.dart';
@@ -13,11 +12,9 @@ import '../services/session_notification_permission_service.dart';
 import '../services/step_end_notification_service.dart';
 import '../services/training_export_service.dart';
 import '../utils/snack.dart';
+import '../widgets/settings/app_about_dialog.dart';
 import '../widgets/settings/settings_sections.dart';
 import 'permissions_screen.dart';
-
-const String _copyright = '© 2026 Yannick Levadoux';
-const String _appIconAsset = 'assets/icon/app_icon.png';
 
 class SettingsScreen extends StatefulWidget {
   final ThemeMode themeMode;
@@ -102,18 +99,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  IconData get _themeIcon => switch (widget.themeMode) {
-    ThemeMode.system => Icons.brightness_auto,
-    ThemeMode.light => Icons.light_mode,
-    ThemeMode.dark => Icons.dark_mode,
-  };
-
-  String get _themeLabel => switch (widget.themeMode) {
-    ThemeMode.system => 'Auto',
-    ThemeMode.light => 'Clair',
-    ThemeMode.dark => 'Sombre',
-  };
-
   Future<void> _openPermissions() async {
     await Navigator.push(
       context,
@@ -185,53 +170,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _showAboutDialog() async {
-    final packageInfo = await PackageInfo.fromPlatform();
-    if (!mounted) return;
-    showAboutDialog(
-      context: context,
-      applicationName: packageInfo.appName,
-      applicationVersion: '${packageInfo.version} (${packageInfo.buildNumber})',
-      applicationIcon: SizedBox(
-        width: 48,
-        height: 48,
-        child: Image.asset(_appIconAsset),
-      ),
-      applicationLegalese: _copyright,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Paramètres')),
-      body: ListView(
-        children: [
-          DisplaySettingsSection(
-            themeLabel: _themeLabel,
-            themeIcon: _themeIcon,
-            onToggleTheme: widget.onToggleTheme,
-          ),
-          EditingSettingsSection(
-            prefillExerciseName: _prefillExerciseName,
-            onPrefillChanged: _togglePrefillExerciseName,
-          ),
-          NotificationSettingsSection(
-            notificationMode: _notificationMode,
-            onCycleMode: _cycleNotificationMode,
-          ),
-          TransferSettingsSection(
-            busy: _busy,
-            onImport: _handleImport,
-            onExport: _handleExport,
-          ),
-          PermissionsSettingsSection(
-            permissionStatus: _sessionPermissionStatus,
-            onOpenPermissions: _openPermissions,
-          ),
-          AboutSettingsSection(onOpenAbout: _showAboutDialog),
-        ],
-      ),
+    return SettingsContent(
+      themeMode: widget.themeMode,
+      onToggleTheme: widget.onToggleTheme,
+      prefillExerciseName: _prefillExerciseName,
+      onPrefillChanged: _togglePrefillExerciseName,
+      notificationMode: _notificationMode,
+      onCycleNotificationMode: _cycleNotificationMode,
+      busy: _busy,
+      onImport: _handleImport,
+      onExport: _handleExport,
+      permissionStatus: _sessionPermissionStatus,
+      onOpenPermissions: _openPermissions,
+      onOpenAbout: () => showRepTimerAboutDialog(context),
     );
   }
 }
