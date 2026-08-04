@@ -33,11 +33,18 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Prêt ?'), findsOneWidget);
+    final ready = tester.widget<Text>(find.text('Prêt ?'));
+    expect(ready.textAlign, TextAlign.center);
+    expect(
+      ready.style,
+      Theme.of(tester.element(find.text('Prêt ?'))).textTheme.headlineSmall,
+    );
 
     _expectBadge(
       tester,
       key: const Key('summary-groups-badge'),
       icon: Icons.layers,
+      label: 'Groupes',
       value: 2,
       description: 'Groupes : 2',
     );
@@ -45,6 +52,7 @@ void main() {
       tester,
       key: const Key('summary-exercises-badge'),
       icon: Icons.fitness_center,
+      label: 'Exercices',
       value: 7,
       description: 'Exercices : 7',
     );
@@ -52,6 +60,7 @@ void main() {
       tester,
       key: const Key('summary-rests-badge'),
       icon: Icons.timer,
+      label: 'Pauses',
       value: 3,
       description: 'Pauses : 3',
     );
@@ -167,6 +176,7 @@ void _expectBadge(
   WidgetTester tester, {
   required Key key,
   required IconData icon,
+  required String label,
   required int value,
   required String description,
 }) {
@@ -178,6 +188,10 @@ void _expectBadge(
   );
   expect(
     find.descendant(of: badge, matching: find.text('$value')),
+    findsOneWidget,
+  );
+  expect(
+    find.descendant(of: badge, matching: find.text(label)),
     findsOneWidget,
   );
   expect(find.byTooltip(description), findsOneWidget);

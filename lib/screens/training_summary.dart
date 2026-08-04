@@ -89,7 +89,11 @@ class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            Text("Prêt ?", style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              "Prêt ?",
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
             const SizedBox(height: 12),
 
             Expanded(

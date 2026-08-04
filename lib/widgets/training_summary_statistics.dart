@@ -80,16 +80,28 @@ class _StatisticBadge extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              child: Row(
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, size: 20),
-                  const SizedBox(width: 5),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, size: 20),
+                      const SizedBox(width: 5),
+                      Text(
+                        "$value",
+                        maxLines: 1,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
                   Text(
-                    "$value",
+                    label,
                     maxLines: 1,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.outline,
                     ),
                   ),
                 ],
