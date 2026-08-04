@@ -20,12 +20,17 @@ import 'step_end_notification_service.dart';
 import 'training_history_storage.dart';
 import 'training_storage.dart';
 
+/// Indique si les modifications apportées à la séance d'origine pendant
+/// son exécution doivent être enregistrées ou rester uniquement en mémoire.
+enum TrainingChangesPersistence { persistent, memoryOnly }
+
 /// Orchestre l'exécution d'une séance et expose son état à l'interface.
 /// Les responsabilités de temps, progression, notifications et persistance
 /// sont déléguées à des composants spécialisés.
 class SessionController extends ChangeNotifier {
   SessionController({
     required this.training,
+    this.trainingChangesPersistence = TrainingChangesPersistence.persistent,
     SessionCheckpoint? initialCheckpoint,
     SessionCheckpointStorage? checkpointStorage,
     TrainingStorage? trainingStorage,
@@ -82,6 +87,7 @@ class SessionController extends ChangeNotifier {
   }
 
   final Training training;
+  final TrainingChangesPersistence trainingChangesPersistence;
   final TrainingStorage _trainingStorage;
   final Future<void> Function() _enableWakelock;
   final Future<void> Function() _disableWakelock;
@@ -244,6 +250,11 @@ class SessionController extends ChangeNotifier {
     final previousComment = currentStep.item.comment;
     currentStep.item.comment = comment;
     _notifyIfActive();
+
+    if (trainingChangesPersistence == TrainingChangesPersistence.memoryOnly) {
+      return;
+    }
+
     try {
       await _trainingStorage.addOrUpdateTraining(training);
     } on Object {

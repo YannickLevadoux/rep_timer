@@ -22,6 +22,7 @@ import '../widgets/dialogs/incomplete_session_dialog.dart';
 /// cycle de vie de l'app, animation de clignotement).
 class TrainingSessionScreen extends StatefulWidget {
   final Training training;
+  final TrainingChangesPersistence trainingChangesPersistence;
 
   // Si fourni, l'écran reprend la séance exactement là où elle en était
   // plutôt que de repartir de la première étape (reprise après une mort
@@ -32,6 +33,7 @@ class TrainingSessionScreen extends StatefulWidget {
     super.key,
     required this.training,
     this.initialCheckpoint,
+    this.trainingChangesPersistence = TrainingChangesPersistence.persistent,
   });
 
   @override
@@ -54,6 +56,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     _controller = SessionController(
       training: widget.training,
       initialCheckpoint: widget.initialCheckpoint,
+      trainingChangesPersistence: widget.trainingChangesPersistence,
     );
     _controller.addListener(_onControllerChanged);
 
@@ -172,7 +175,8 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
   }
 
   // Ouvre le commentaire dans un Dialog dédié ; en cas de validation, la
-  // mise à jour est reportée sur le contrôleur (qui persiste aussitôt).
+  // mise à jour est reportée sur le contrôleur, qui applique la politique
+  // de persistance choisie par l'écran appelant.
   Future<void> _startEditComment() async {
     final result = await showCommentDialog(
       context,

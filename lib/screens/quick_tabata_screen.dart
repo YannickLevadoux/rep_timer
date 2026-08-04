@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/exercise_group.dart';
 import '../models/training.dart';
 import '../models/training_item.dart';
+import '../services/session_controller.dart';
 import '../utils/formatters.dart';
 import '../widgets/duration_minutes_seconds_picker.dart';
 import 'training_session.dart';
@@ -101,7 +102,10 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TrainingSessionScreen(training: quickTraining),
+        builder: (context) => TrainingSessionScreen(
+          training: quickTraining,
+          trainingChangesPersistence: TrainingChangesPersistence.memoryOnly,
+        ),
       ),
     );
   }
