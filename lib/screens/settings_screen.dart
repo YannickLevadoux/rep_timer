@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/notification_mode.dart';
 import '../models/notification_sound.dart';
 import '../services/app_settings_storage.dart';
+import '../services/backup_export_exception.dart';
 import '../services/json_prefs_storage.dart';
 import '../services/session_notification_permission_service.dart';
 import '../services/settings_transfer_service.dart';
@@ -17,6 +18,7 @@ class SettingsScreen extends StatefulWidget {
   final Future<ThemeMode> Function() onToggleTheme;
   final SessionNotificationPermissionService? permissionService;
   final AppSettingsStorage? settingsStorage;
+  final SettingsTransferService? transferService;
 
   const SettingsScreen({
     super.key,
@@ -24,6 +26,7 @@ class SettingsScreen extends StatefulWidget {
     required this.onToggleTheme,
     this.permissionService,
     this.settingsStorage,
+    this.transferService,
   });
 
   @override
@@ -31,10 +34,10 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final SettingsTransferService _transferService = SettingsTransferService();
   final StepEndNotificationService _notificationService =
       StepEndNotificationService();
 
+  late final SettingsTransferService _transferService;
   late final AppSettingsStorage _settingsStorage;
   late final SessionNotificationPermissionService _sessionPermissions;
   bool _busy = false;
@@ -49,6 +52,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _settingsStorage = widget.settingsStorage ?? AppSettingsStorage();
+    _transferService = widget.transferService ?? SettingsTransferService();
     _themeMode = widget.themeMode;
     _sessionPermissions =
         widget.permissionService ?? SessionNotificationPermissionService();
@@ -128,15 +132,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _busy = true);
     try {
       await _transferService.exportAndShare();
-    } on StorageMutationBlockedException {
-      if (!mounted) return;
-      showSnack(
-        context,
-        "Les séances enregistrées sont illisibles. L'export a été interrompu "
-        'pour protéger les données.',
-      );
-    } catch (error) {
-      if (mounted) showSnack(context, "Erreur lors de l'export : $error");
+    } on BackupExportException catch (error) {
+      if (mounted) showSnack(context, error.userMessage);
+    } on Object {
+      if (mounted) showSnack(context, "La sauvegarde n'a pas pu être créée.");
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -162,8 +161,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         "L'import est impossible car certaines séances enregistrées n'ont "
         'pas pu être lues.',
       );
-    } catch (error) {
-      if (mounted) showSnack(context, "Erreur lors de l'import : $error");
+    } on Object {
+      if (mounted) showSnack(context, "L'import n'a pas pu être terminé.");
     } finally {
       if (mounted) setState(() => _busy = false);
     }

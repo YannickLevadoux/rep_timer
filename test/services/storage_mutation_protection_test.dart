@@ -6,7 +6,7 @@ import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_history_entry.dart';
 import 'package:rep_timer/services/json_prefs_storage.dart';
 import 'package:rep_timer/services/session_checkpoint_storage.dart';
-import 'package:rep_timer/services/training_export_service.dart';
+import 'package:rep_timer/services/training_import_service.dart';
 import 'package:rep_timer/services/training_history_storage.dart';
 import 'package:rep_timer/services/training_storage.dart';
 import 'package:rep_timer/validation/business_validation.dart';
@@ -115,7 +115,7 @@ void main() {
   test('l’import ne remplace pas des séances partiellement lisibles', () async {
     final raw = jsonEncode([_training('valid').toJson(), 12]);
     SharedPreferences.setMockInitialValues({'trainings': raw});
-    final service = TrainingExportService();
+    final service = TrainingImportService();
     const importPayload =
         '{"app":"RepTimer","exportFormatVersion":1,"trainings":[]}';
 

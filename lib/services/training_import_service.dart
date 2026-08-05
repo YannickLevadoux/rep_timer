@@ -1,80 +1,35 @@
 import 'dart:convert';
-import 'dart:io';
-
-import 'package:path_provider/path_provider.dart';
 
 import '../models/training.dart';
 import '../validation/business_validation.dart';
 import 'json_prefs_storage.dart';
 import 'training_storage.dart';
 
-/// Identifiant de format, présent dans chaque fichier exporté. Permet de
-/// faire évoluer la structure plus tard tout en sachant lire les anciens
-/// exports (voir la validation de version dans [importFromJsonString]).
-const int _exportFormatVersion = 1;
+const int _supportedImportVersion = 1;
 const String _appIdentifier = 'RepTimer';
 
-/// Résultat d'un import, à afficher à l'utilisateur.
 class ImportResult {
-  final int importedCount;
-
   const ImportResult(this.importedCount);
+
+  final int importedCount;
 }
 
-/// Gère l'export de toutes les séances vers un fichier JSON partageable,
-/// et l'import d'un tel fichier.
+/// Lecture historique des imports de séances v1.
 ///
-/// Format de fichier :
-/// ```json
-/// {
-///   "app": "RepTimer",
-///   "exportFormatVersion": 1,
-///   "exportedAt": "<ISO8601>",
-///   "trainings": [ <Training.toJson()>, ... ]
-/// }
-/// ```
-/// Réutilise directement les toJson()/fromJson() déjà présents sur les
-/// modèles : le format d'export est simplement une enveloppe versionnée
-/// autour de la sérialisation déjà utilisée pour le stockage local.
-class TrainingExportService {
-  final TrainingStorage _storage;
-
-  TrainingExportService({TrainingStorage? storage})
+/// La restauration complète des sauvegardes v2 sera ajoutée par l'issue 107.
+/// Cette classe ne contient volontairement aucun chemin d'encodage ou d'export.
+class TrainingImportService {
+  TrainingImportService({TrainingStorage? storage})
     : _storage = storage ?? TrainingStorage();
 
-  /// Écrit un fichier d'export dans le répertoire temporaire de l'app et
-  /// retourne son chemin, prêt à être partagé.
-  Future<String> exportToFile() async {
-    final trainings = _healthyTrainings(await _storage.loadTrainings());
+  final TrainingStorage _storage;
+  int _idCounter = 0;
 
-    final payload = {
-      'app': _appIdentifier,
-      'exportFormatVersion': _exportFormatVersion,
-      'exportedAt': DateTime.now().toIso8601String(),
-      'trainings': trainings.map((t) => t.toJson()).toList(),
-    };
-
-    final jsonString = const JsonEncoder.withIndent('  ').convert(payload);
-
-    final directory = await getTemporaryDirectory();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final file = File('${directory.path}/reptimer_export_$timestamp.json');
-    await file.writeAsString(jsonString);
-
-    return file.path;
-  }
-
-  /// Importe les séances contenues dans [content] (contenu brut d'un
-  /// fichier d'export) et les ajoute à celles déjà présentes.
-  ///
-  /// Ne modifie et ne supprime jamais une séance existante : chaque
-  /// séance importée (et chacun de ses groupes) reçoit un nouvel
-  /// identifiant, garantissant l'absence de collision.
   Future<ImportResult> importFromJsonString(String content) async {
     final Map<String, dynamic> decoded;
     try {
       decoded = jsonDecode(content) as Map<String, dynamic>;
-    } catch (_) {
+    } on Object {
       throw const FormatException(
         "Le fichier sélectionné n'est pas un fichier JSON valide.",
       );
@@ -87,7 +42,7 @@ class TrainingExportService {
     }
 
     final version = decoded['exportFormatVersion'] as int? ?? 1;
-    if (version > _exportFormatVersion) {
+    if (version > _supportedImportVersion) {
       throw FormatException(
         "Ce fichier a été exporté par une version plus récente de "
         "l'application (format v$version) et ne peut pas être importé ici. "
@@ -96,16 +51,11 @@ class TrainingExportService {
     }
 
     final rawTrainings = decoded['trainings'] as List<dynamic>;
-
     final imported = <Training>[];
-
-    // La totalité du fichier est d'abord désérialisée, normalisée et validée.
-    // Aucune lecture destinée à une mutation, et surtout aucune écriture, ne
-    // commence avant que toutes les séances aient passé le contrat métier.
     for (var index = 0; index < rawTrainings.length; index++) {
-      final raw = rawTrainings[index];
       final Training parsed;
       try {
+        final raw = rawTrainings[index];
         if (raw is! Map<String, dynamic>) throw const FormatException();
         parsed = Training.fromJson(raw);
       } on Object {
@@ -119,11 +69,9 @@ class TrainingExportService {
           id: _newId(),
           name: parsed.name,
           createdAt: parsed.createdAt,
-          // Copie profonde (voir ExerciseGroup.copyWith) : chaque groupe
-          // importé reçoit un nouvel identifiant, et ses items sont
-          // recopiés plutôt que partagés avec les objets décodés depuis
-          // le fichier.
-          groups: parsed.groups.map((g) => g.copyWith(id: _newId())).toList(),
+          groups: parsed.groups
+              .map((group) => group.copyWith(id: _newId()))
+              .toList(),
         ),
       );
       final issues = BusinessValidation.validateTraining(candidate);
@@ -135,11 +83,8 @@ class TrainingExportService {
 
     final existing = _healthyTrainings(await _storage.loadTrainings());
     await _storage.saveTrainings([...existing, ...imported]);
-
     return ImportResult(imported.length);
   }
-
-  int _idCounter = 0;
 
   List<Training> _healthyTrainings(StorageReadResult<List<Training>> result) {
     return switch (result) {
@@ -157,9 +102,6 @@ class TrainingExportService {
     };
   }
 
-  // Horodatage + compteur : évite toute collision même si plusieurs
-  // identifiants sont générés dans la même microseconde (import de
-  // plusieurs séances d'affilée).
   String _newId() => '${DateTime.now().microsecondsSinceEpoch}_${_idCounter++}';
 
   String _importIssueMessage(int trainingIndex, BusinessValidationIssue issue) {

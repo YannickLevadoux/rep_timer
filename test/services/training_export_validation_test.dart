@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_item.dart';
-import 'package:rep_timer/services/training_export_service.dart';
+import 'package:rep_timer/services/training_import_service.dart';
 import 'package:rep_timer/services/training_storage.dart';
 import 'package:rep_timer/services/json_prefs_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,7 +23,7 @@ void main() {
     group['rounds'] = 1000;
 
     await expectLater(
-      TrainingExportService().importFromJsonString(
+      TrainingImportService().importFromJsonString(
         jsonEncode(_payload([valid, invalid])),
       ),
       throwsA(
@@ -47,7 +47,7 @@ void main() {
       ..name = '  Exercice  '
       ..comment = '  ligne 1\r\nligne 2  ';
 
-    final result = await TrainingExportService().importFromJsonString(
+    final result = await TrainingImportService().importFromJsonString(
       jsonEncode(_payload([imported.toJson()])),
     );
 
@@ -74,7 +74,7 @@ void main() {
       group['repetitionSequence'] = [10, 0, 15];
 
       await expectLater(
-        TrainingExportService().importFromJsonString(
+        TrainingImportService().importFromJsonString(
           jsonEncode(_payload([valid, invalid])),
         ),
         throwsA(
