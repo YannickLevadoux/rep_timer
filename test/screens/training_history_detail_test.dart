@@ -86,7 +86,7 @@ void main() {
     expect(find.text('01:04:11'), findsOneWidget);
     expect(find.text('Groupe B'), findsOneWidget);
     expect(find.text('00:13'), findsOneWidget);
-    expect(find.text('Exercice A1'), findsNothing);
+    expect(find.text('Exercice A1 × 12'), findsNothing);
     expect(find.text('Exercice B1'), findsNothing);
     expect(
       find.bySemanticsLabel('Groupe A, durée 01:04:11, groupe replié'),
@@ -96,7 +96,7 @@ void main() {
     await tester.tap(find.text('Groupe A'));
     await tester.pump();
 
-    expect(find.text('Exercice A1'), findsOneWidget);
+    expect(find.text('Exercice A1 × 12'), findsOneWidget);
     expect(find.text('Commentaire A'), findsOneWidget);
     expect(find.text('Seconde ligne masquée'), findsNothing);
     expect(find.text('Exercice B1'), findsNothing);
@@ -107,12 +107,12 @@ void main() {
 
     await tester.tap(find.text('Groupe B'));
     await tester.pump();
-    expect(find.text('Exercice A1'), findsOneWidget);
+    expect(find.text('Exercice A1 × 12'), findsOneWidget);
     expect(find.text('Exercice B1'), findsOneWidget);
 
     await tester.tap(find.text('Groupe A'));
     await tester.pump();
-    expect(find.text('Exercice A1'), findsNothing);
+    expect(find.text('Exercice A1 × 12'), findsNothing);
     expect(find.text('Exercice B1'), findsOneWidget);
 
     semantics.dispose();
@@ -275,6 +275,7 @@ TrainingHistoryEntry _detailedEntry() {
         name: 'Exercice A1',
         duration: const Duration(hours: 1, minutes: 1, seconds: 2),
         completed: true,
+        repetitions: 12,
         comment: 'Commentaire A\nSeconde ligne masquée',
       ),
       _step(
@@ -319,12 +320,14 @@ HistoryStepEntry _step({
   required bool completed,
   ItemType type = ItemType.exercise,
   String? comment,
+  int? repetitions,
 }) {
   return HistoryStepEntry(
     groupId: groupId,
     groupName: groupName,
     itemType: type,
     itemName: name,
+    repetitions: repetitions,
     comment: comment,
     actualDuration: duration,
     completed: completed,

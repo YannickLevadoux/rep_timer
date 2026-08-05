@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
+import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/session_checkpoint.dart';
 import 'package:rep_timer/models/session_step.dart';
 import 'package:rep_timer/models/training.dart';
@@ -67,8 +68,57 @@ void main() {
     expect(entry.status, TrainingSessionStatus.completed);
     expect(entry.steps.single.groupName, 'Groupe');
     expect(entry.steps.single.itemName, 'Exercice');
+    expect(entry.steps.single.repetitions, isNull);
     expect(entry.steps.single.actualDuration, const Duration(seconds: 10));
     expect(checkpointStorage.clearCalls, 2);
+  });
+
+  test('la clôture conserve les répétitions résolues de chaque tour', () async {
+    final historyStorage = _FakeHistoryStorage();
+    final training = Training(
+      id: 'variable-training',
+      name: 'Variable',
+      groups: [
+        ExerciseGroup(
+          id: 'variable-group',
+          name: 'Pyramide',
+          type: GroupType.variableRepetitions,
+          repetitionSequence: [10, 12, 15],
+          items: [
+            TrainingItem(
+              type: ItemType.exercise,
+              name: 'Squats',
+              repetitions: 5,
+            ),
+          ],
+        ),
+      ],
+      createdAt: DateTime(2026),
+    );
+    final steps = buildSessionSteps(training);
+    final service = SessionCompletionService(
+      checkpointStorage: _FakeCheckpointStorage(),
+      historyStorage: historyStorage,
+      now: () => DateTime(2026, 2, 3),
+    );
+
+    await service.completeSession(
+      training: training,
+      steps: steps,
+      completed: [true, true, true],
+      stepActualDurations: const [
+        Duration(seconds: 10),
+        Duration(seconds: 12),
+        Duration(seconds: 15),
+      ],
+      totalDuration: const Duration(seconds: 37),
+      status: TrainingSessionStatus.completed,
+    );
+
+    expect(
+      historyStorage.entries.single.steps.map((step) => step.repetitions),
+      [10, 12, 15],
+    );
   });
 }
 
