@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../controllers/home_controller.dart';
+import '../controllers/training_history_controller.dart';
 import '../models/training.dart';
 import '../services/app_settings_storage.dart';
 import '../services/pending_session_recovery_service.dart';
+import '../services/training_history_storage.dart';
 import '../utils/snack.dart';
 import '../utils/validation_messages.dart';
 import '../widgets/dialogs/duplicate_training_dialog.dart';
@@ -125,7 +127,11 @@ class _HomePageState extends State<HomePage> {
   void _openDestination(int index) {
     final Widget? destination = switch (index) {
       1 => const QuickTabataScreen(),
-      2 => const TrainingHistoryScreen(),
+      2 => TrainingHistoryScreen(
+        controller: TrainingHistoryController(
+          storage: TrainingHistoryStorage(),
+        ),
+      ),
       _ => null,
     };
     if (destination != null) {

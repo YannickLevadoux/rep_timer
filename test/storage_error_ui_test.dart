@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_history_entry.dart';
+import 'package:rep_timer/controllers/training_history_controller.dart';
 import 'package:rep_timer/screens/home_screen.dart';
 import 'package:rep_timer/screens/training_history.dart';
+import 'package:rep_timer/services/training_history_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -81,7 +83,16 @@ void main() {
     ]);
     SharedPreferences.setMockInitialValues({'training_history': raw});
 
-    await tester.pumpWidget(const MaterialApp(home: TrainingHistoryScreen()));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TrainingHistoryScreen(
+          controller: TrainingHistoryController(
+            storage: TrainingHistoryStorage(),
+            now: () => DateTime(2026, 7, 1),
+          ),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Séance valid'), findsOneWidget);
@@ -103,7 +114,15 @@ void main() {
         'training_history': 'sensitive-invalid-history',
       });
 
-      await tester.pumpWidget(const MaterialApp(home: TrainingHistoryScreen()));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TrainingHistoryScreen(
+            controller: TrainingHistoryController(
+              storage: TrainingHistoryStorage(),
+            ),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(CircularProgressIndicator), findsNothing);

@@ -4,7 +4,6 @@ import '../models/history_step_entry.dart';
 import '../models/training_history_entry.dart';
 import '../models/training_item.dart';
 import '../services/json_prefs_storage.dart';
-import '../services/training_history_storage.dart';
 import '../utils/snack.dart';
 import '../widgets/dialogs/confirm_dialog.dart';
 import '../widgets/training_history_group_card.dart';
@@ -17,10 +16,12 @@ class TrainingHistoryDetailScreen extends StatefulWidget {
     super.key,
     required this.entry,
     this.allowDelete = true,
+    this.onDelete,
   });
 
   final TrainingHistoryEntry entry;
   final bool allowDelete;
+  final Future<void> Function()? onDelete;
 
   @override
   State<TrainingHistoryDetailScreen> createState() =>
@@ -59,7 +60,7 @@ class _TrainingHistoryDetailScreenState
         title: "Supprimer cette séance ?",
         content:
             'Cette action est irréversible. Supprimer "${entry.trainingName}" de l\'historique ?',
-        onDelete: () => TrainingHistoryStorage().deleteEntry(entry.id),
+        onDelete: widget.onDelete!,
       );
     } on StorageMutationBlockedException {
       if (!mounted) return;
@@ -137,7 +138,9 @@ class _TrainingHistoryDetailScreenState
           IconButton(
             icon: const Icon(Icons.delete),
             tooltip: "Supprimer",
-            onPressed: widget.allowDelete ? _confirmDelete : null,
+            onPressed: widget.allowDelete && widget.onDelete != null
+                ? _confirmDelete
+                : null,
           ),
         ],
       ),
