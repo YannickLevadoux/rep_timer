@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../utils/validation_messages.dart';
 import '../../validation/business_validation.dart';
+import 'repetition_sequence_editor_row.dart';
 
 Future<List<int>?> showRepetitionSequenceDialog(
   BuildContext context, {
@@ -14,18 +15,6 @@ Future<List<int>?> showRepetitionSequenceDialog(
     fallbackValue: fallbackValue,
   ),
 );
-
-class _SequenceEntry {
-  _SequenceEntry(int value)
-    : key = UniqueKey(),
-      controller = TextEditingController(text: value.toString());
-
-  final Key key;
-  final TextEditingController controller;
-  String? error;
-
-  void dispose() => controller.dispose();
-}
 
 class _RepetitionSequenceDialog extends StatefulWidget {
   const _RepetitionSequenceDialog({
@@ -42,13 +31,13 @@ class _RepetitionSequenceDialog extends StatefulWidget {
 }
 
 class _RepetitionSequenceDialogState extends State<_RepetitionSequenceDialog> {
-  late final List<_SequenceEntry> _entries;
+  late final List<RepetitionSequenceEntry> _entries;
   String? _sequenceError;
 
   @override
   void initState() {
     super.initState();
-    _entries = widget.initialValues.map(_SequenceEntry.new).toList();
+    _entries = widget.initialValues.map(RepetitionSequenceEntry.new).toList();
   }
 
   @override
@@ -65,7 +54,7 @@ class _RepetitionSequenceDialogState extends State<_RepetitionSequenceDialog> {
         : int.tryParse(_entries.last.controller.text.trim()) ??
               widget.fallbackValue;
     setState(() {
-      _entries.add(_SequenceEntry(value));
+      _entries.add(RepetitionSequenceEntry(value));
       _sequenceError = null;
     });
   }
@@ -129,58 +118,12 @@ class _RepetitionSequenceDialogState extends State<_RepetitionSequenceDialog> {
                       onReorderItem: _reorder,
                       itemBuilder: (context, index) {
                         final entry = _entries[index];
-                        return Padding(
+                        return RepetitionSequenceEditorRow(
                           key: entry.key,
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                width: 48,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 6),
-                                  child: Text(
-                                    'Tour\n${index + 1}',
-                                    maxLines: 2,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: TextField(
-                                  controller: entry.controller,
-                                  keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(
-                                    isDense: true,
-                                    labelText: 'Répétitions',
-                                    errorText: entry.error,
-                                  ),
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: 'Supprimer le tour',
-                                constraints: const BoxConstraints.tightFor(
-                                  width: 40,
-                                  height: 48,
-                                ),
-                                onPressed: _entries.length > 1
-                                    ? () => _remove(index)
-                                    : null,
-                                icon: const Icon(Icons.delete_outline),
-                              ),
-                              ReorderableDragStartListener(
-                                index: index,
-                                child: const Tooltip(
-                                  message: 'Réordonner',
-                                  child: SizedBox.square(
-                                    dimension: 40,
-                                    child: Icon(Icons.drag_handle),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                          index: index,
+                          entry: entry,
+                          canDelete: _entries.length > 1,
+                          onDelete: () => _remove(index),
                         );
                       },
                     ),
