@@ -1,16 +1,13 @@
-/// Type d'un groupe d'exercices. Un seul type existe pour l'instant
-/// ("Groupe libre"), mais cette structure (enum + libellé associé) est
-/// prévue pour accueillir de nouveaux types à l'avenir sans toucher au
-/// reste du code : il suffira d'ajouter une valeur ici et de compléter le
-/// switch de [label] (l'analyseur Dart signale tout switch non exhaustif
-/// ailleurs dans le code, ce qui guide les futurs ajouts).
+/// Type d'un groupe d'exercices.
 enum GroupType {
-  free;
+  free,
+  variableRepetitions;
 
   /// Libellé affiché à l'utilisateur (liste déroulante de l'écran
   /// d'édition, étiquette de synthèse...).
   String get label => switch (this) {
     GroupType.free => "Groupe libre",
+    GroupType.variableRepetitions => "Groupe à répétitions variables",
   };
 
   /// Résout une valeur persistée (nom d'enum) vers [GroupType], avec repli

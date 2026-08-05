@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../models/exercise_group.dart';
+import '../models/group_type.dart';
 import '../models/training_item.dart';
 import '../utils/exercise_icons.dart';
 import '../utils/formatters.dart';
+import '../utils/repetition_sequence_format.dart';
 
 class ExerciseGroupCard extends StatelessWidget {
   final ExerciseGroup group;
@@ -50,7 +52,11 @@ class ExerciseGroupCard extends StatelessWidget {
               ),
             ),
             Text(
-              "Répétitions : ${group.rounds}",
+              group.type == GroupType.variableRepetitions
+                  ? formatRepetitionSequenceSummary(group.repetitionSequence)
+                  : "Répétitions : ${group.rounds}",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(color: Theme.of(context).colorScheme.outline),
             ),
           ],

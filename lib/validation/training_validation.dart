@@ -1,7 +1,7 @@
 import '../models/exercise_group.dart';
 import '../models/training.dart';
 import '../models/training_item.dart';
-import 'numeric_validation.dart';
+import 'exercise_group_validation.dart';
 import 'text_validation.dart';
 import 'validation_contract.dart';
 
@@ -10,81 +10,12 @@ abstract final class TrainingValidation {
   static List<BusinessValidationIssue> validateItem(
     TrainingItem item, {
     String? location,
-  }) {
-    final issues = <BusinessValidationIssue>[];
-    if (item.type == ItemType.rest) {
-      final durationIssue = NumericValidation.validateDuration(item.duration);
-      if (durationIssue != null) issues.add(_located(durationIssue, location));
-      return issues;
-    }
-
-    final nameIssue = TextValidation.validateName(
-      item.name,
-      field: BusinessField.exerciseName,
-    );
-    if (nameIssue != null) issues.add(_located(nameIssue, location));
-
-    final commentIssue = TextValidation.validateComment(item.comment);
-    if (commentIssue != null) issues.add(_located(commentIssue, location));
-
-    final hasRepetitions = item.repetitions != null;
-    final hasDuration = item.duration != null;
-    final selectedModes =
-        (hasRepetitions ? 1 : 0) +
-        (hasDuration ? 1 : 0) +
-        (item.isFreeDuration ? 1 : 0);
-    if (selectedModes != 1) {
-      issues.add(
-        _located(
-          const BusinessValidationIssue(
-            field: BusinessField.exerciseMode,
-            code: BusinessValidationCode.invalidExerciseMode,
-          ),
-          location,
-        ),
-      );
-      return issues;
-    }
-    if (hasRepetitions) {
-      final repetitionsIssue = NumericValidation.validateCount(
-        item.repetitions,
-        field: BusinessField.repetitions,
-      );
-      if (repetitionsIssue != null) {
-        issues.add(_located(repetitionsIssue, location));
-      }
-    } else if (hasDuration) {
-      final durationIssue = NumericValidation.validateDuration(item.duration);
-      if (durationIssue != null) issues.add(_located(durationIssue, location));
-    }
-    return issues;
-  }
+  }) => ExerciseGroupValidation.validateItem(item, location: location);
 
   static List<BusinessValidationIssue> validateGroup(
     ExerciseGroup group, {
     String? location,
-  }) {
-    final issues = <BusinessValidationIssue>[];
-    final nameIssue = TextValidation.validateName(
-      group.name,
-      field: BusinessField.groupName,
-    );
-    if (nameIssue != null) issues.add(_located(nameIssue, location));
-    final roundsIssue = NumericValidation.validateCount(
-      group.rounds,
-      field: BusinessField.groupRounds,
-    );
-    if (roundsIssue != null) issues.add(_located(roundsIssue, location));
-    for (var index = 0; index < group.items.length; index++) {
-      issues.addAll(
-        validateItem(
-          group.items[index],
-          location: _childLocation(location, 'exercice ${index + 1}'),
-        ),
-      );
-    }
-    return issues;
-  }
+  }) => ExerciseGroupValidation.validateGroup(group, location: location);
 
   static List<BusinessValidationIssue> validateTraining(Training training) {
     final issues = <BusinessValidationIssue>[];
@@ -115,6 +46,7 @@ abstract final class TrainingValidation {
             type: group.type,
             expanded: group.expanded,
             rounds: group.rounds,
+            repetitionSequence: List<int>.of(group.repetitionSequence),
             items: group.items
                 .map(
                   (item) => TrainingItem(
@@ -142,12 +74,13 @@ abstract final class TrainingValidation {
   }) {
     var total = 0;
     for (final group in training.groups) {
-      if (group.rounds <= 0 || group.items.isEmpty) continue;
+      final rounds = group.executedRounds;
+      if (rounds <= 0 || group.items.isEmpty) continue;
       final remaining = stopAfter - total;
-      if (group.rounds > remaining ~/ group.items.length) {
+      if (rounds > remaining ~/ group.items.length) {
         return stopAfter + 1;
       }
-      total += group.items.length * group.rounds;
+      total += group.items.length * rounds;
     }
     return total;
   }
@@ -168,12 +101,4 @@ abstract final class TrainingValidation {
     final issues = validateTraining(training);
     if (issues.isNotEmpty) throw BusinessValidationException(issues);
   }
-
-  static BusinessValidationIssue _located(
-    BusinessValidationIssue issue,
-    String? location,
-  ) => location == null ? issue : issue.at(location);
-
-  static String _childLocation(String? parent, String child) =>
-      parent == null ? child : '$parent, $child';
 }

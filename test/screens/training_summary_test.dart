@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
+import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/screens/training_session.dart';
@@ -170,6 +171,45 @@ void main() {
       find.byType(TrainingSessionScreen, skipOffstage: false),
     );
     expect(session.training, same(training));
+  });
+
+  testWidgets('une suite variable pilote statistiques et aperçu des tours', (
+    tester,
+  ) async {
+    final group = ExerciseGroup(
+      id: 'variable',
+      name: 'Pyramide',
+      type: GroupType.variableRepetitions,
+      rounds: 99,
+      repetitionSequence: [10, 12, 15],
+      items: [
+        TrainingItem(type: ItemType.exercise, name: 'Squats', repetitions: 5),
+        TrainingItem(
+          type: ItemType.rest,
+          name: 'Pause',
+          duration: const Duration(seconds: 10),
+        ),
+      ],
+    );
+
+    await _pumpSummary(tester, _training(groups: [group]));
+
+    expect(find.text('× 3'), findsOneWidget);
+    expect(find.text('3 tours · 10 → 12 → 15'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('summary-exercises-badge')),
+        matching: find.text('3'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('summary-rests-badge')),
+        matching: find.text('3'),
+      ),
+      findsOneWidget,
+    );
   });
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
+import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/models/session_step.dart';
@@ -174,7 +175,79 @@ void main() {
       throwsA(isA<BusinessValidationException>()),
     );
   });
+
+  group('suite de répétitions du groupe', () {
+    test('accepte les bornes 1 et 999', () {
+      final group = _variableGroup([1, 999]);
+
+      expect(BusinessValidation.validateGroup(group), isEmpty);
+    });
+
+    test('refuse une suite vide, 0 et 1000', () {
+      final emptyIssues = BusinessValidation.validateGroup(_variableGroup([]));
+      expect(
+        emptyIssues,
+        contains(
+          isA<BusinessValidationIssue>()
+              .having(
+                (issue) => issue.field,
+                'field',
+                BusinessField.groupRepetitionSequence,
+              )
+              .having(
+                (issue) => issue.code,
+                'code',
+                BusinessValidationCode.required,
+              ),
+        ),
+      );
+
+      for (final value in [0, 1000]) {
+        final issues = BusinessValidation.validateGroup(
+          _variableGroup([value]),
+        );
+        expect(issues.single.field, BusinessField.groupRepetitionValue);
+      }
+    });
+
+    test('utilise sa longueur pour la limite de 10 000 étapes', () {
+      final accepted = Training(
+        id: 'accepted',
+        name: 'Acceptée',
+        createdAt: DateTime(2026),
+        groups: [_variableGroup(List.filled(10000, 1))],
+      );
+      final refused = Training(
+        id: 'refused',
+        name: 'Refusée',
+        createdAt: DateTime(2026),
+        groups: [_variableGroup(List.filled(10001, 1))],
+      );
+
+      expect(BusinessValidation.sessionStepUpperBound(accepted), 10000);
+      expect(BusinessValidation.validateSessionStepLimit(accepted), isNull);
+      expect(
+        BusinessValidation.sessionStepUpperBound(refused),
+        BusinessLimits.maximumSessionSteps + 1,
+      );
+      expect(
+        () => buildSessionSteps(refused),
+        throwsA(isA<BusinessValidationException>()),
+      );
+    });
+  });
 }
+
+ExerciseGroup _variableGroup(List<int> sequence) => ExerciseGroup(
+  id: 'variable',
+  name: 'Variable',
+  type: GroupType.variableRepetitions,
+  rounds: 42,
+  repetitionSequence: sequence,
+  items: [
+    TrainingItem(type: ItemType.exercise, name: 'Exercice', repetitions: 10),
+  ],
+);
 
 Training _training({required int items, required int rounds}) => Training(
   id: 'training',

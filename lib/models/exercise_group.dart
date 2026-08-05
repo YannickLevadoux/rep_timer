@@ -13,6 +13,12 @@ class ExerciseGroup {
   // Nombre de fois où le groupe doit être répété (par défaut 1)
   int rounds;
 
+  /// Valeurs finales appliquées, tour par tour, aux exercices en mode
+  /// répétitions d'un groupe [GroupType.variableRepetitions]. Conservée même
+  /// lorsque le groupe repasse en mode libre afin que le changement de type
+  /// reste entièrement réversible.
+  List<int> repetitionSequence;
+
   List<TrainingItem> items;
 
   ExerciseGroup({
@@ -21,8 +27,14 @@ class ExerciseGroup {
     this.type = GroupType.free,
     this.expanded = true,
     this.rounds = 1,
+    List<int>? repetitionSequence,
     required this.items,
-  });
+  }) : repetitionSequence = List<int>.of(repetitionSequence ?? const []);
+
+  /// Nombre de tours réellement développés lors de l'exécution.
+  int get executedRounds => type == GroupType.variableRepetitions
+      ? repetitionSequence.length
+      : rounds;
 
   /// Copie profonde de ce groupe : [items] est systématiquement recopié
   /// (chaque item via [TrainingItem.copyWith]), jamais partagé avec
@@ -41,6 +53,7 @@ class ExerciseGroup {
     GroupType? type,
     bool? expanded,
     int? rounds,
+    List<int>? repetitionSequence,
     List<TrainingItem>? items,
   }) {
     return ExerciseGroup(
@@ -49,6 +62,9 @@ class ExerciseGroup {
       type: type ?? this.type,
       expanded: expanded ?? this.expanded,
       rounds: rounds ?? this.rounds,
+      repetitionSequence: List<int>.of(
+        repetitionSequence ?? this.repetitionSequence,
+      ),
       items: (items ?? this.items).map((item) => item.copyWith()).toList(),
     );
   }
@@ -58,6 +74,7 @@ class ExerciseGroup {
     'name': name,
     'type': type.name,
     'rounds': rounds,
+    'repetitionSequence': repetitionSequence,
     'items': items.map((item) => item.toJson()).toList(),
   };
 
@@ -67,6 +84,11 @@ class ExerciseGroup {
       name: json['name'] as String,
       type: GroupType.fromName(json['type'] as String?),
       rounds: json['rounds'] as int? ?? 1,
+      repetitionSequence:
+          (json['repetitionSequence'] as List<dynamic>?)
+              ?.map((value) => value as int)
+              .toList() ??
+          const [],
       items: (json['items'] as List<dynamic>)
           .map((e) => TrainingItem.fromJson(e as Map<String, dynamic>))
           .toList(),

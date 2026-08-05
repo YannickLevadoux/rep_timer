@@ -10,20 +10,27 @@ enum ExerciseInputMode { repetitions, duration, freeDuration }
 
 /// État et validation du formulaire d'exercice, indépendants du dialogue.
 class ExerciseFormController extends ChangeNotifier {
-  ExerciseFormController({TrainingItem? initial, String defaultName = ''})
-    : isEditing = initial != null,
-      nameController = TextEditingController(
-        text: initial?.name ?? defaultName,
-      ),
-      repetitionsController = TextEditingController(
-        text: initial?.repetitions?.toString() ?? '',
-      ),
-      commentController = TextEditingController(text: initial?.comment ?? ''),
-      mode = _modeOf(initial),
-      duration = initial?.duration ?? defaultExerciseDuration,
-      iconName = initial?.iconName ?? defaultExerciseIconName;
+  ExerciseFormController({
+    TrainingItem? initial,
+    String defaultName = '',
+    this.repetitionsDefinedByGroup = false,
+    int repetitionFallback = BusinessLimits.minimumCount,
+  }) : isEditing = initial != null,
+       nameController = TextEditingController(
+         text: initial?.name ?? defaultName,
+       ),
+       repetitionsController = TextEditingController(
+         text:
+             initial?.repetitions?.toString() ??
+             (repetitionsDefinedByGroup ? repetitionFallback.toString() : ''),
+       ),
+       commentController = TextEditingController(text: initial?.comment ?? ''),
+       mode = _modeOf(initial),
+       duration = initial?.duration ?? defaultExerciseDuration,
+       iconName = initial?.iconName ?? defaultExerciseIconName;
 
   final bool isEditing;
+  final bool repetitionsDefinedByGroup;
   final TextEditingController nameController;
   final TextEditingController repetitionsController;
   final TextEditingController commentController;
@@ -64,7 +71,8 @@ class ExerciseFormController extends ChangeNotifier {
       nameController.text,
       field: BusinessField.exerciseName,
     );
-    final repetitionsIssue = mode == ExerciseInputMode.repetitions
+    final repetitionsIssue =
+        mode == ExerciseInputMode.repetitions && !repetitionsDefinedByGroup
         ? BusinessValidation.validateCountText(
             repetitionsController.text,
             field: BusinessField.repetitions,

@@ -1,4 +1,5 @@
 import 'exercise_group.dart';
+import 'group_type.dart';
 import 'training.dart';
 import 'training_item.dart';
 import '../validation/business_validation.dart';
@@ -12,12 +13,19 @@ class SessionStep {
   final int totalRounds;
   final TrainingItem item;
 
+  /// Élément du modèle édité à l'origine de cette étape. Pour un exercice à
+  /// répétitions variables, [item] est une copie portant la valeur résolue du
+  /// tour tandis que [sourceItem] reste l'objet à persister (commentaire,
+  /// réglages...). Pour les autres étapes, les deux références sont identiques.
+  final TrainingItem sourceItem;
+
   const SessionStep({
     required this.group,
     required this.roundIndex,
     required this.totalRounds,
     required this.item,
-  });
+    TrainingItem? sourceItem,
+  }) : sourceItem = sourceItem ?? item;
 }
 
 /// Construit la séquence complète et ordonnée des étapes d'une séance :
@@ -30,16 +38,23 @@ List<SessionStep> buildSessionSteps(Training training) {
   final steps = <SessionStep>[];
 
   for (final group in training.groups) {
-    final rounds = group.rounds;
+    final rounds = group.executedRounds;
 
     for (var round = 1; round <= rounds; round++) {
       for (final item in group.items) {
+        final resolvedItem =
+            group.type == GroupType.variableRepetitions &&
+                item.type == ItemType.exercise &&
+                item.repetitions != null
+            ? item.copyWith(repetitions: group.repetitionSequence[round - 1])
+            : item;
         steps.add(
           SessionStep(
             group: group,
             roundIndex: round,
             totalRounds: rounds,
-            item: item,
+            item: resolvedItem,
+            sourceItem: item,
           ),
         );
       }

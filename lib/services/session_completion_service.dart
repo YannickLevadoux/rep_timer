@@ -77,6 +77,7 @@ class SessionCompletionService {
               groupName: steps[i].group.name,
               itemType: steps[i].item.type,
               itemName: steps[i].item.name,
+              repetitions: steps[i].item.repetitions,
               comment: steps[i].item.comment,
               actualDuration: stepActualDurations[i],
               completed: completed[i],

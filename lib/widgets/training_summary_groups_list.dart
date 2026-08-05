@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../models/exercise_group.dart';
+import '../models/group_type.dart';
 import '../models/training_item.dart';
 import '../utils/exercise_icons.dart';
+import '../utils/repetition_sequence_format.dart';
 
 class TrainingSummaryGroupsList extends StatelessWidget {
   const TrainingSummaryGroupsList({
@@ -56,6 +58,17 @@ class TrainingSummaryGroupsList extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (group.type == GroupType.variableRepetitions) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    formatRepetitionSequenceSummary(group.repetitionSequence),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                ],
                 if (exercises.isEmpty) ...[
                   const SizedBox(height: 8),
                   Text(

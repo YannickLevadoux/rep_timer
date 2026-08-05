@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../controllers/group_editor_controller.dart';
 import '../models/exercise_group.dart';
 import '../models/training_item.dart';
+import '../models/group_type.dart';
 import '../services/app_settings_storage.dart';
 import '../utils/editor_back_handler.dart';
 import '../utils/snack.dart';
@@ -12,6 +13,7 @@ import '../widgets/dialogs/confirm_dialog.dart';
 import '../widgets/dialogs/exercise_dialog.dart';
 import '../widgets/dialogs/group_editor_settings_dialog.dart';
 import '../widgets/dialogs/rest_dialog.dart';
+import '../widgets/dialogs/repetition_sequence_dialog.dart';
 import '../widgets/group_editor_view.dart';
 
 class GroupEditor extends StatefulWidget {
@@ -61,6 +63,9 @@ class _GroupEditorState extends State<GroupEditor> {
       () => showExerciseDialog(
         context,
         defaultName: prefill ? _controller.name : '',
+        repetitionsDefinedByGroup:
+            _controller.group.type == GroupType.variableRepetitions,
+        repetitionFallback: _repetitionFallback,
       ),
     );
   }
@@ -90,8 +95,28 @@ class _GroupEditorState extends State<GroupEditor> {
       return;
     }
 
-    final result = await showExerciseDialog(context, initial: item);
+    final result = await showExerciseDialog(
+      context,
+      initial: item,
+      repetitionsDefinedByGroup:
+          _controller.group.type == GroupType.variableRepetitions,
+      repetitionFallback: _repetitionFallback,
+    );
     if (result != null) _controller.updateExercise(index, result);
+  }
+
+  int get _repetitionFallback =>
+      _controller.group.repetitionSequence.firstOrNull ??
+      BusinessLimits.minimumCount;
+
+  Future<void> _editRepetitionSequence() async {
+    FocusScope.of(context).unfocus();
+    final result = await showRepetitionSequenceDialog(
+      context,
+      initialValues: _controller.group.repetitionSequence,
+      fallbackValue: _repetitionFallback,
+    );
+    if (result != null) _controller.setRepetitionSequence(result);
   }
 
   Future<void> _deleteItem(int index) async {
@@ -145,6 +170,7 @@ class _GroupEditorState extends State<GroupEditor> {
           onEditItem: _editItem,
           onDeleteItem: _deleteItem,
           onSave: _saveGroup,
+          onEditRepetitionSequence: _editRepetitionSequence,
           nameError: _nameError,
         ),
       ),

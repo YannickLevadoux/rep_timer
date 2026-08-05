@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
+import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/session_checkpoint.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_item.dart';
@@ -84,6 +85,49 @@ void main() {
       expect(state.pendingIncompleteReview, isFalse);
     },
   );
+
+  test('un checkpoint reprend le bon tour et la valeur variable résolue', () {
+    final training = Training(
+      id: 'variable-training',
+      name: 'Variable',
+      createdAt: DateTime(2026),
+      groups: [
+        ExerciseGroup(
+          id: 'variable',
+          name: 'Pyramide',
+          type: GroupType.variableRepetitions,
+          repetitionSequence: [10, 12, 15],
+          items: [
+            TrainingItem(
+              type: ItemType.exercise,
+              name: 'Squats',
+              repetitions: 5,
+            ),
+          ],
+        ),
+      ],
+    );
+    final checkpoint = SessionCheckpoint(
+      trainingId: training.id,
+      currentIndex: 1,
+      completed: [true, false, false],
+      globalElapsed: const Duration(seconds: 30),
+      stepElapsed: const Duration(seconds: 5),
+      paused: true,
+      savedAt: DateTime(2026),
+      stepActualDurations: [Duration.zero, Duration.zero, Duration.zero],
+    );
+
+    final state = SessionProgressState(
+      training: training,
+      checkpoint: checkpoint,
+    );
+
+    expect(state.restoredFromCheckpoint, isTrue);
+    expect(state.currentStep.roundIndex, 2);
+    expect(state.currentStep.totalRounds, 3);
+    expect(state.currentStep.item.repetitions, 12);
+  });
 }
 
 Training _training() => Training(

@@ -13,6 +13,7 @@ class GroupItemsList extends StatelessWidget {
   final void Function(int oldIndex, int newIndex) onReorder;
   final void Function(int index) onEdit;
   final void Function(int index) onDelete;
+  final bool repetitionsDefinedByGroup;
 
   const GroupItemsList({
     super.key,
@@ -20,6 +21,7 @@ class GroupItemsList extends StatelessWidget {
     required this.onReorder,
     required this.onEdit,
     required this.onDelete,
+    this.repetitionsDefinedByGroup = false,
   });
 
   @override
@@ -41,6 +43,7 @@ class GroupItemsList extends StatelessWidget {
           onEdit: () => onEdit(index),
           onDelete: () => onDelete(index),
           dragIndex: index,
+          repetitionsDefinedByGroup: repetitionsDefinedByGroup,
         );
       },
     );

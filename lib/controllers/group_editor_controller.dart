@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/exercise_group.dart';
 import '../models/group_type.dart';
 import '../models/training_item.dart';
+import '../validation/business_validation.dart';
 
 class GroupEditorController extends ChangeNotifier {
   GroupEditorController(ExerciseGroup source) {
@@ -24,12 +25,44 @@ class GroupEditorController extends ChangeNotifier {
   String _currentSnapshot() => jsonEncode({...group.toJson(), 'name': name});
 
   void setType(GroupType type) {
+    if (type == GroupType.variableRepetitions &&
+        group.repetitionSequence.isEmpty) {
+      final firstRepetitions = group.items
+          .where(
+            (item) =>
+                item.repetitions != null &&
+                BusinessValidation.validateCount(
+                      item.repetitions,
+                      field: BusinessField.repetitions,
+                    ) ==
+                    null,
+          )
+          .map((item) => item.repetitions!)
+          .firstOrNull;
+      final validRounds =
+          BusinessValidation.validateCount(
+                group.rounds,
+                field: BusinessField.groupRounds,
+              ) ==
+              null
+          ? group.rounds
+          : BusinessLimits.minimumCount;
+      group.repetitionSequence = List<int>.filled(
+        validRounds,
+        firstRepetitions ?? BusinessLimits.minimumCount,
+      );
+    }
     group.type = type;
     notifyListeners();
   }
 
   void setRounds(int rounds) {
     group.rounds = rounds;
+    notifyListeners();
+  }
+
+  void setRepetitionSequence(List<int> values) {
+    group.repetitionSequence = List<int>.of(values);
     notifyListeners();
   }
 

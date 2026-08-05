@@ -3,6 +3,7 @@ import 'package:rep_timer/models/exercise_group.dart';
 import 'package:rep_timer/models/session_step.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_item.dart';
+import 'package:rep_timer/models/group_type.dart';
 
 void main() {
   group('estimatePlannedDuration', () {
@@ -81,6 +82,107 @@ void main() {
       expect(training.groups.single, same(group));
       expect(training.groups.single.items[0], same(items[0]));
       expect(training.groups.single.items[1], same(items[1]));
+    });
+  });
+
+  group('groupe à répétitions variables', () {
+    test('applique une suite commune à plusieurs exercices sans les muter', () {
+      final squats = TrainingItem(
+        type: ItemType.exercise,
+        name: 'Squats',
+        repetitions: 10,
+      );
+      final pompes = TrainingItem(
+        type: ItemType.exercise,
+        name: 'Pompes',
+        repetitions: 5,
+      );
+      final group = ExerciseGroup(
+        id: 'variable',
+        name: 'Variable',
+        type: GroupType.variableRepetitions,
+        rounds: 9,
+        repetitionSequence: [10, 12, 15],
+        items: [squats, pompes],
+      );
+
+      final steps = buildSessionSteps(_training([group]));
+
+      expect(steps, hasLength(6));
+      expect(steps.map((step) => step.item.repetitions), [
+        10,
+        10,
+        12,
+        12,
+        15,
+        15,
+      ]);
+      expect(steps.map((step) => step.roundIndex), [1, 1, 2, 2, 3, 3]);
+      expect(steps.every((step) => step.totalRounds == 3), isTrue);
+      expect(squats.repetitions, 10);
+      expect(pompes.repetitions, 5);
+      expect(steps[0].item, isNot(same(squats)));
+      expect(steps[2].item, isNot(same(steps[0].item)));
+    });
+
+    test('ne modifie ni les durées, ni la durée libre, ni les pauses', () {
+      final timed = TrainingItem(
+        type: ItemType.exercise,
+        name: 'Gainage',
+        duration: const Duration(seconds: 30),
+      );
+      final free = TrainingItem(
+        type: ItemType.exercise,
+        name: 'Libre',
+        isFreeDuration: true,
+      );
+      final rest = TrainingItem(
+        type: ItemType.rest,
+        name: 'Pause',
+        duration: const Duration(seconds: 15),
+      );
+      final group = ExerciseGroup(
+        id: 'mixed',
+        name: 'Mixte',
+        type: GroupType.variableRepetitions,
+        repetitionSequence: [10, 12],
+        items: [
+          TrainingItem(type: ItemType.exercise, name: 'Squats', repetitions: 3),
+          timed,
+          free,
+          rest,
+        ],
+      );
+
+      final steps = buildSessionSteps(_training([group]));
+
+      expect(steps, hasLength(7));
+      expect(steps[0].item.repetitions, 10);
+      expect(steps[1].item, same(timed));
+      expect(steps[2].item, same(free));
+      expect(steps[3].item, same(rest));
+      expect(steps[4].item.repetitions, 12);
+      expect(steps.last.item, same(free));
+      expect(
+        steps.where((step) => step.item.type == ItemType.rest),
+        hasLength(1),
+      );
+    });
+
+    test('un groupe libre conserve strictement ses répétitions', () {
+      final item = TrainingItem(
+        type: ItemType.exercise,
+        name: 'Squats',
+        repetitions: 8,
+      );
+      final steps = buildSessionSteps(
+        _training([
+          _group('libre', [item], rounds: 2),
+        ]),
+      );
+
+      expect(steps.map((step) => step.item.repetitions), [8, 8]);
+      expect(steps.every((step) => identical(step.item, item)), isTrue);
     });
   });
 }

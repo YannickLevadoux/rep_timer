@@ -124,7 +124,7 @@ class _HistoryStepRow extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        step.itemName,
+                        _itemLabel(step),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -151,5 +151,13 @@ class _HistoryStepRow extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _itemLabel(HistoryStepEntry step) {
+    final repetitions = step.repetitions;
+    if (step.itemType != ItemType.exercise || repetitions == null) {
+      return step.itemName;
+    }
+    return '${step.itemName} × $repetitions';
   }
 }

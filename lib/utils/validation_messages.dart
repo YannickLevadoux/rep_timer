@@ -1,6 +1,10 @@
 import '../validation/business_validation.dart';
 
 String validationMessage(BusinessValidationIssue issue) {
+  if (issue.field == BusinessField.groupRepetitionSequence &&
+      issue.code == BusinessValidationCode.required) {
+    return 'Ajoute au moins un tour à la suite de répétitions.';
+  }
   return switch (issue.code) {
     BusinessValidationCode.required => 'Ce champ est obligatoire.',
     BusinessValidationCode.notANumber => 'Saisis un nombre entier.',

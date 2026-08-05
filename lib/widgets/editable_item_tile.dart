@@ -12,6 +12,7 @@ class EditableItemTile extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final int dragIndex;
+  final bool repetitionsDefinedByGroup;
 
   const EditableItemTile({
     super.key,
@@ -19,6 +20,7 @@ class EditableItemTile extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.dragIndex,
+    this.repetitionsDefinedByGroup = false,
   });
 
   @override
@@ -50,7 +52,7 @@ class EditableItemTile extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  _itemValue(item),
+                  _itemValue(item, repetitionsDefinedByGroup),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -101,10 +103,14 @@ class EditableItemTile extends StatelessWidget {
     );
   }
 
-  String _itemValue(TrainingItem item) {
+  String _itemValue(TrainingItem item, bool repetitionsDefinedByGroup) {
     if (item.type == ItemType.rest) return "${item.duration!.inSeconds} s";
     if (item.isFreeDuration) return "Durée libre";
-    if (item.repetitions != null) return "${item.repetitions} répétitions";
+    if (item.repetitions != null) {
+      return repetitionsDefinedByGroup
+          ? 'Nombre défini par la suite du groupe'
+          : '${item.repetitions} répétitions';
+    }
     return "${item.duration?.inSeconds ?? 0} s";
   }
 }
