@@ -238,6 +238,40 @@ void main() {
       48,
     );
   });
+
+  testWidgets('les commandes restent accessibles avec un texte agrandi', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(280, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final step = _step(_repetitionExercise());
+
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: _SessionBodyHarness(
+            step: step,
+            nextStep: null,
+            currentIndex: 0,
+            totalSteps: 1,
+            stepElapsed: Duration.zero,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('previous-step-button')), findsOneWidget);
+    expect(find.byKey(const Key('pause-resume-button')), findsOneWidget);
+    expect(find.byKey(const Key('next-step-button')), findsOneWidget);
+  });
 }
 
 TrainingItem _repetitionExercise() =>

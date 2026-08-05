@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../controllers/training_editor_controller.dart';
+import '../validation/business_validation.dart';
 import 'exercise_group_card.dart';
 
 class TrainingEditorView extends StatelessWidget {
@@ -13,6 +15,7 @@ class TrainingEditorView extends StatelessWidget {
     required this.onEditGroup,
     required this.onDeleteGroup,
     required this.onSave,
+    this.nameError,
   });
 
   final TrainingEditorController controller;
@@ -22,6 +25,7 @@ class TrainingEditorView extends StatelessWidget {
   final ValueChanged<int> onEditGroup;
   final ValueChanged<int> onDeleteGroup;
   final VoidCallback onSave;
+  final String? nameError;
 
   @override
   Widget build(BuildContext context) {
@@ -49,10 +53,13 @@ class TrainingEditorView extends StatelessWidget {
           children: [
             TextField(
               controller: controller.nameController,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
+              maxLength: BusinessLimits.maximumNameCharacters,
+              maxLengthEnforcement: MaxLengthEnforcement.none,
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
                 labelText: "Nom de la séance",
                 hintText: "Ex : Full Body",
+                errorText: nameError,
               ),
             ),
             const SizedBox(height: 26),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/validation_messages.dart';
+import '../validation/business_validation.dart';
 import 'number_wheel_field.dart';
 
 /// Durée par défaut pour tout nouvel exercice basé sur une durée ou toute
@@ -22,32 +24,55 @@ class DurationMinutesSecondsPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final minutes = value.inMinutes.clamp(0, 120);
+    final minutes = value.inMinutes.clamp(
+      0,
+      BusinessLimits.maximumDuration.inMinutes,
+    );
     final seconds = value.inSeconds.remainder(60);
+    final issue = BusinessValidation.validateDuration(value);
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        NumberWheelField(
-          min: 0,
-          max: 120,
-          value: minutes,
-          label: "min",
-          onChanged: (m) => onChanged(Duration(minutes: m, seconds: seconds)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            NumberWheelField(
+              min: 0,
+              max: BusinessLimits.maximumDuration.inMinutes,
+              value: minutes,
+              label: "min",
+              onChanged: (m) =>
+                  onChanged(Duration(minutes: m, seconds: seconds)),
+            ),
+            const SizedBox(width: 12),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: Text(
+                ":",
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+            ),
+            const SizedBox(width: 12),
+            NumberWheelField(
+              min: 0,
+              max: 59,
+              value: seconds,
+              label: "s",
+              onChanged: (s) =>
+                  onChanged(Duration(minutes: minutes, seconds: s)),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 20),
-          child: Text(":", style: Theme.of(context).textTheme.headlineSmall),
-        ),
-        const SizedBox(width: 12),
-        NumberWheelField(
-          min: 0,
-          max: 59,
-          value: seconds,
-          label: "s",
-          onChanged: (s) => onChanged(Duration(minutes: minutes, seconds: s)),
-        ),
+        if (issue != null)
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              validationMessage(issue),
+              key: const Key('duration-error'),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
       ],
     );
   }

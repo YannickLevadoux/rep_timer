@@ -26,13 +26,16 @@ class NumberWheelField extends StatefulWidget {
 class _NumberWheelFieldState extends State<NumberWheelField> {
   late final FixedExtentScrollController _controller;
 
-  int get _clampedValue => widget.value.clamp(widget.min, widget.max);
+  // Une ancienne valeur hors contrat ne doit jamais faire planter la roue.
+  // Ce repli ne modifie pas la donnée : la validation du sélecteur parent
+  // l'affiche explicitement comme invalide jusqu'à une nouvelle sélection.
+  int get _displayValue => widget.value.clamp(widget.min, widget.max);
 
   @override
   void initState() {
     super.initState();
     _controller = FixedExtentScrollController(
-      initialItem: _clampedValue - widget.min,
+      initialItem: _displayValue - widget.min,
     );
   }
 
@@ -43,7 +46,7 @@ class _NumberWheelFieldState extends State<NumberWheelField> {
     // Si la valeur est modifiée depuis l'extérieur (ex : saisie clavier
     // validée), on resynchronise la roue pour qu'elle reste cohérente
     // avec la valeur affichée.
-    final targetIndex = _clampedValue - widget.min;
+    final targetIndex = _displayValue - widget.min;
     if (_controller.hasClients && _controller.selectedItem != targetIndex) {
       _controller.animateToItem(
         targetIndex,
@@ -60,40 +63,55 @@ class _NumberWheelFieldState extends State<NumberWheelField> {
   }
 
   Future<void> _openKeyboardEntry() async {
-    final textController = TextEditingController(
-      text: _clampedValue.toString(),
-    );
+    final textController = TextEditingController(text: widget.value.toString());
 
     final result = await showDialog<int>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text("Saisir : ${widget.label}"),
-          content: TextField(
-            controller: textController,
-            keyboardType: TextInputType.number,
-            autofocus: true,
-            decoration: const InputDecoration(border: OutlineInputBorder()),
+        String? errorText;
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text("Saisir : ${widget.label}"),
+            content: TextField(
+              controller: textController,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                errorText: errorText,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Annuler"),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final parsed = int.tryParse(textController.text.trim());
+                  if (parsed == null) {
+                    setDialogState(
+                      () => errorText = 'Saisis un nombre entier.',
+                    );
+                  } else if (parsed < widget.min || parsed > widget.max) {
+                    setDialogState(
+                      () => errorText =
+                          'Valeur attendue : ${widget.min} à ${widget.max}.',
+                    );
+                  } else {
+                    Navigator.pop(context, parsed);
+                  }
+                },
+                child: const Text("Valider"),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Annuler"),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(context, int.tryParse(textController.text));
-              },
-              child: const Text("Valider"),
-            ),
-          ],
         );
       },
     );
-
     if (result == null) return;
 
-    widget.onChanged(result.clamp(widget.min, widget.max));
+    widget.onChanged(result);
   }
 
   @override
@@ -123,7 +141,7 @@ class _NumberWheelFieldState extends State<NumberWheelField> {
                   childCount: itemCount,
                   builder: (context, index) {
                     final n = widget.min + index;
-                    final isSelected = n == _clampedValue;
+                    final isSelected = n == _displayValue;
 
                     return Center(
                       child: GestureDetector(

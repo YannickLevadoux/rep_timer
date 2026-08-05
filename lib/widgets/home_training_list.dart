@@ -81,7 +81,11 @@ class _HomeTrainingCard extends StatelessWidget {
       child: Column(
         children: [
           ListTile(
-            title: Text(training.name),
+            title: Text(
+              training.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             subtitle: Text("${training.groups.length} groupe(s)"),
             onTap: onToggleExpanded,
           ),

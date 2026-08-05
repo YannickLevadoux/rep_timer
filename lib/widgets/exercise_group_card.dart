@@ -149,7 +149,10 @@ class _ReadonlyItemRow extends StatelessWidget {
   }
 
   String _itemValue(TrainingItem item) {
-    if (item.type == ItemType.rest) return formatDuration(item.duration!);
+    if (item.type == ItemType.rest) {
+      final duration = item.duration;
+      return duration == null ? 'Durée invalide' : formatDuration(duration);
+    }
     if (item.isFreeDuration) return "Durée libre";
     if (item.repetitions != null) return "${item.repetitions} répétitions";
     return formatDuration(item.duration ?? Duration.zero);
