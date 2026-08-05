@@ -8,7 +8,7 @@ import 'transfer_settings_sections.dart';
 
 class SettingsContent extends StatelessWidget {
   final ThemeMode themeMode;
-  final VoidCallback onToggleTheme;
+  final VoidCallback? onToggleTheme;
   final bool prefillExerciseName;
   final ValueChanged<bool> onPrefillChanged;
   final NotificationMode notificationMode;

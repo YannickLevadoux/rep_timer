@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'screens/home_screen.dart';
+import 'services/app_settings_storage.dart';
 import 'services/session_notification_service.dart';
 
 Future<void> main() async {
@@ -21,7 +22,15 @@ Future<void> main() async {
   // séance n'a encore démarré.
   SessionNotificationService.initCommunicationPort();
 
-  runApp(const MyApp());
+  // Le thème est résolu avant la première frame Flutter : l'écran de
+  // démarrage natif reste visible pendant cette lecture très courte et aucun
+  // thème intermédiaire incorrect n'est affiché.
+  final settingsStorage = AppSettingsStorage();
+  final initialThemeMode = await settingsStorage.loadThemeMode();
+
+  runApp(
+    MyApp(initialThemeMode: initialThemeMode, settingsStorage: settingsStorage),
+  );
 }
 
 /// Racine de l'application : ne porte que la configuration globale
@@ -29,7 +38,14 @@ Future<void> main() async {
 /// Le reste (paramètres, écrans) vit dans ses propres fichiers sous
 /// screens/, pour garder ce fichier minimal à mesure que l'app grandit.
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  const MyApp({
+    super.key,
+    this.initialThemeMode = AppSettingsStorage.defaultThemeMode,
+    this.settingsStorage,
+  });
+
+  final ThemeMode initialThemeMode;
+  final AppSettingsStorage? settingsStorage;
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -41,16 +57,28 @@ class _MyAppState extends State<MyApp> {
   // ici (à la racine) car MaterialApp.themeMode ne peut être piloté que
   // depuis le widget qui le construit ; il est transmis en cascade aux
   // écrans qui en ont besoin (HomePage -> SettingsScreen).
-  ThemeMode _themeMode = ThemeMode.system;
+  late ThemeMode _themeMode;
+  late final AppSettingsStorage _settingsStorage;
 
-  void _cycleThemeMode() {
-    setState(() {
-      _themeMode = switch (_themeMode) {
-        ThemeMode.system => ThemeMode.light,
-        ThemeMode.light => ThemeMode.dark,
-        ThemeMode.dark => ThemeMode.system,
-      };
-    });
+  @override
+  void initState() {
+    super.initState();
+    _themeMode = widget.initialThemeMode;
+    _settingsStorage = widget.settingsStorage ?? AppSettingsStorage();
+  }
+
+  Future<ThemeMode> _cycleThemeMode() async {
+    final newMode = switch (_themeMode) {
+      ThemeMode.system => ThemeMode.light,
+      ThemeMode.light => ThemeMode.dark,
+      ThemeMode.dark => ThemeMode.system,
+    };
+
+    // Applique seulement une valeur confirmée par le stockage. En cas
+    // d'échec, l'exception est traitée par Paramètres et l'état ne change pas.
+    await _settingsStorage.saveThemeMode(newMode);
+    if (mounted) setState(() => _themeMode = newMode);
+    return newMode;
   }
 
   @override
@@ -78,7 +106,11 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
 
-      home: HomePage(themeMode: _themeMode, onToggleTheme: _cycleThemeMode),
+      home: HomePage(
+        themeMode: _themeMode,
+        onToggleTheme: _cycleThemeMode,
+        settingsStorage: _settingsStorage,
+      ),
     );
   }
 }
