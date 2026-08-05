@@ -22,7 +22,7 @@ class TransferSettingsSection extends StatelessWidget {
         ListTile(
           leading: const Icon(Icons.file_upload_outlined),
           title: const Text('Importer'),
-          subtitle: const Text('Ajouter des séances depuis un fichier'),
+          subtitle: const Text('Importer ou restaurer depuis un fichier'),
           enabled: !busy,
           onTap: onImport,
         ),

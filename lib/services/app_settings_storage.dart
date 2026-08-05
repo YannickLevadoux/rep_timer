@@ -22,9 +22,9 @@ abstract interface class SessionPermissionPromptStorage {
 }
 
 class AppSettingsStorage implements SessionPermissionPromptStorage {
-  static const _themeModeKey = 'theme_mode';
-  static const _prefillExerciseNameKey = 'prefill_exercise_name';
-  static const _notificationModeKey = 'notification_mode';
+  static const themeModeKey = 'theme_mode';
+  static const prefillExerciseNameKey = 'prefill_exercise_name';
+  static const notificationModeKey = 'notification_mode';
   static const _sessionNotificationExplanationPresentedKey =
       'session_notification_explanation_presented';
 
@@ -63,7 +63,7 @@ class AppSettingsStorage implements SessionPermissionPromptStorage {
   Future<ThemeMode> loadThemeMode() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final storedValue = prefs.getString(_themeModeKey);
+      final storedValue = prefs.getString(themeModeKey);
       if (storedValue == null) return defaultThemeMode;
 
       final themeMode = deserializeThemeMode(storedValue);
@@ -83,7 +83,7 @@ class AppSettingsStorage implements SessionPermissionPromptStorage {
     try {
       final prefs = await SharedPreferences.getInstance();
       final saved = await prefs.setString(
-        _themeModeKey,
+        themeModeKey,
         serializeThemeMode(mode),
       );
       if (!saved) throw const AppSettingsWriteException();
@@ -102,13 +102,13 @@ class AppSettingsStorage implements SessionPermissionPromptStorage {
   Future<ExportableAppSettings> loadExportableSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final storedTheme = prefs.getString(_themeModeKey);
+      final storedTheme = prefs.getString(themeModeKey);
       final themeMode = storedTheme == null
           ? defaultThemeMode
           : deserializeThemeMode(storedTheme);
       if (themeMode == null) throw const AppSettingsReadException();
 
-      final storedNotification = prefs.getString(_notificationModeKey);
+      final storedNotification = prefs.getString(notificationModeKey);
       final notificationMode = storedNotification == null
           ? defaultNotificationMode
           : _deserializeNotificationMode(storedNotification);
@@ -117,8 +117,7 @@ class AppSettingsStorage implements SessionPermissionPromptStorage {
       return ExportableAppSettings(
         themeMode: themeMode,
         prefillExerciseName:
-            prefs.getBool(_prefillExerciseNameKey) ??
-            defaultPrefillExerciseName,
+            prefs.getBool(prefillExerciseNameKey) ?? defaultPrefillExerciseName,
         notificationMode: notificationMode,
       );
     } on AppSettingsReadException {
@@ -154,12 +153,12 @@ class AppSettingsStorage implements SessionPermissionPromptStorage {
   /// préférence.
   Future<bool> loadPrefillExerciseName() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_prefillExerciseNameKey) ?? defaultPrefillExerciseName;
+    return prefs.getBool(prefillExerciseNameKey) ?? defaultPrefillExerciseName;
   }
 
   Future<void> savePrefillExerciseName(bool value) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_prefillExerciseNameKey, value);
+    await prefs.setBool(prefillExerciseNameKey, value);
   }
 
   /// Configuration globale des notifications de fin d'exercice/pause :
@@ -168,12 +167,12 @@ class AppSettingsStorage implements SessionPermissionPromptStorage {
   /// n'utilise plus que sa propre configuration de session).
   Future<NotificationMode> loadNotificationMode() async {
     final prefs = await SharedPreferences.getInstance();
-    return NotificationMode.fromName(prefs.getString(_notificationModeKey));
+    return NotificationMode.fromName(prefs.getString(notificationModeKey));
   }
 
   Future<void> saveNotificationMode(NotificationMode mode) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_notificationModeKey, mode.name);
+    await prefs.setString(notificationModeKey, mode.name);
   }
 
   @override

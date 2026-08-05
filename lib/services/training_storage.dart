@@ -5,10 +5,10 @@ import 'json_prefs_storage.dart';
 /// Sauvegarde locale des séances (persistées en JSON via SharedPreferences).
 /// Fonctionne directement sur Android/iOS/desktop, sans configuration native.
 class TrainingStorage {
-  static const _storageKey = 'trainings';
+  static const storageKey = 'trainings';
 
   final JsonListStorage<Training> _storage = JsonListStorage<Training>(
-    storageKey: _storageKey,
+    storageKey: storageKey,
     fromJson: Training.fromJson,
     toJson: (t) => t.toJson(),
   );

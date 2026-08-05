@@ -2,9 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
+import 'package:rep_timer/models/backup_import_models.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_item.dart';
-import 'package:rep_timer/services/training_import_service.dart';
+import 'package:rep_timer/services/backup_import_exception.dart';
+import 'package:rep_timer/services/backup_import_service.dart';
 import 'package:rep_timer/services/training_storage.dart';
 import 'package:rep_timer/services/json_prefs_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,14 +25,14 @@ void main() {
     group['rounds'] = 1000;
 
     await expectLater(
-      TrainingImportService().importFromJsonString(
+      BackupImportService().importOrPrepare(
         jsonEncode(_payload([valid, invalid])),
       ),
       throwsA(
-        isA<FormatException>().having(
-          (error) => error.message,
+        isA<BackupImportException>().having(
+          (error) => error.userMessage,
           'message',
-          allOf(contains('Séance 2'), contains('nombre de tours')),
+          allOf(contains('séance 2'), contains('groupe 1')),
         ),
       ),
     );
@@ -47,11 +49,11 @@ void main() {
       ..name = '  Exercice  '
       ..comment = '  ligne 1\r\nligne 2  ';
 
-    final result = await TrainingImportService().importFromJsonString(
+    final result = await BackupImportService().importOrPrepare(
       jsonEncode(_payload([imported.toJson()])),
     );
 
-    expect(result.importedCount, 1);
+    expect((result as V1ImportCompleted).importedCount, 1);
     final read = await TrainingStorage().loadTrainings();
     final saved = (read as StorageReadSuccess<List<Training>>).data.single;
     expect(saved.name, 'Séance importée');
@@ -74,14 +76,14 @@ void main() {
       group['repetitionSequence'] = [10, 0, 15];
 
       await expectLater(
-        TrainingImportService().importFromJsonString(
+        BackupImportService().importOrPrepare(
           jsonEncode(_payload([valid, invalid])),
         ),
         throwsA(
-          isA<FormatException>().having(
-            (error) => error.message,
+          isA<BackupImportException>().having(
+            (error) => error.userMessage,
             'message',
-            allOf(contains('Séance 2'), contains('valeur de répétitions')),
+            allOf(contains('séance 2'), contains('tour 2')),
           ),
         ),
       );
