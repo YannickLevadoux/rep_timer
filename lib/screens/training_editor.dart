@@ -7,6 +7,8 @@ import '../services/json_prefs_storage.dart';
 import '../services/training_storage.dart';
 import '../utils/editor_back_handler.dart';
 import '../utils/snack.dart';
+import '../utils/validation_messages.dart';
+import '../validation/business_validation.dart';
 import '../widgets/dialogs/confirm_dialog.dart';
 import '../widgets/training_editor_view.dart';
 import 'group_editor.dart';
@@ -23,6 +25,7 @@ class TrainingEditor extends StatefulWidget {
 class _TrainingEditorState extends State<TrainingEditor> {
   final TrainingStorage _storage = TrainingStorage();
   late final TrainingEditorController _controller;
+  String? _nameError;
 
   @override
   void initState() {
@@ -37,8 +40,20 @@ class _TrainingEditorState extends State<TrainingEditor> {
   }
 
   Future<void> _saveTraining() async {
-    if (_controller.name.isEmpty) {
-      showSnack(context, "Merci de donner un nom à la séance");
+    final training = _controller.buildTraining();
+    final issues = BusinessValidation.validateTraining(training);
+    final nameIssue = issues
+        .where((issue) => issue.field == BusinessField.trainingName)
+        .firstOrNull;
+    if (issues.isNotEmpty) {
+      setState(() {
+        _nameError = nameIssue == null ? null : validationMessage(nameIssue);
+      });
+      if (nameIssue != null) {
+        showSnack(context, "Merci de donner un nom à la séance");
+      } else {
+        showSnack(context, validationMessage(issues.first));
+      }
       return;
     }
     if (_controller.groups.isEmpty) {
@@ -48,7 +63,12 @@ class _TrainingEditorState extends State<TrainingEditor> {
 
     _controller.setSaving(true);
     try {
-      await _storage.addOrUpdateTraining(_controller.buildTraining());
+      await _storage.addOrUpdateTraining(training);
+    } on BusinessValidationException catch (error) {
+      if (!mounted) return;
+      _controller.setSaving(false);
+      showSnack(context, validationMessage(error.issues.first));
+      return;
     } on StorageMutationBlockedException {
       if (!mounted) return;
       _controller.setSaving(false);
@@ -157,6 +177,7 @@ class _TrainingEditorState extends State<TrainingEditor> {
           onEditGroup: _editGroup,
           onDeleteGroup: _deleteGroup,
           onSave: _saveTraining,
+          nameError: _nameError,
         ),
       ),
     );

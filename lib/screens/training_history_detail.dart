@@ -125,7 +125,11 @@ class _TrainingHistoryDetailScreenState
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(entry.trainingName, overflow: TextOverflow.ellipsis),
+              child: Text(
+                entry.trainingName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),

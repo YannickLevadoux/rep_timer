@@ -53,6 +53,8 @@ class SessionCommentSection extends StatelessWidget {
             child: Text(
               comment,
               textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.primary,
               ),

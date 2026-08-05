@@ -43,4 +43,36 @@ void main() {
 
     expect(tester.widget<RoundsEditor>(find.byType(RoundsEditor)).rounds, 3);
   });
+
+  testWidgets('les boutons sont désactivés aux deux bornes métier', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: RoundsEditor(rounds: 1, onChanged: (_) {})),
+      ),
+    );
+    expect(
+      tester
+          .widget<IconButton>(
+            find.widgetWithIcon(IconButton, Icons.remove_circle_outline),
+          )
+          .onPressed,
+      isNull,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: RoundsEditor(rounds: 999, onChanged: (_) {})),
+      ),
+    );
+    expect(
+      tester
+          .widget<IconButton>(
+            find.widgetWithIcon(IconButton, Icons.add_circle_outline),
+          )
+          .onPressed,
+      isNull,
+    );
+  });
 }

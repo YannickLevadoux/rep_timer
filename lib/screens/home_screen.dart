@@ -7,6 +7,8 @@ import '../services/session_checkpoint_storage.dart';
 import '../services/training_storage.dart';
 import '../utils/id_generator.dart';
 import '../utils/snack.dart';
+import '../utils/validation_messages.dart';
+import '../validation/business_validation.dart';
 import '../widgets/dialogs/duplicate_training_dialog.dart';
 import '../widgets/home_training_list.dart';
 import '../widgets/storage_read_feedback.dart';
@@ -118,6 +120,16 @@ class _HomePageState extends State<HomePage> {
 
     if (!mounted) return;
 
+    final issues = BusinessValidation.validateTraining(training);
+    if (issues.isNotEmpty) {
+      setState(() => _checkpointWarning = true);
+      showSnack(
+        context,
+        'Reprise impossible : ${validationMessage(issues.first)}',
+      );
+      return;
+    }
+
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -202,6 +214,13 @@ class _HomePageState extends State<HomePage> {
     final duplicate = training.duplicate(name: name, newId: _idGenerator.next);
     try {
       await _storage.addOrUpdateTraining(duplicate);
+    } on BusinessValidationException catch (error) {
+      if (!mounted) return;
+      showSnack(
+        context,
+        'Duplication impossible : ${validationMessage(error.issues.first)}',
+      );
+      return;
     } on StorageMutationBlockedException {
       if (!mounted) return;
       setState(() => _storageWarning = true);

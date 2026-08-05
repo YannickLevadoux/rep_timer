@@ -5,6 +5,7 @@ import '../models/training.dart';
 import '../services/json_prefs_storage.dart';
 import '../services/session_controller.dart';
 import '../utils/snack.dart';
+import '../validation/business_validation.dart';
 import '../widgets/dialogs/comment_dialog.dart';
 import '../widgets/dialogs/exit_session_dialog.dart';
 import '../widgets/session_finished_view.dart';
@@ -187,9 +188,12 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     // commentaire précédent est conservé tel quel.
     if (result == null) return;
 
-    final trimmed = result.trim();
     try {
-      await _controller.updateComment(trimmed.isEmpty ? null : trimmed);
+      await _controller.updateComment(result);
+    } on BusinessValidationException {
+      // Le dialogue applique le même contrat. Ce garde-fou protège aussi les
+      // appels programmatiques et laisse la valeur précédente intacte.
+      return;
     } on StorageMutationBlockedException {
       if (!mounted) return;
       showSnack(
@@ -247,7 +251,13 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
   Widget build(BuildContext context) {
     if (_controller.steps.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: Text(widget.training.name)),
+        appBar: AppBar(
+          title: Text(
+            widget.training.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
         body: const Center(
           child: Text("Cette séance ne contient aucun exercice."),
         ),
@@ -272,7 +282,11 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(widget.training.name),
+          title: Text(
+            widget.training.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           actions: [
             IconButton(
               icon: const Icon(Icons.checklist),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../controllers/group_editor_controller.dart';
+import '../validation/business_validation.dart';
 import 'group_editor_actions.dart';
 import 'group_items_list.dart';
 import 'rounds_editor.dart';
@@ -17,6 +19,7 @@ class GroupEditorView extends StatelessWidget {
     required this.onEditItem,
     required this.onDeleteItem,
     required this.onSave,
+    this.nameError,
   });
 
   final GroupEditorController controller;
@@ -27,6 +30,7 @@ class GroupEditorView extends StatelessWidget {
   final ValueChanged<int> onEditItem;
   final ValueChanged<int> onDeleteItem;
   final VoidCallback onSave;
+  final String? nameError;
 
   @override
   Widget build(BuildContext context) {
@@ -50,10 +54,13 @@ class GroupEditorView extends StatelessWidget {
             TextField(
               controller: controller.nameController,
               autofocus: isNewGroup,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
+              maxLength: BusinessLimits.maximumNameCharacters,
+              maxLengthEnforcement: MaxLengthEnforcement.none,
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
                 labelText: "Nom du groupe",
                 hintText: "Ex : Échauffement",
+                errorText: nameError,
               ),
             ),
             const SizedBox(height: 16),

@@ -20,7 +20,9 @@ class SessionFinishedView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(trainingName)),
+      appBar: AppBar(
+        title: Text(trainingName, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),

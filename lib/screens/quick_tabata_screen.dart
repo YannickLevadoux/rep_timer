@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/exercise_group.dart';
 import '../models/session_step.dart';
@@ -8,6 +9,9 @@ import '../services/app_settings_storage.dart';
 import '../services/session_notification_permission_service.dart';
 import '../services/session_controller.dart';
 import '../services/session_start_permission_gate.dart';
+import '../utils/snack.dart';
+import '../utils/validation_messages.dart';
+import '../validation/business_validation.dart';
 import '../widgets/quick_tabata_sections.dart';
 import '../widgets/rounds_editor.dart';
 import 'training_session.dart';
@@ -41,6 +45,7 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
   Duration _pauseDuration = const Duration(seconds: 10);
   int _repetitions = 1;
   bool _starting = false;
+  String? _nameError;
 
   @override
   void dispose() {
@@ -49,19 +54,22 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
   }
 
   void _setRepetitions(int repetitions) {
-    if (repetitions < 1) return;
+    if (BusinessValidation.validateCount(
+          repetitions,
+          field: BusinessField.groupRounds,
+        ) !=
+        null) {
+      return;
+    }
     setState(() => _repetitions = repetitions);
   }
 
-  String get _trainingName => _nameController.text.trim().isEmpty
-      ? _defaultName
-      : _nameController.text.trim();
+  String get _trainingName =>
+      BusinessValidation.normalizeName(_nameController.text);
 
   Training _buildQuickTraining() {
-    // Valeur saisie, ou "Quick Tabata" si le champ a été vidé — couvre
-    // aussi bien "jamais modifié" que "modifié puis effacé", sans jamais
-    // bloquer l'utilisateur avec un message d'erreur pour un flux qui se
-    // veut rapide.
+    // Le nom initial rend le flux rapide, mais une valeur ensuite effacée
+    // reste invalide comme tout autre nom métier.
     final name = _trainingName;
 
     final group = ExerciseGroup(
@@ -97,12 +105,25 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
 
   Future<void> _start() async {
     if (_starting) return;
+    final quickTraining = _buildQuickTraining();
+    final issues = BusinessValidation.validateTraining(quickTraining);
+    if (issues.isNotEmpty) {
+      final nameIssue = BusinessValidation.validateName(
+        _nameController.text,
+        field: BusinessField.quickTabataName,
+      );
+      setState(() {
+        _nameError = nameIssue == null ? null : validationMessage(nameIssue);
+      });
+      if (nameIssue == null) {
+        showSnack(context, validationMessage(issues.first));
+      }
+      return;
+    }
     setState(() => _starting = true);
 
     // La séance lancée est construite par la même méthode que celle utilisée
     // pour l'estimation, afin que leurs structures restent alignées.
-    final quickTraining = _buildQuickTraining();
-
     await SessionStartPermissionGate(
       permissionService: widget.permissionService,
       settingsStorage: widget.settingsStorage,
@@ -137,9 +158,12 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
           children: [
             TextField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
+              maxLength: BusinessLimits.maximumNameCharacters,
+              maxLengthEnforcement: MaxLengthEnforcement.none,
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
                 labelText: "Nom de la séance",
+                errorText: _nameError,
               ),
             ),
 

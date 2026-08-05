@@ -6,6 +6,8 @@ import '../models/training_item.dart';
 import '../services/app_settings_storage.dart';
 import '../utils/editor_back_handler.dart';
 import '../utils/snack.dart';
+import '../utils/validation_messages.dart';
+import '../validation/business_validation.dart';
 import '../widgets/dialogs/confirm_dialog.dart';
 import '../widgets/dialogs/exercise_dialog.dart';
 import '../widgets/dialogs/group_editor_settings_dialog.dart';
@@ -25,6 +27,7 @@ class GroupEditor extends StatefulWidget {
 class _GroupEditorState extends State<GroupEditor> {
   final AppSettingsStorage _settingsStorage = AppSettingsStorage();
   late final GroupEditorController _controller;
+  String? _nameError;
 
   @override
   void initState() {
@@ -79,7 +82,10 @@ class _GroupEditorState extends State<GroupEditor> {
     final item = _controller.group.items[index];
 
     if (item.type == ItemType.rest) {
-      final duration = await showRestDialog(context, initial: item.duration);
+      final duration = await showRestDialog(
+        context,
+        initial: item.duration ?? Duration.zero,
+      );
       if (duration != null) _controller.updateRest(index, duration);
       return;
     }
@@ -102,11 +108,23 @@ class _GroupEditorState extends State<GroupEditor> {
   }
 
   void _saveGroup() {
-    if (_controller.name.isEmpty) {
-      showSnack(context, "Merci de donner un nom au groupe");
+    final group = _controller.save();
+    final issues = BusinessValidation.validateGroup(group);
+    final nameIssue = issues
+        .where((issue) => issue.field == BusinessField.groupName)
+        .firstOrNull;
+    if (issues.isNotEmpty) {
+      setState(() {
+        _nameError = nameIssue == null ? null : validationMessage(nameIssue);
+      });
+      if (nameIssue != null) {
+        showSnack(context, "Merci de donner un nom au groupe");
+      } else {
+        showSnack(context, validationMessage(issues.first));
+      }
       return;
     }
-    Navigator.pop(context, _controller.save());
+    Navigator.pop(context, group);
   }
 
   @override
@@ -127,6 +145,7 @@ class _GroupEditorState extends State<GroupEditor> {
           onEditItem: _editItem,
           onDeleteItem: _deleteItem,
           onSave: _saveGroup,
+          nameError: _nameError,
         ),
       ),
     );

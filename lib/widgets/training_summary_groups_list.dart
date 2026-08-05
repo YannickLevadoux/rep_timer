@@ -42,6 +42,7 @@ class TrainingSummaryGroupsList extends StatelessWidget {
                     Expanded(
                       child: Text(
                         group.name,
+                        maxLines: 1,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -78,6 +79,7 @@ class TrainingSummaryGroupsList extends StatelessWidget {
                           Expanded(
                             child: Text(
                               exercise.name,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),

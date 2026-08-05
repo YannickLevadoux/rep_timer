@@ -1,6 +1,7 @@
 import 'exercise_group.dart';
 import 'training.dart';
 import 'training_item.dart';
+import '../validation/business_validation.dart';
 
 /// Représente une occurrence unique d'un exercice ou d'une pause au sein
 /// d'une séance "aplatie" : un groupe répété `rounds` fois donne autant
@@ -22,10 +23,14 @@ class SessionStep {
 /// Construit la séquence complète et ordonnée des étapes d'une séance :
 /// tous les items du groupe 1 répétés `rounds` fois, puis groupe 2, etc.
 List<SessionStep> buildSessionSteps(Training training) {
+  final limitIssue = BusinessValidation.validateSessionStepLimit(training);
+  if (limitIssue != null) {
+    throw BusinessValidationException([limitIssue]);
+  }
   final steps = <SessionStep>[];
 
   for (final group in training.groups) {
-    final rounds = group.rounds < 1 ? 1 : group.rounds;
+    final rounds = group.rounds;
 
     for (var round = 1; round <= rounds; round++) {
       for (final item in group.items) {

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../utils/validation_messages.dart';
+import '../../validation/business_validation.dart';
 import 'app_form_dialog.dart';
 
 /// Dialogue de duplication d'une séance : demande le nom de la copie,
@@ -14,24 +17,42 @@ import 'app_form_dialog.dart';
 Future<String?> showDuplicateTrainingDialog(
   BuildContext context, {
   required String originalName,
-}) {
-  final controller = TextEditingController(text: "$originalName - Copie");
+}) async {
+  final controller = TextEditingController(
+    text: BusinessValidation.copyNameProposal(originalName),
+  );
+  String? errorText;
+  late StateSetter updateDialog;
 
-  return showAppFormDialog<String>(
+  final result = await showAppFormDialog<String>(
     context,
     title: "Dupliquer la séance",
-    contentBuilder: (context, setDialogState) => TextField(
-      controller: controller,
-      autofocus: true,
-      decoration: const InputDecoration(
-        border: OutlineInputBorder(),
-        labelText: "Nom de la nouvelle séance",
-      ),
-    ),
+    contentBuilder: (context, setDialogState) {
+      updateDialog = setDialogState;
+      return TextField(
+        controller: controller,
+        autofocus: true,
+        maxLength: BusinessLimits.maximumNameCharacters,
+        maxLengthEnforcement: MaxLengthEnforcement.none,
+        decoration: InputDecoration(
+          border: const OutlineInputBorder(),
+          labelText: "Nom de la nouvelle séance",
+          errorText: errorText,
+        ),
+      );
+    },
     confirmLabel: "Copier",
     onConfirm: () {
-      final name = controller.text.trim();
-      return name.isEmpty ? null : name;
+      final issue = BusinessValidation.validateName(
+        controller.text,
+        field: BusinessField.copyName,
+      );
+      if (issue != null) {
+        updateDialog(() => errorText = validationMessage(issue));
+        return null;
+      }
+      return BusinessValidation.normalizeName(controller.text);
     },
   );
+  return result;
 }

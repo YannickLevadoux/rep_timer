@@ -9,6 +9,7 @@ import '../models/session_checkpoint.dart';
 import '../models/session_step.dart';
 import '../models/training.dart';
 import '../models/training_history_entry.dart';
+import '../validation/business_validation.dart';
 import 'app_settings_storage.dart';
 import 'session_checkpoint_storage.dart';
 import 'session_clock.dart';
@@ -247,8 +248,11 @@ class SessionController extends ChangeNotifier {
   void goToNext() => jumpToStep(currentIndex + 1);
 
   Future<void> updateComment(String? comment) async {
+    final issue = BusinessValidation.validateComment(comment);
+    if (issue != null) throw BusinessValidationException([issue]);
+    final normalized = BusinessValidation.normalizeComment(comment);
     final previousComment = currentStep.item.comment;
-    currentStep.item.comment = comment;
+    currentStep.item.comment = normalized;
     _notifyIfActive();
 
     if (trainingChangesPersistence == TrainingChangesPersistence.memoryOnly) {

@@ -163,6 +163,8 @@ class _SessionProgressScreenState extends State<SessionProgressScreen> {
               Expanded(
                 child: Text(
                   step.item.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
                     color: isCurrent
@@ -204,6 +206,8 @@ class _SessionProgressScreenState extends State<SessionProgressScreen> {
             subtitle: Text(
               "${step.group.name} · répétition ${step.roundIndex}/${step.totalRounds} · "
               "${_stepDetail(step)}",
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
             trailing: isCurrent
                 ? null

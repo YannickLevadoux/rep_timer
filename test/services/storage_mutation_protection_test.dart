@@ -9,6 +9,7 @@ import 'package:rep_timer/services/session_checkpoint_storage.dart';
 import 'package:rep_timer/services/training_export_service.dart';
 import 'package:rep_timer/services/training_history_storage.dart';
 import 'package:rep_timer/services/training_storage.dart';
+import 'package:rep_timer/validation/business_validation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -25,6 +26,40 @@ void main() {
     final loaded = (result as StorageReadSuccess<List<Training>>).data.single;
     expect(loaded.id, 'legacy');
     expect(loaded.name, 'Séance legacy');
+  });
+
+  test(
+    'une ancienne séance hors contrat reste lisible sans être modifiée',
+    () async {
+      final legacy = _training('legacy')..name = 'x' * 51;
+      final raw = jsonEncode([legacy.toJson()]);
+      SharedPreferences.setMockInitialValues({'trainings': raw});
+
+      final result = await TrainingStorage().loadTrainings();
+
+      expect(
+        (result as StorageReadSuccess<List<Training>>).data.single.name,
+        'x' * 51,
+      );
+      expect(
+        (await SharedPreferences.getInstance()).getString('trainings'),
+        raw,
+      );
+    },
+  );
+
+  test('une nouvelle séance invalide est refusée avant écriture', () async {
+    SharedPreferences.setMockInitialValues({});
+    final invalid = _training('invalid')..name = '   ';
+
+    await expectLater(
+      TrainingStorage().addOrUpdateTraining(invalid),
+      throwsA(isA<BusinessValidationException>()),
+    );
+    expect(
+      (await SharedPreferences.getInstance()).getString('trainings'),
+      isNull,
+    );
   });
 
   test(

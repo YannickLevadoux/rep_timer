@@ -1,4 +1,5 @@
 import '../models/training.dart';
+import '../validation/business_validation.dart';
 import 'json_prefs_storage.dart';
 
 /// Sauvegarde locale des séances (persistées en JSON via SharedPreferences).
@@ -19,13 +20,15 @@ class TrainingStorage {
       _storage.saveList(trainings);
 
   Future<void> addOrUpdateTraining(Training training) async {
+    final normalized = BusinessValidation.normalizedTrainingCopy(training);
+    BusinessValidation.requireValidTraining(normalized);
     final trainings = await _healthyTrainingsForMutation();
-    final index = trainings.indexWhere((t) => t.id == training.id);
+    final index = trainings.indexWhere((t) => t.id == normalized.id);
 
     if (index >= 0) {
-      trainings[index] = training;
+      trainings[index] = normalized;
     } else {
-      trainings.add(training);
+      trainings.add(normalized);
     }
 
     await saveTrainings(trainings);

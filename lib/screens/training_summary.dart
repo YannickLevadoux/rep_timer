@@ -6,6 +6,9 @@ import '../models/training_item.dart';
 import '../services/app_settings_storage.dart';
 import '../services/session_notification_permission_service.dart';
 import '../services/session_start_permission_gate.dart';
+import '../utils/snack.dart';
+import '../utils/validation_messages.dart';
+import '../validation/business_validation.dart';
 import '../widgets/training_summary_groups_list.dart';
 import '../widgets/training_summary_statistics.dart';
 import 'training_session.dart';
@@ -32,10 +35,18 @@ class TrainingSummaryScreen extends StatefulWidget {
 class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
   bool _starting = false;
 
-  int _roundsOf(ExerciseGroup group) => group.rounds < 1 ? 1 : group.rounds;
+  int _roundsOf(ExerciseGroup group) => group.rounds;
 
   Future<void> _start() async {
     if (_starting) return;
+    final issues = BusinessValidation.validateTraining(widget.training);
+    if (issues.isNotEmpty) {
+      showSnack(
+        context,
+        'Impossible de lancer la séance : ${validationMessage(issues.first)}',
+      );
+      return;
+    }
     setState(() => _starting = true);
 
     await SessionStartPermissionGate(
@@ -56,6 +67,7 @@ class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
   @override
   Widget build(BuildContext context) {
     final training = widget.training;
+    final validationIssues = BusinessValidation.validateTraining(training);
     final totalItems = training.groups.fold<int>(
       0,
       (sum, group) => sum + group.items.length * _roundsOf(group),
@@ -70,10 +82,19 @@ class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
     );
 
     final restCount = totalItems - exerciseCount;
-    final canStart = training.groups.isNotEmpty && totalItems > 0;
+    final canStart =
+        validationIssues.isEmpty &&
+        training.groups.isNotEmpty &&
+        totalItems > 0;
 
     return Scaffold(
-      appBar: AppBar(title: Text(training.name)),
+      appBar: AppBar(
+        title: Text(
+          training.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -104,6 +125,20 @@ class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
             ),
 
             const SizedBox(height: 16),
+
+            if (validationIssues.isNotEmpty) ...[
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  'Séance invalide : '
+                  '${validationMessage(validationIssues.first)}',
+                  key: const Key('training-start-error'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
 
             FilledButton.icon(
               icon: const Icon(Icons.play_arrow),
