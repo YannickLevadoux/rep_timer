@@ -18,8 +18,8 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
   - **Temps** — une durée définie (saisie via un sélecteur Minutes/Secondes).
   - **Durée libre** — aucun temps ni répétitions fixés à l'avance ; l'utilisateur décide lui-même de la fin de l'exercice, un chronomètre mesure le temps réellement passé.
 - Pauses chronométrées entre les exercices.
-- Réorganisation par glisser-déposer des groupes et des exercices.
-- Aperçu repliable du contenu de chaque groupe et écran dédié à l'édition de ses paramètres, exercices et pauses.
+- Réorganisation des groupes et des exercices par glisser-déposer depuis une poignée dédiée.
+- Groupes initialement repliés dans l'éditeur de séance, avec aperçu dépliable de leur contenu et écran dédié à l'édition de leurs paramètres, exercices et pauses.
 - Option permettant de désactiver le préremplissage du nom des nouveaux exercices avec le nom du groupe.
 - Duplication d'une séance depuis l'écran d'accueil, avec choix du nom de la copie ; la nouvelle séance reste indépendante de l'originale.
 - Icône personnalisable par exercice, parmi une liste prédéfinie.
@@ -27,7 +27,7 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Détection des modifications non enregistrées à la fermeture de l'écran d'édition (proposition d'enregistrer, d'abandonner ou d'annuler).
 
 ### Exécution d'une séance
-- Écran de résumé avant le lancement (aperçu des groupes et exercices).
+- Écran de résumé avant le lancement : nom de la séance, compteurs de groupes, d'exercices et de pauses, puis aperçu des groupes, de leurs répétitions et de leurs exercices.
 - Empêche la mise en veille de l'écran pendant toute la durée de la séance.
 - Chronomètre global de la séance, indépendant du minuteur de chaque exercice.
 - Écran organisé autour des commandes de séance, de la progression, du prochain élément et de l'exercice ou de la pause en cours.
@@ -43,22 +43,24 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 
 ### Quick Tabata
 - Lancement rapide d'une séance travail/pause répétée, sans avoir à créer de séance au préalable (accessible depuis la barre de navigation de l'accueil).
-- Nom, durée de travail, durée de pause et nombre de répétitions personnalisables ; temps total estimé recalculé en direct.
+- Nom, durée de travail, durée de pause et nombre de répétitions personnalisables ; les répétitions utilisent le même sélecteur `−` / `+` que les groupes de séances.
+- Temps total estimé recalculé en direct, sans compter la dernière pause puisqu'elle n'est pas exécutée ; une aide contextuelle précise les éléments inclus dans ce calcul.
 - La séance est générée entièrement en mémoire et exécutée avec le même moteur qu'une séance classique (mêmes statistiques, même historique) — elle n'est jamais ajoutée à la liste des séances enregistrées.
 
 ### Historique
 - Historique local des séances effectuées : nom, date, durée totale, statut.
 - Suppression d'une entrée d'historique avec confirmation.
-- Détail d'une séance : temps passé sur chaque exercice
+- Détail d'une séance avec sa date et son heure, ses statistiques de réalisation, ses durées de travail et de pause, puis le temps passé sur chaque exercice ou pause, regroupé dans des groupes initialement repliés.
 
 ### Import / Export
-- Export des séances enregistrées 
-- Import des séances basé (json) sur un fichier précédement enregistré
+- Export des séances enregistrées via la fenêtre standard de partage.
+- Import des séances au format JSON depuis un fichier précédemment exporté.
+- Lecture défensive du stockage local : les données récupérables restent consultables, les erreurs sont signalées sans exposer leur contenu et les mutations susceptibles d'écraser des données illisibles sont bloquées.
 
 ### Interface
 - Thème clair/sombre (suit le système, réglable manuellement).
 - Interface entièrement en français.
-- Interface uniquement en mode portrait pour conserver la lisibilité des écrans
+- Interface uniquement en mode portrait pour conserver la lisibilité des écrans.
 
 ## Stack technique
 
@@ -66,9 +68,9 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Stockage local via `shared_preferences` (séances et historique, format JSON)
 - `wakelock_plus` pour le maintien de l'écran actif pendant l'exécution
 - `file_picker` pour l'import des séances
-- `share_plus` pour l'export des séance via la fenetre stardard de partage d'éléments
+- `share_plus` pour l'export des séances via la fenêtre standard de partage d'éléments
 - `flutter_launcher_icons` pour la gestion du logo
-- `package_info_plus` pour l'affichage d'information du package (boite About ou A Propos)
+- `package_info_plus` pour l'affichage des informations du package dans la boîte « À propos »
 - `flutter_foreground_task` pour le Foreground Service Android de la notification persistante pendant l'exécution d'une séance
 
 Aucun backend, aucun compte utilisateur : toutes les données restent sur l'appareil.
