@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../models/exercise_group.dart';
-import '../models/session_step.dart';
-import '../models/training.dart';
-import '../models/training_item.dart';
+import '../models/quick_tabata_draft.dart';
 import '../services/app_settings_storage.dart';
 import '../services/session_notification_permission_service.dart';
 import '../services/session_controller.dart';
@@ -67,45 +64,16 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
   String get _trainingName =>
       BusinessValidation.normalizeName(_nameController.text);
 
-  Training _buildQuickTraining() {
-    // Le nom initial rend le flux rapide, mais une valeur ensuite effacée
-    // reste invalide comme tout autre nom métier.
-    final name = _trainingName;
-
-    final group = ExerciseGroup(
-      id: 'quick_group_${DateTime.now().microsecondsSinceEpoch}',
-      name: name,
-      rounds: _repetitions,
-      items: [
-        TrainingItem(
-          type: ItemType.exercise,
-          name: "Work",
-          duration: _workDuration,
-        ),
-        TrainingItem(
-          type: ItemType.rest,
-          name: "Pause",
-          duration: _pauseDuration,
-        ),
-      ],
-    );
-
-    // Séance générée entièrement en mémoire : jamais écrite dans
-    // TrainingStorage, donc jamais visible dans la liste des séances.
-    return Training(
-      id: 'quick_${DateTime.now().microsecondsSinceEpoch}',
-      name: name,
-      groups: [group],
-      createdAt: DateTime.now(),
-    );
-  }
-
-  Duration? get _estimatedDuration =>
-      estimatePlannedDuration(_buildQuickTraining());
+  QuickTabataDraft get _draft => QuickTabataDraft(
+    name: _trainingName,
+    workDuration: _workDuration,
+    pauseDuration: _pauseDuration,
+    rounds: _repetitions,
+  );
 
   Future<void> _start() async {
     if (_starting) return;
-    final quickTraining = _buildQuickTraining();
+    final quickTraining = _draft.build();
     final issues = BusinessValidation.validateTraining(quickTraining);
     if (issues.isNotEmpty) {
       final nameIssue = BusinessValidation.validateName(
@@ -147,7 +115,7 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final estimatedDuration = _estimatedDuration;
+    final estimatedDuration = _draft.estimatedDuration;
 
     return Scaffold(
       appBar: AppBar(title: const Text("Quick Tabata")),
