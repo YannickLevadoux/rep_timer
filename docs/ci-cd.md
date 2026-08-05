@@ -1,0 +1,102 @@
+# Intégration continue et déploiement
+
+Cette documentation décrit les workflows GitHub Actions de RepTimer. Les
+conventions appliquées aux branches et aux issues sont décrites dans le
+[guide de contribution](../CONTRIBUTING.md).
+
+## Vue d'ensemble
+
+```mermaid
+flowchart LR
+    A[Issue avec label ready]
+    B[Push sur une branche conforme]
+    C[Issue avec label in-progress]
+    D[Pull Request créée ou vérifiée vers main]
+    E[Validation et APK debug]
+    F[Merge]
+    G[Issue fermée]
+
+    A --> B
+    B --> C
+    B --> D --> E --> F
+    F -->|Close ou Closes présent| G
+```
+
+Les automatisations sont réparties entre quatre workflows :
+
+- `issue-lifecycle.yml` gère les labels, la création des Pull Requests et leur
+  liaison avec les issues ;
+- `flutter-validate.yml` centralise les contrôles Flutter réutilisés par la CI
+  et les releases ;
+- `ci.yml` valide les Pull Requests vers `main` et construit un APK debug ;
+- `release.yml` construit et publie un APK signé lors de l'envoi d'un tag
+  `v*`. Sa procédure est détaillée dans le guide des
+  [builds et releases](release.md#publication-dune-release).
+
+## Authentification de la création des Pull Requests
+
+L'étape `Sync issue and pull request` utilise un PAT fine-grained stocké dans
+le secret GitHub Actions `PR_AUTOMATION_TOKEN`. L'utilisation de ce PAT, plutôt
+que de `GITHUB_TOKEN`, permet aux validations de la Pull Request créée
+automatiquement de démarrer sans approbation manuelle du workflow.
+
+Le PAT doit être limité à ce dépôt et disposer uniquement des permissions
+suivantes :
+
+- `Issues` : `Read and write` ;
+- `Pull requests` : `Read and write`.
+
+Les jobs de fusion et de suppression continuent d'utiliser `GITHUB_TOKEN`. Le
+PAT ne doit jamais être ajouté directement au dépôt. Lors de son
+renouvellement, seule la valeur du secret `PR_AUTOMATION_TOKEN` doit être mise à
+jour dans `Settings` → `Secrets and variables` → `Actions`.
+
+## Validation des Pull Requests
+
+Le workflow `ci.yml` s'exécute uniquement pour les Pull Requests ciblant
+`main`. Il appelle d'abord le workflow réutilisable `flutter-validate.yml`.
+
+Après le checkout, un rapport non bloquant recense les fichiers Dart suivis par
+Git sous `lib/`. Il affiche dans le résumé de l'Action trois tableaux triés par
+nombre de lignes :
+
+- plus de 300 lignes ;
+- entre 250 et 300 lignes ;
+- entre 200 et 249 lignes.
+
+Le comptage comprend les commentaires et les lignes vides. Les fichiers de
+tests et les fichiers générés ne sont pas inclus. Une erreur lors de la
+génération de ce rapport ne fait pas échouer la validation.
+
+Le workflow poursuit ensuite les contrôles Flutter :
+
+1. récupération des dépendances avec `flutter pub get` ;
+2. vérification du formatage avec
+   `dart format --output=none --set-exit-if-changed .` ;
+3. analyse statique avec `flutter analyze --no-fatal-infos` ;
+4. tests automatisés avec `flutter test --coverage`.
+
+Les informations remontées par l'analyseur ne sont pas bloquantes actuellement,
+contrairement aux avertissements et aux erreurs.
+
+Une fois la validation réussie, un second job configure Java et Flutter,
+récupère les dépendances puis construit un APK Android debug avec :
+
+```bash
+flutter build apk --debug
+```
+
+Le build debug ne démarre pas si le job de validation échoue.
+
+## Reproductibilité
+
+Les jobs Flutter utilisent les mêmes versions et paramètres :
+
+- Flutter `3.44.8`, explicitement épinglé avec le cache activé ;
+- Java `17`, distribution Temurin ;
+- versions épinglées des GitHub Actions utilisées par les workflows ;
+- fichier `pubspec.lock` suivi dans le dépôt.
+
+Les workflows CI et Release utilisent des groupes de concurrence distincts.
+Lorsqu'une nouvelle exécution démarre pour une même référence Git, l'exécution
+précédente encore en cours est annulée.
