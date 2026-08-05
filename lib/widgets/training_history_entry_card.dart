@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/training_history_entry.dart';
 import '../utils/formatters.dart';
+import '../utils/history_status_colors.dart';
 
 class TrainingHistoryEntryCard extends StatelessWidget {
   const TrainingHistoryEntryCard({
@@ -28,10 +29,11 @@ class TrainingHistoryEntryCard extends StatelessWidget {
           child: Row(
             children: [
               Icon(
+                key: Key('history-entry-status-${entry.id}'),
                 isCompleted ? Icons.check_circle : Icons.incomplete_circle,
                 color: isCompleted
-                    ? Colors.green
-                    : Theme.of(context).colorScheme.tertiary,
+                    ? completedHistoryColor(context)
+                    : incompleteHistoryColor(context),
               ),
               const SizedBox(width: 12),
               Expanded(

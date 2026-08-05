@@ -101,6 +101,50 @@ void main() {
     expect(find.text('séance 0'), findsOneWidget);
   });
 
+  testWidgets(
+    'affiche une barre empilée visible avec les couleurs des statuts',
+    (tester) async {
+      final storage = _FakeHistoryStorage(
+        StorageReadSuccess([
+          _entry('terminée 1', DateTime(2026, 8, 5)),
+          _entry('terminée 2', DateTime(2026, 8, 4)),
+          _entry(
+            'incomplète',
+            DateTime(2026, 8, 3),
+            status: TrainingSessionStatus.incomplete,
+          ),
+        ]),
+      );
+
+      await _pumpHistory(tester, storage, now: now);
+
+      final completedBar = find.byKey(
+        const Key('weekly-history-completed-bar'),
+      );
+      final incompleteBar = find.byKey(
+        const Key('weekly-history-incomplete-bar'),
+      );
+      expect(tester.getSize(completedBar).height, 20);
+      expect(tester.getSize(incompleteBar).height, 20);
+      expect(
+        tester.getSize(completedBar).width,
+        closeTo(tester.getSize(incompleteBar).width * 2, 0.01),
+      );
+
+      final completedColor = tester.widget<ColoredBox>(completedBar).color;
+      final incompleteColor = tester.widget<ColoredBox>(incompleteBar).color;
+      expect(completedColor, Colors.green.shade700);
+      expect(
+        incompleteColor,
+        tester
+            .widget<Icon>(
+              find.byKey(const Key('history-entry-status-incomplète')),
+            )
+            .color,
+      );
+    },
+  );
+
   testWidgets('recalcule le bilan et la liste après suppression', (
     tester,
   ) async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/weekly_history_aggregation.dart';
+import '../utils/history_status_colors.dart';
 
 class WeeklyHistorySummaryCard extends StatelessWidget {
   const WeeklyHistorySummaryCard({
@@ -22,10 +23,8 @@ class WeeklyHistorySummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final completedColor = Theme.of(context).brightness == Brightness.dark
-        ? Colors.green.shade300
-        : Colors.green.shade700;
-    final incompleteColor = Theme.of(context).colorScheme.tertiary;
+    final completedColor = completedHistoryColor(context);
+    final incompleteColor = incompleteHistoryColor(context);
 
     return Card(
       key: const Key('weekly-history-summary-card'),
@@ -127,6 +126,7 @@ class _WeeklyStackedBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (completedCount > 0)
           Expanded(
