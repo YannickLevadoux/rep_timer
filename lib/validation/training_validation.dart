@@ -1,4 +1,5 @@
 import '../models/exercise_group.dart';
+import '../models/group_type.dart';
 import '../models/training.dart';
 import '../models/training_item.dart';
 import 'numeric_validation.dart';
@@ -70,11 +71,36 @@ abstract final class TrainingValidation {
       field: BusinessField.groupName,
     );
     if (nameIssue != null) issues.add(_located(nameIssue, location));
-    final roundsIssue = NumericValidation.validateCount(
-      group.rounds,
-      field: BusinessField.groupRounds,
-    );
-    if (roundsIssue != null) issues.add(_located(roundsIssue, location));
+    if (group.type == GroupType.variableRepetitions) {
+      if (group.repetitionSequence.isEmpty) {
+        issues.add(
+          _located(
+            const BusinessValidationIssue(
+              field: BusinessField.groupRepetitionSequence,
+              code: BusinessValidationCode.required,
+            ),
+            location,
+          ),
+        );
+      }
+      for (var index = 0; index < group.repetitionSequence.length; index++) {
+        final valueIssue = NumericValidation.validateCount(
+          group.repetitionSequence[index],
+          field: BusinessField.groupRepetitionValue,
+        );
+        if (valueIssue != null) {
+          issues.add(
+            _located(valueIssue, _childLocation(location, 'tour ${index + 1}')),
+          );
+        }
+      }
+    } else {
+      final roundsIssue = NumericValidation.validateCount(
+        group.rounds,
+        field: BusinessField.groupRounds,
+      );
+      if (roundsIssue != null) issues.add(_located(roundsIssue, location));
+    }
     for (var index = 0; index < group.items.length; index++) {
       issues.addAll(
         validateItem(
@@ -115,6 +141,7 @@ abstract final class TrainingValidation {
             type: group.type,
             expanded: group.expanded,
             rounds: group.rounds,
+            repetitionSequence: List<int>.of(group.repetitionSequence),
             items: group.items
                 .map(
                   (item) => TrainingItem(
@@ -142,12 +169,13 @@ abstract final class TrainingValidation {
   }) {
     var total = 0;
     for (final group in training.groups) {
-      if (group.rounds <= 0 || group.items.isEmpty) continue;
+      final rounds = group.executedRounds;
+      if (rounds <= 0 || group.items.isEmpty) continue;
       final remaining = stopAfter - total;
-      if (group.rounds > remaining ~/ group.items.length) {
+      if (rounds > remaining ~/ group.items.length) {
         return stopAfter + 1;
       }
-      total += group.items.length * group.rounds;
+      total += group.items.length * rounds;
     }
     return total;
   }

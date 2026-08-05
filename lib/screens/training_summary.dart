@@ -35,7 +35,7 @@ class TrainingSummaryScreen extends StatefulWidget {
 class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
   bool _starting = false;
 
-  int _roundsOf(ExerciseGroup group) => group.rounds;
+  int _roundsOf(ExerciseGroup group) => group.executedRounds;
 
   Future<void> _start() async {
     if (_starting) return;

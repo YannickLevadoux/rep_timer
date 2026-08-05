@@ -9,6 +9,7 @@ import '../models/session_checkpoint.dart';
 import '../models/session_step.dart';
 import '../models/training.dart';
 import '../models/training_history_entry.dart';
+import '../models/training_item.dart';
 import '../validation/business_validation.dart';
 import 'app_settings_storage.dart';
 import 'session_checkpoint_storage.dart';
@@ -251,8 +252,18 @@ class SessionController extends ChangeNotifier {
     final issue = BusinessValidation.validateComment(comment);
     if (issue != null) throw BusinessValidationException([issue]);
     final normalized = BusinessValidation.normalizeComment(comment);
-    final previousComment = currentStep.item.comment;
-    currentStep.item.comment = normalized;
+    final sourceItem = currentStep.sourceItem;
+    final previousComments = <TrainingItem, String?>{
+      sourceItem: sourceItem.comment,
+    };
+    for (final step in steps) {
+      if (identical(step.sourceItem, sourceItem)) {
+        previousComments.putIfAbsent(step.item, () => step.item.comment);
+      }
+    }
+    for (final item in previousComments.keys) {
+      item.comment = normalized;
+    }
     _notifyIfActive();
 
     if (trainingChangesPersistence == TrainingChangesPersistence.memoryOnly) {
@@ -262,7 +273,9 @@ class SessionController extends ChangeNotifier {
     try {
       await _trainingStorage.addOrUpdateTraining(training);
     } on Object {
-      currentStep.item.comment = previousComment;
+      for (final entry in previousComments.entries) {
+        entry.key.comment = entry.value;
+      }
       _notifyIfActive();
       rethrow;
     }

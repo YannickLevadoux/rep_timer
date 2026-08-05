@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
+import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/notification_mode.dart';
 import 'package:rep_timer/models/notification_sound.dart';
 import 'package:rep_timer/models/session_checkpoint.dart';
@@ -87,6 +88,53 @@ void main() {
       historyStorage.entries.single.steps.first.comment,
       'Bonne intensité',
     );
+  });
+
+  test('un exercice variable persiste le commentaire sur sa source', () async {
+    final trainingStorage = _FakeTrainingStorage();
+    final training = Training(
+      id: 'variable-training',
+      name: 'Variable',
+      groups: [
+        ExerciseGroup(
+          id: 'variable',
+          name: 'Pyramide',
+          type: GroupType.variableRepetitions,
+          repetitionSequence: [10, 12],
+          items: [
+            TrainingItem(
+              type: ItemType.exercise,
+              name: 'Squats',
+              repetitions: 5,
+            ),
+          ],
+        ),
+      ],
+      createdAt: DateTime(2026),
+    );
+    final controller = SessionController(
+      training: training,
+      trainingStorage: trainingStorage,
+      checkpointStorage: _FakeCheckpointStorage(),
+      historyStorage: _FakeHistoryStorage(),
+      settingsStorage: _FakeSettingsStorage(),
+      notificationService: _FakeStepEndNotifier(),
+      foregroundNotificationService: _FakeNotificationService(),
+      enableWakelock: () async {},
+      disableWakelock: () async {},
+    );
+    addTearDown(controller.dispose);
+    await _flushInitialization();
+
+    await controller.updateComment('Technique propre');
+
+    expect(training.groups.single.items.single.comment, 'Technique propre');
+    expect(
+      controller.steps.map((step) => step.item.comment),
+      everyElement('Technique propre'),
+    );
+    expect(trainingStorage.savedTrainings, [training]);
+    expect(controller.steps.map((step) => step.item.repetitions), [10, 12]);
   });
 }
 

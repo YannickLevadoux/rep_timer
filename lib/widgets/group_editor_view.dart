@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../controllers/group_editor_controller.dart';
+import '../models/group_type.dart';
+import '../utils/repetition_sequence_format.dart';
 import '../validation/business_validation.dart';
 import 'group_editor_actions.dart';
 import 'group_items_list.dart';
@@ -19,6 +21,7 @@ class GroupEditorView extends StatelessWidget {
     required this.onEditItem,
     required this.onDeleteItem,
     required this.onSave,
+    required this.onEditRepetitionSequence,
     this.nameError,
   });
 
@@ -30,6 +33,7 @@ class GroupEditorView extends StatelessWidget {
   final ValueChanged<int> onEditItem;
   final ValueChanged<int> onDeleteItem;
   final VoidCallback onSave;
+  final VoidCallback onEditRepetitionSequence;
   final String? nameError;
 
   @override
@@ -66,11 +70,31 @@ class GroupEditorView extends StatelessWidget {
             const SizedBox(height: 16),
             TypeSelector(value: group.type, onChanged: controller.setType),
             const SizedBox(height: 16),
-            RoundsEditor(rounds: group.rounds, onChanged: controller.setRounds),
+            if (group.type == GroupType.free)
+              RoundsEditor(
+                rounds: group.rounds,
+                onChanged: controller.setRounds,
+              )
+            else
+              OutlinedButton.icon(
+                key: const Key('edit-repetition-sequence'),
+                onPressed: onEditRepetitionSequence,
+                icon: const Icon(Icons.format_list_numbered),
+                label: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    formatRepetitionSequenceSummary(group.repetitionSequence),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
             const SizedBox(height: 8),
             Expanded(
               child: GroupItemsList(
                 items: group.items,
+                repetitionsDefinedByGroup:
+                    group.type == GroupType.variableRepetitions,
                 onReorder: controller.reorderItems,
                 onEdit: onEditItem,
                 onDelete: onDeleteItem,

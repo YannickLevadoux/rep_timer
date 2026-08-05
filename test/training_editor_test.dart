@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
+import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/screens/group_editor.dart';
@@ -297,6 +298,69 @@ void main() {
     expect(original.rounds, 1);
     expect(original.items.map((item) => item.name), ['Premier', 'Second']);
   });
+
+  testWidgets(
+    'un groupe variable édite sa suite sans écraser les répétitions dormantes',
+    (tester) async {
+      ExerciseGroup? savedGroup;
+      final original = ExerciseGroup(
+        id: 'variable',
+        name: 'Pyramide',
+        type: GroupType.variableRepetitions,
+        rounds: 4,
+        repetitionSequence: [10, 12, 15],
+        items: [
+          TrainingItem(type: ItemType.exercise, name: 'Squats', repetitions: 6),
+        ],
+      );
+
+      await _pumpGroupLauncher(
+        tester,
+        original,
+        onResult: (group) => savedGroup = group,
+      );
+      await tester.tap(find.text('Ouvrir'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Groupe à répétitions variables'), findsOneWidget);
+      expect(find.text('3 tours · 10 → 12 → 15'), findsOneWidget);
+      expect(find.text('Nombre défini par la suite du groupe'), findsOneWidget);
+      expect(find.byTooltip('Plus de répétitions'), findsNothing);
+
+      await tester.tap(find.byTooltip('Modifier'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Nombre défini par la suite du groupe'),
+        findsNWidgets(2),
+      );
+      expect(
+        find.widgetWithText(TextField, 'Nombre de répétitions'),
+        findsNothing,
+      );
+      await tester.tap(find.text('Annuler'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('edit-repetition-sequence')));
+      await tester.pumpAndSettle();
+      final sequenceFields = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(TextField),
+      );
+      await tester.enterText(sequenceFields.at(1), '13');
+      await tester.tap(find.widgetWithText(FilledButton, 'Valider'));
+      await tester.pumpAndSettle();
+      expect(find.text('3 tours · 10 → 13 → 15'), findsOneWidget);
+
+      await tester.tap(find.text('Enregistrer'));
+      await tester.pumpAndSettle();
+
+      expect(savedGroup!.repetitionSequence, [10, 13, 15]);
+      expect(savedGroup!.rounds, 4);
+      expect(savedGroup!.items.single.repetitions, 6);
+      expect(original.repetitionSequence, [10, 12, 15]);
+      expect(original.items.single.repetitions, 6);
+    },
+  );
 
   testWidgets(
     'un élément unique garde ses actions et une poignée accessible de 48 px',

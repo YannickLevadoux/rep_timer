@@ -17,6 +17,8 @@ enum BusinessField {
   groupName,
   exerciseName,
   groupRounds,
+  groupRepetitionSequence,
+  groupRepetitionValue,
   repetitions,
   duration,
   comment,

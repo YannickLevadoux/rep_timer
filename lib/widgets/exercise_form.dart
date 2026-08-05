@@ -129,14 +129,25 @@ class _ModeInput extends StatelessWidget {
         value: controller.duration,
         onChanged: controller.setDuration,
       ),
-      ExerciseInputMode.repetitions => TextField(
-        controller: controller.repetitionsController,
-        keyboardType: TextInputType.number,
-        decoration: InputDecoration(
-          labelText: 'Nombre de répétitions',
-          errorText: controller.repetitionsError,
-        ),
-      ),
+      ExerciseInputMode.repetitions =>
+        controller.repetitionsDefinedByGroup
+            ? Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text('Nombre défini par la suite du groupe'),
+              )
+            : TextField(
+                controller: controller.repetitionsController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Nombre de répétitions',
+                  errorText: controller.repetitionsError,
+                ),
+              ),
       ExerciseInputMode.freeDuration => Text(
         "Aucun temps ni nombre de répétitions à définir : un chronomètre "
         "démarrera pendant la séance et vous déciderez vous-même de la fin "

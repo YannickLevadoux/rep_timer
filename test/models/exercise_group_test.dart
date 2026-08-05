@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rep_timer/controllers/group_editor_controller.dart';
 import 'package:rep_timer/models/exercise_group.dart';
 import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/training_item.dart';
@@ -68,6 +69,10 @@ void main() {
       "pour toute valeur absente ou inconnue, sans jamais planter — c'est le "
       "garde-fou contre un futur type inconnu reçu via un import", () {
     expect(GroupType.fromName('free'), GroupType.free);
+    expect(
+      GroupType.fromName('variableRepetitions'),
+      GroupType.variableRepetitions,
+    );
     expect(GroupType.fromName(null), GroupType.free);
     expect(GroupType.fromName(''), GroupType.free);
 
@@ -77,5 +82,71 @@ void main() {
     // seulement replier sur .free.
     expect(GroupType.fromName('circuit'), GroupType.free);
     expect(GroupType.fromName('unknown_type_from_the_future'), GroupType.free);
+  });
+
+  test('la suite est sérialisée, désérialisée et copiée profondément', () {
+    final original = ExerciseGroup(
+      id: 'variable',
+      name: 'Pyramide',
+      type: GroupType.variableRepetitions,
+      rounds: 7,
+      repetitionSequence: [10, 12, 15],
+      items: [],
+    );
+
+    final decoded = ExerciseGroup.fromJson(original.toJson());
+    final copy = original.copyWith();
+
+    expect(decoded.type, GroupType.variableRepetitions);
+    expect(decoded.rounds, 7);
+    expect(decoded.repetitionSequence, [10, 12, 15]);
+    expect(decoded.executedRounds, 3);
+    expect(copy.repetitionSequence, [10, 12, 15]);
+    expect(copy.repetitionSequence, isNot(same(original.repetitionSequence)));
+
+    copy.repetitionSequence[0] = 99;
+    expect(original.repetitionSequence, [10, 12, 15]);
+  });
+
+  test("une ancienne donnée sans suite reste un groupe libre lisible", () {
+    final decoded = ExerciseGroup.fromJson({
+      'id': 'legacy',
+      'name': 'Ancien',
+      'rounds': 2,
+      'items': <dynamic>[],
+    });
+
+    expect(decoded.type, GroupType.free);
+    expect(decoded.repetitionSequence, isEmpty);
+    expect(decoded.executedRounds, 2);
+  });
+
+  test('le changement de type aller-retour ne perd aucune donnée', () {
+    final original = ExerciseGroup(
+      id: 'group',
+      name: 'Circuit',
+      rounds: 3,
+      items: [
+        TrainingItem(type: ItemType.exercise, name: 'Squats', repetitions: 7),
+      ],
+    );
+    final controller = GroupEditorController(original);
+    addTearDown(controller.dispose);
+
+    controller.setType(GroupType.variableRepetitions);
+    expect(controller.group.rounds, 3);
+    expect(controller.group.items.single.repetitions, 7);
+    expect(controller.group.repetitionSequence, [7, 7, 7]);
+
+    controller.setRepetitionSequence([10, 12, 15]);
+    controller.setType(GroupType.free);
+    expect(controller.group.rounds, 3);
+    expect(controller.group.items.single.repetitions, 7);
+    expect(controller.group.repetitionSequence, [10, 12, 15]);
+
+    controller.setType(GroupType.variableRepetitions);
+    expect(controller.group.repetitionSequence, [10, 12, 15]);
+    expect(original.type, GroupType.free);
+    expect(original.repetitionSequence, isEmpty);
   });
 }

@@ -168,6 +168,8 @@ class TrainingExportService {
       BusinessField.groupName => 'nom de groupe',
       BusinessField.exerciseName => "nom d'exercice",
       BusinessField.groupRounds => 'nombre de tours',
+      BusinessField.groupRepetitionSequence => 'suite de répétitions',
+      BusinessField.groupRepetitionValue => 'valeur de répétitions',
       BusinessField.repetitions => 'nombre de répétitions',
       BusinessField.duration => 'durée',
       BusinessField.comment => 'commentaire',

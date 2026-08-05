@@ -59,6 +59,37 @@ void main() {
     expect(saved.groups.single.items.single.name, 'Exercice');
     expect(saved.groups.single.items.single.comment, 'ligne 1\nligne 2');
   });
+
+  test(
+    'une suite variable invalide refuse tout le fichier sans écriture',
+    () async {
+      final local = _training(id: 'local', name: 'Locale');
+      final originalStorage = jsonEncode([local.toJson()]);
+      SharedPreferences.setMockInitialValues({'trainings': originalStorage});
+
+      final valid = _training(id: 'one', name: 'Valide').toJson();
+      final invalid = _training(id: 'two', name: 'Invalide').toJson();
+      final group = (invalid['groups'] as List).single as Map<String, dynamic>;
+      group['type'] = 'variableRepetitions';
+      group['repetitionSequence'] = [10, 0, 15];
+
+      await expectLater(
+        TrainingExportService().importFromJsonString(
+          jsonEncode(_payload([valid, invalid])),
+        ),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            allOf(contains('Séance 2'), contains('valeur de répétitions')),
+          ),
+        ),
+      );
+
+      final preferences = await SharedPreferences.getInstance();
+      expect(preferences.getString('trainings'), originalStorage);
+    },
+  );
 }
 
 Map<String, Object> _payload(List<Map<String, dynamic>> trainings) => {
