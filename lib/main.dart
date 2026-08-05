@@ -81,6 +81,10 @@ class _MyAppState extends State<MyApp> {
     return newMode;
   }
 
+  void _applyRestoredTheme(ThemeMode mode) {
+    if (mounted) setState(() => _themeMode = mode);
+  }
+
   @override
   Widget build(BuildContext context) {
     const seedColor = Colors.deepPurple;
@@ -109,6 +113,7 @@ class _MyAppState extends State<MyApp> {
       home: HomePage(
         themeMode: _themeMode,
         onToggleTheme: _cycleThemeMode,
+        onThemeRestored: _applyRestoredTheme,
         settingsStorage: _settingsStorage,
       ),
     );

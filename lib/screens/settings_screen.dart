@@ -4,11 +4,13 @@ import '../models/notification_mode.dart';
 import '../models/notification_sound.dart';
 import '../services/app_settings_storage.dart';
 import '../services/backup_export_exception.dart';
+import '../services/backup_import_exception.dart';
 import '../services/json_prefs_storage.dart';
 import '../services/session_notification_permission_service.dart';
 import '../services/settings_transfer_service.dart';
 import '../services/step_end_notification_service.dart';
 import '../utils/snack.dart';
+import '../widgets/backup_import_flow.dart';
 import '../widgets/settings/app_about_dialog.dart';
 import '../widgets/settings/settings_sections.dart';
 import 'permissions_screen.dart';
@@ -19,6 +21,7 @@ class SettingsScreen extends StatefulWidget {
   final SessionNotificationPermissionService? permissionService;
   final AppSettingsStorage? settingsStorage;
   final SettingsTransferService? transferService;
+  final ValueChanged<ThemeMode>? onThemeRestored;
 
   const SettingsScreen({
     super.key,
@@ -27,6 +30,7 @@ class SettingsScreen extends StatefulWidget {
     this.permissionService,
     this.settingsStorage,
     this.transferService,
+    this.onThemeRestored,
   });
 
   @override
@@ -145,15 +149,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _busy = true);
 
     try {
-      final importResult = await _transferService.pickAndImport();
-      if (importResult == null) return;
-      if (!mounted) return;
-      showSnack(
-        context,
-        'Import terminé : ${importResult.importedCount} séance(s) importée(s).',
-      );
-    } on FormatException catch (error) {
-      if (mounted) showSnack(context, error.message);
+      final restoredPlan = await runBackupImportFlow(context, _transferService);
+      if (restoredPlan != null && mounted) {
+        setState(() {
+          _themeMode = restoredPlan.settings.themeMode;
+          _prefillExerciseName = restoredPlan.settings.prefillExerciseName;
+          _notificationMode = restoredPlan.settings.notificationMode;
+        });
+        widget.onThemeRestored?.call(restoredPlan.settings.themeMode);
+      }
+    } on BackupImportException catch (error) {
+      if (mounted) showSnack(context, error.userMessage);
     } on StorageMutationBlockedException {
       if (!mounted) return;
       showSnack(

@@ -4,11 +4,11 @@ import 'json_prefs_storage.dart';
 /// Sauvegarde locale de l'historique des séances effectuées (persistée en
 /// JSON via SharedPreferences, même mécanisme que TrainingStorage).
 class TrainingHistoryStorage {
-  static const _storageKey = 'training_history';
+  static const storageKey = 'training_history';
 
   final JsonListStorage<TrainingHistoryEntry> _storage =
       JsonListStorage<TrainingHistoryEntry>(
-        storageKey: _storageKey,
+        storageKey: storageKey,
         fromJson: TrainingHistoryEntry.fromJson,
         toJson: (e) => e.toJson(),
       );

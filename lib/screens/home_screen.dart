@@ -20,11 +20,13 @@ class HomePage extends StatefulWidget {
     super.key,
     required this.themeMode,
     required this.onToggleTheme,
+    this.onThemeRestored,
     this.settingsStorage,
   });
 
   final ThemeMode themeMode;
   final Future<ThemeMode> Function() onToggleTheme;
+  final ValueChanged<ThemeMode>? onThemeRestored;
   final AppSettingsStorage? settingsStorage;
 
   @override
@@ -112,6 +114,7 @@ class _HomePageState extends State<HomePage> {
         builder: (context) => SettingsScreen(
           themeMode: widget.themeMode,
           onToggleTheme: widget.onToggleTheme,
+          onThemeRestored: widget.onThemeRestored,
           settingsStorage: widget.settingsStorage,
         ),
       ),

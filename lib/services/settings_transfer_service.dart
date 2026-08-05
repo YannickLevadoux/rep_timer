@@ -3,11 +3,12 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../models/backup_import_models.dart';
 import 'backup_export_exception.dart';
 import 'backup_export_service.dart';
 import 'backup_file_writer.dart';
+import 'backup_import_service.dart';
 import 'backup_v2_encoder.dart';
-import 'training_import_service.dart';
 
 typedef BackupShare = Future<void> Function(String filePath);
 
@@ -19,16 +20,16 @@ class SettingsTransferService {
   SettingsTransferService({
     BackupExportService? backupService,
     BackupFileWriter? fileWriter,
-    TrainingImportService? importService,
+    BackupImportService? importService,
     BackupShare? shareBackup,
   }) : _backupService = backupService ?? BackupExportService(),
        _fileWriter = fileWriter ?? BackupFileWriter(),
-       _importService = importService ?? TrainingImportService(),
+       _importService = importService ?? BackupImportService(),
        _shareBackup = shareBackup ?? _shareWithPlatform;
 
   final BackupExportService _backupService;
   final BackupFileWriter _fileWriter;
-  final TrainingImportService _importService;
+  final BackupImportService _importService;
   final BackupShare _shareBackup;
 
   Future<void> exportAndShare() async {
@@ -57,7 +58,7 @@ class SettingsTransferService {
   /// Sélectionne puis importe un fichier. Retourne `null` lorsque
   /// l'utilisateur annule le sélecteur ou que la plateforme ne fournit pas
   /// de chemin exploitable.
-  Future<ImportResult?> pickAndImport() async {
+  Future<BackupImportOutcome?> pickAndImport() async {
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['json'],
@@ -66,6 +67,9 @@ class SettingsTransferService {
     if (path == null) return null;
 
     final content = await File(path).readAsString();
-    return _importService.importFromJsonString(content);
+    return _importService.importOrPrepare(content);
   }
+
+  Future<void> restoreV2(BackupV2RestorePlan plan) =>
+      _importService.restoreV2(plan);
 }

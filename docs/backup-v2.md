@@ -41,3 +41,17 @@ ultérieur entre les deux types de groupe.
 Le checkpoint d'une séance en cours, les permissions, l'exemption batterie et
 les drapeaux internes d'interface ne font pas partie de `data`. Une lecture
 partielle, illisible ou une séance invalide bloque la création du fichier.
+
+## Restauration
+
+Le fichier v2 est entièrement décodé et validé avant toute confirmation. Une
+restauration confirmée remplace les séances, l'historique et les trois
+préférences exportables, conserve leurs identifiants et supprime le checkpoint
+local. Les autres préférences et les autorisations restent inchangées.
+
+Avant la première écriture, les valeurs brutes des clés remplacées sont
+capturées. Toute erreur d'écriture déclenche leur restauration exacte ; un
+échec de ce rollback est distingué d'un échec de restauration ordinaire.
+
+Les fichiers v1 restent un chemin séparé et additif limité aux séances. Ils ne
+peuvent jamais être produits par l'application.
