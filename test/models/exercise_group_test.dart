@@ -55,7 +55,7 @@ void main() {
     expect(original.items[0].repetitions, 10);
     expect(original.items[1].name, 'Pause');
 
-    // Cas de l'import (training_export_service) : un nouvel id est
+    // Cas de l'import (training_import_service) : un nouvel id est
     // fourni, mais la copie profonde des items reste garantie.
     final imported = original.copyWith(id: 'new-id');
     expect(imported.id, 'new-id');

@@ -29,7 +29,7 @@ class TransferSettingsSection extends StatelessWidget {
         ListTile(
           leading: const Icon(Icons.file_download_outlined),
           title: const Text('Exporter'),
-          subtitle: const Text('Partager toutes vos séances dans un fichier'),
+          subtitle: const Text('Partager une sauvegarde complète'),
           enabled: !busy,
           onTap: onExport,
         ),

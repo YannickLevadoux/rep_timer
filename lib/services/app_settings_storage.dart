@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/exportable_app_settings.dart';
 import '../models/notification_mode.dart';
+import 'app_settings_exceptions.dart';
+
+export '../models/exportable_app_settings.dart';
+export 'app_settings_exceptions.dart';
 
 /// Persistance des réglages globaux de l'application qui sont de simples
 /// booléens/valeurs scalaires (contrairement aux séances/historique/
@@ -14,34 +19,6 @@ import '../models/notification_mode.dart';
 abstract interface class SessionPermissionPromptStorage {
   Future<bool> loadSessionNotificationExplanationPresented();
   Future<void> saveSessionNotificationExplanationPresented(bool value);
-}
-
-/// Les préférences utilisateur incluses dans le format de sauvegarde v2.
-///
-/// Ce regroupement évite aux futurs services d'export/import de connaître les
-/// clés de [SharedPreferences] ou de dupliquer les conversions des enums.
-@immutable
-class ExportableAppSettings {
-  const ExportableAppSettings({
-    required this.themeMode,
-    required this.prefillExerciseName,
-    required this.notificationMode,
-  });
-
-  final ThemeMode themeMode;
-  final bool prefillExerciseName;
-  final NotificationMode notificationMode;
-}
-
-/// Échec contrôlé d'une écriture de préférence.
-///
-/// La cause technique est volontairement absente de [toString] afin qu'elle
-/// ne puisse pas être affichée accidentellement dans l'interface.
-final class AppSettingsWriteException implements Exception {
-  const AppSettingsWriteException();
-
-  @override
-  String toString() => 'AppSettingsWriteException';
 }
 
 class AppSettingsStorage implements SessionPermissionPromptStorage {
@@ -123,11 +100,43 @@ class AppSettingsStorage implements SessionPermissionPromptStorage {
 
   /// Accès groupé réservé aux préférences exportables de l'utilisateur.
   Future<ExportableAppSettings> loadExportableSettings() async {
-    return ExportableAppSettings(
-      themeMode: await loadThemeMode(),
-      prefillExerciseName: await loadPrefillExerciseName(),
-      notificationMode: await loadNotificationMode(),
-    );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedTheme = prefs.getString(_themeModeKey);
+      final themeMode = storedTheme == null
+          ? defaultThemeMode
+          : deserializeThemeMode(storedTheme);
+      if (themeMode == null) throw const AppSettingsReadException();
+
+      final storedNotification = prefs.getString(_notificationModeKey);
+      final notificationMode = storedNotification == null
+          ? defaultNotificationMode
+          : _deserializeNotificationMode(storedNotification);
+      if (notificationMode == null) throw const AppSettingsReadException();
+
+      return ExportableAppSettings(
+        themeMode: themeMode,
+        prefillExerciseName:
+            prefs.getBool(_prefillExerciseNameKey) ??
+            defaultPrefillExerciseName,
+        notificationMode: notificationMode,
+      );
+    } on AppSettingsReadException {
+      rethrow;
+    } on Object catch (error) {
+      debugPrint(
+        'Lecture des préférences exportables impossible '
+        '(${error.runtimeType}).',
+      );
+      throw const AppSettingsReadException();
+    }
+  }
+
+  NotificationMode? _deserializeNotificationMode(String value) {
+    for (final mode in NotificationMode.values) {
+      if (mode.name == value) return mode;
+    }
+    return null;
   }
 
   /// Restaure les préférences exportables en réutilisant leurs écritures

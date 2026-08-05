@@ -66,6 +66,31 @@ void main() {
     expect(settings.notificationMode, NotificationMode.sound);
   });
 
+  test('le groupe exportable utilise tous les défauts documentés', () async {
+    SharedPreferences.setMockInitialValues({});
+
+    final settings = await AppSettingsStorage().loadExportableSettings();
+
+    expect(settings.themeMode, ThemeMode.system);
+    expect(settings.prefillExerciseName, isTrue);
+    expect(settings.notificationMode, NotificationMode.none);
+  });
+
+  test('le groupe exportable refuse une valeur réelle inconnue', () async {
+    SharedPreferences.setMockInitialValues({'theme_mode': 'private-theme'});
+
+    await expectLater(
+      AppSettingsStorage().loadExportableSettings(),
+      throwsA(
+        isA<AppSettingsReadException>().having(
+          (error) => error.toString(),
+          'diagnostic sûr',
+          isNot(contains('private-theme')),
+        ),
+      ),
+    );
+  });
+
   test('persiste la présentation de l’explication des notifications', () async {
     SharedPreferences.setMockInitialValues({});
     final storage = AppSettingsStorage();
