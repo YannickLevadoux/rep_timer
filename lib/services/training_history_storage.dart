@@ -1,9 +1,17 @@
 import '../models/training_history_entry.dart';
 import 'json_prefs_storage.dart';
 
+/// Contrat minimal utilisé par l'historique pour lire et supprimer des séances.
+/// Il permet au contrôleur d'être testé sans dépendre de SharedPreferences.
+abstract interface class TrainingHistoryStore {
+  Future<StorageReadResult<List<TrainingHistoryEntry>>> loadHistory();
+
+  Future<void> deleteEntry(String id);
+}
+
 /// Sauvegarde locale de l'historique des séances effectuées (persistée en
 /// JSON via SharedPreferences, même mécanisme que TrainingStorage).
-class TrainingHistoryStorage {
+class TrainingHistoryStorage implements TrainingHistoryStore {
   static const storageKey = 'training_history';
 
   final JsonListStorage<TrainingHistoryEntry> _storage =
@@ -13,6 +21,7 @@ class TrainingHistoryStorage {
         toJson: (e) => e.toJson(),
       );
 
+  @override
   Future<StorageReadResult<List<TrainingHistoryEntry>>> loadHistory() =>
       _storage.loadList();
 
@@ -22,6 +31,7 @@ class TrainingHistoryStorage {
     await _storage.saveList(history);
   }
 
+  @override
   Future<void> deleteEntry(String id) async {
     final history = await _healthyHistoryForMutation();
     history.removeWhere((entry) => entry.id == id);

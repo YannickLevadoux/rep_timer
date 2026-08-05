@@ -1,77 +1,43 @@
 import 'package:flutter/material.dart';
 
+import '../controllers/training_history_controller.dart';
 import '../models/training_history_entry.dart';
 import '../services/json_prefs_storage.dart';
-import '../services/training_history_storage.dart';
+import '../services/weekly_history_aggregation.dart';
 import '../utils/formatters.dart';
 import '../utils/snack.dart';
 import '../widgets/dialogs/confirm_dialog.dart';
 import '../widgets/storage_read_feedback.dart';
 import 'training_history_detail.dart';
 
-/// Écran listant les séances effectuées, du plus récent au plus ancien.
-/// Affiche seulement les 5 plus récentes au départ, avec la possibilité
-/// de tout charger via "Tout Visualiser".
+/// Historique hebdomadaire. Le contrôleur injecté est possédé puis libéré par
+/// cet écran ; la composition de l'application lui fournit le stockage réel.
 class TrainingHistoryScreen extends StatefulWidget {
-  const TrainingHistoryScreen({super.key});
+  const TrainingHistoryScreen({super.key, required this.controller});
+
+  final TrainingHistoryController controller;
 
   @override
   State<TrainingHistoryScreen> createState() => _TrainingHistoryScreenState();
 }
 
 class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
-  static const _initialLimit = 5;
-
-  final TrainingHistoryStorage _storage = TrainingHistoryStorage();
-
-  List<TrainingHistoryEntry> _allEntries = [];
-  bool _loading = true;
-  bool _showAll = false;
-  bool _storageWarning = false;
-  bool _storageFailure = false;
+  TrainingHistoryController get _controller => widget.controller;
 
   @override
   void initState() {
     super.initState();
-    _loadHistory();
+    _controller.load();
   }
 
-  Future<void> _loadHistory() async {
-    final result = await _storage.loadHistory();
-    final List<TrainingHistoryEntry> entries;
-    switch (result) {
-      case StorageNoData<List<TrainingHistoryEntry>>():
-        entries = <TrainingHistoryEntry>[];
-      case StorageReadSuccess<List<TrainingHistoryEntry>>(:final data):
-        entries = data;
-      case StorageReadPartial<List<TrainingHistoryEntry>>(:final data):
-        entries = data;
-      case StorageReadFailure<List<TrainingHistoryEntry>>():
-        if (!mounted) return;
-        setState(() {
-          _allEntries = <TrainingHistoryEntry>[];
-          _storageWarning = false;
-          _storageFailure = true;
-          _loading = false;
-        });
-        return;
-    }
-
-    // Plus récent au plus ancien.
-    entries.sort((a, b) => b.date.compareTo(a.date));
-
-    if (!mounted) return;
-    setState(() {
-      _allEntries = entries;
-      _storageWarning =
-          result is StorageReadPartial<List<TrainingHistoryEntry>>;
-      _storageFailure = false;
-      _loading = false;
-    });
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   Future<void> _confirmDelete(TrainingHistoryEntry entry) async {
-    if (_storageWarning || _storageFailure) return;
+    if (_controller.mutationsBlocked) return;
 
     final bool deleted;
     try {
@@ -81,11 +47,10 @@ class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
         content:
             'Cette action est irréversible. Supprimer "${entry.trainingName}" '
             'du ${formatDateTime(entry.date)} de l\'historique ?',
-        onDelete: () => _storage.deleteEntry(entry.id),
+        onDelete: () => _controller.deleteEntry(entry.id),
       );
     } on StorageMutationBlockedException {
       if (!mounted) return;
-      setState(() => _storageWarning = true);
       showSnack(
         context,
         "Suppression impossible : certaines données de l'historique n'ont "
@@ -95,92 +60,272 @@ class _TrainingHistoryScreenState extends State<TrainingHistoryScreen> {
     }
 
     if (!deleted || !mounted) return;
-    setState(() {
-      _allEntries.removeWhere((e) => e.id == entry.id);
-    });
   }
 
   Future<void> _openDetail(TrainingHistoryEntry entry) async {
-    final deleted = await Navigator.push<bool>(
+    await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => TrainingHistoryDetailScreen(
           entry: entry,
-          allowDelete: !_storageWarning && !_storageFailure,
+          allowDelete: !_controller.mutationsBlocked,
+          onDelete: () => _controller.deleteEntry(entry.id),
         ),
       ),
     );
-
-    if (deleted == true) {
-      setState(() {
-        _allEntries.removeWhere((e) => e.id == entry.id);
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final displayedEntries = _showAll
-        ? _allEntries
-        : _allEntries.take(_initialLimit).toList();
-    final hasMore = !_showAll && _allEntries.length > _initialLimit;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text("Historique")),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _storageFailure
-          ? StorageReadErrorView(
-              message: "L'historique enregistré n'a pas pu être lu.",
-              onRetry: _loadHistory,
-            )
-          : Column(
-              children: [
-                if (_storageWarning)
-                  const StorageReadWarningBanner(
-                    message:
-                        "Certaines séances de l'historique n'ont pas pu être "
-                        "lues. La suppression est désactivée pour protéger "
-                        "les données.",
-                  ),
-                Expanded(
-                  child: _allEntries.isEmpty
-                      ? const Center(
-                          child: Text("Aucune séance effectuée pour l'instant"),
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.all(12),
-                          itemCount: displayedEntries.length,
-                          separatorBuilder: (context, index) =>
-                              const SizedBox(height: 8),
-                          itemBuilder: (context, index) {
-                            final entry = displayedEntries[index];
-                            return _HistoryEntryCard(
-                              entry: entry,
-                              onTap: () => _openDetail(entry),
-                              onDelete: _storageWarning
-                                  ? null
-                                  : () => _confirmDelete(entry),
-                            );
-                          },
-                        ),
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) {
+        final status = _controller.status;
+        return Scaffold(
+          appBar: AppBar(title: const Text("Historique")),
+          body: status == TrainingHistoryLoadStatus.loading
+              ? const Center(child: CircularProgressIndicator())
+              : status == TrainingHistoryLoadStatus.failure
+              ? StorageReadErrorView(
+                  message: "L'historique enregistré n'a pas pu être lu.",
+                  onRetry: _controller.load,
+                )
+              : _HistoryContent(
+                  controller: _controller,
+                  storageWarning: status == TrainingHistoryLoadStatus.partial,
+                  onOpenDetail: _openDetail,
+                  onDelete: _confirmDelete,
                 ),
-                if (hasMore)
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () => setState(() => _showAll = true),
-                        child: const Text("Tout Visualiser"),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+        );
+      },
     );
   }
 }
+
+class _HistoryContent extends StatelessWidget {
+  const _HistoryContent({
+    required this.controller,
+    required this.storageWarning,
+    required this.onOpenDetail,
+    required this.onDelete,
+  });
+
+  final TrainingHistoryController controller;
+  final bool storageWarning;
+  final ValueChanged<TrainingHistoryEntry> onOpenDetail;
+  final ValueChanged<TrainingHistoryEntry> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = controller.summary;
+    final entries = summary.entries;
+
+    return CustomScrollView(
+      slivers: [
+        if (storageWarning)
+          const SliverToBoxAdapter(
+            child: StorageReadWarningBanner(
+              message:
+                  "Certaines séances de l'historique n'ont pas pu être lues. "
+                  "Les statistiques peuvent être incomplètes et la suppression "
+                  "est désactivée pour protéger les données.",
+            ),
+          ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+          sliver: SliverToBoxAdapter(
+            child: _WeeklySummaryCard(
+              summary: summary,
+              canGoNext: controller.canGoNext,
+              isCurrentWeek: controller.isCurrentWeek,
+              onPrevious: controller.showPreviousWeek,
+              onNext: controller.showNextWeek,
+              onToday: controller.showCurrentWeek,
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          sliver: SliverToBoxAdapter(
+            child: Text(
+              'Séances de la semaine — ${entries.length}',
+              key: const Key('weekly-history-list-title'),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+        ),
+        if (entries.isEmpty)
+          const SliverPadding(
+            padding: EdgeInsets.fromLTRB(24, 24, 24, 48),
+            sliver: SliverToBoxAdapter(
+              child: Text(
+                'Aucune séance sur cette période',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+            sliver: SliverList.separated(
+              itemCount: entries.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final entry = entries[index];
+                return _HistoryEntryCard(
+                  entry: entry,
+                  onTap: () => onOpenDetail(entry),
+                  onDelete: storageWarning ? null : () => onDelete(entry),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _WeeklySummaryCard extends StatelessWidget {
+  const _WeeklySummaryCard({
+    required this.summary,
+    required this.canGoNext,
+    required this.isCurrentWeek,
+    required this.onPrevious,
+    required this.onNext,
+    required this.onToday,
+  });
+
+  final WeeklyHistorySummary summary;
+  final bool canGoNext;
+  final bool isCurrentWeek;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+  final VoidCallback onToday;
+
+  @override
+  Widget build(BuildContext context) {
+    final completedColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.green.shade300
+        : Colors.green.shade700;
+    final incompleteColor = Theme.of(context).colorScheme.tertiary;
+    final semanticSummary = _semanticSummary(summary);
+
+    return Card(
+      key: const Key('weekly-history-summary-card'),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 160),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    key: const Key('previous-week-button'),
+                    tooltip: 'Semaine précédente',
+                    onPressed: onPrevious,
+                    icon: const Icon(Icons.chevron_left),
+                  ),
+                  Expanded(
+                    child: Text(
+                      formatLocalWeekLabel(summary.week),
+                      key: const Key('selected-week-label'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                  IconButton(
+                    key: const Key('next-week-button'),
+                    tooltip: 'Semaine suivante',
+                    onPressed: canGoNext ? onNext : null,
+                    icon: const Icon(Icons.chevron_right),
+                  ),
+                ],
+              ),
+              if (!isCurrentWeek)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    key: const Key('today-button'),
+                    onPressed: onToday,
+                    child: const Text("Aujourd’hui"),
+                  ),
+                ),
+              Semantics(
+                key: const Key('weekly-history-chart-semantics'),
+                label: semanticSummary,
+                container: true,
+                child: ExcludeSemantics(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      height: 20,
+                      child: summary.totalCount == 0
+                          ? ColoredBox(
+                              key: const Key('weekly-history-empty-bar'),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                            )
+                          : Row(
+                              children: [
+                                if (summary.completedCount > 0)
+                                  Expanded(
+                                    flex: summary.completedCount,
+                                    child: ColoredBox(
+                                      key: const Key(
+                                        'weekly-history-completed-bar',
+                                      ),
+                                      color: completedColor,
+                                    ),
+                                  ),
+                                if (summary.incompleteCount > 0)
+                                  Expanded(
+                                    flex: summary.incompleteCount,
+                                    child: ColoredBox(
+                                      key: const Key(
+                                        'weekly-history-incomplete-bar',
+                                      ),
+                                      color: incompleteColor,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _visibleSummary(summary),
+                key: const Key('weekly-history-text-summary'),
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _visibleSummary(WeeklyHistorySummary summary) {
+  if (summary.totalCount == 0) return '0 séance';
+  return '${summary.totalCount} ${_plural(summary.totalCount, 'séance')} — '
+      '${summary.completedCount} '
+      '${_plural(summary.completedCount, 'terminée')} · '
+      '${summary.incompleteCount} '
+      '${_plural(summary.incompleteCount, 'incomplète')}';
+}
+
+String _semanticSummary(WeeklyHistorySummary summary) =>
+    'Bilan hebdomadaire : ${_visibleSummary(summary)}';
+
+String _plural(int count, String singular) =>
+    count > 1 ? '${singular}s' : singular;
 
 class _HistoryEntryCard extends StatelessWidget {
   final TrainingHistoryEntry entry;
