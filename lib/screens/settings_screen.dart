@@ -18,7 +18,7 @@ import 'permissions_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final ThemeMode themeMode;
-  final VoidCallback onToggleTheme;
+  final Future<ThemeMode> Function() onToggleTheme;
   final SessionNotificationPermissionService? permissionService;
   final AppSettingsStorage? settingsStorage;
 
@@ -45,12 +45,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _prefillExerciseName = AppSettingsStorage.defaultPrefillExerciseName;
   NotificationMode _notificationMode =
       AppSettingsStorage.defaultNotificationMode;
+  late ThemeMode _themeMode;
+  bool _savingTheme = false;
   SessionNotificationPermissionStatus? _sessionPermissionStatus;
 
   @override
   void initState() {
     super.initState();
     _settingsStorage = widget.settingsStorage ?? AppSettingsStorage();
+    _themeMode = widget.themeMode;
     _sessionPermissions =
         widget.permissionService ?? SessionNotificationPermissionService();
     _loadPrefillExerciseNameSetting();
@@ -72,6 +75,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _togglePrefillExerciseName(bool value) async {
     setState(() => _prefillExerciseName = value);
     await _settingsStorage.savePrefillExerciseName(value);
+  }
+
+  Future<void> _cycleThemeMode() async {
+    if (_savingTheme) return;
+    setState(() => _savingTheme = true);
+    try {
+      final newMode = await widget.onToggleTheme();
+      if (mounted) setState(() => _themeMode = newMode);
+    } on Object {
+      if (mounted) {
+        showSnack(context, "Le thème n'a pas pu être enregistré. Réessayez.");
+      }
+    } finally {
+      if (mounted) setState(() => _savingTheme = false);
+    }
   }
 
   Future<void> _loadNotificationModeSetting() async {
@@ -173,8 +191,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return SettingsContent(
-      themeMode: widget.themeMode,
-      onToggleTheme: widget.onToggleTheme,
+      themeMode: _themeMode,
+      onToggleTheme: _savingTheme ? null : _cycleThemeMode,
       prefillExerciseName: _prefillExerciseName,
       onPrefillChanged: _togglePrefillExerciseName,
       notificationMode: _notificationMode,

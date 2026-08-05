@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/session_checkpoint.dart';
 import '../models/training.dart';
+import '../services/app_settings_storage.dart';
 import '../services/json_prefs_storage.dart';
 import '../services/session_checkpoint_storage.dart';
 import '../services/training_storage.dart';
@@ -21,12 +22,14 @@ import 'training_summary.dart';
 
 class HomePage extends StatefulWidget {
   final ThemeMode themeMode;
-  final VoidCallback onToggleTheme;
+  final Future<ThemeMode> Function() onToggleTheme;
+  final AppSettingsStorage? settingsStorage;
 
   const HomePage({
     super.key,
     required this.themeMode,
     required this.onToggleTheme,
+    this.settingsStorage,
   });
 
   @override
@@ -252,6 +255,7 @@ class _HomePageState extends State<HomePage> {
         builder: (context) => SettingsScreen(
           themeMode: widget.themeMode,
           onToggleTheme: widget.onToggleTheme,
+          settingsStorage: widget.settingsStorage,
         ),
       ),
     );

@@ -152,7 +152,10 @@ void main() {
 
 Widget _homeApp() {
   return MaterialApp(
-    home: HomePage(themeMode: ThemeMode.system, onToggleTheme: () {}),
+    home: HomePage(
+      themeMode: ThemeMode.system,
+      onToggleTheme: () async => ThemeMode.light,
+    ),
   );
 }
 

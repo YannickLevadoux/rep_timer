@@ -6,7 +6,7 @@ import '../settings_section.dart';
 
 class DisplaySettingsSection extends StatelessWidget {
   final ThemeMode themeMode;
-  final VoidCallback onToggleTheme;
+  final VoidCallback? onToggleTheme;
 
   const DisplaySettingsSection({
     super.key,
@@ -21,7 +21,7 @@ class DisplaySettingsSection extends StatelessWidget {
   };
 
   String get _themeLabel => switch (themeMode) {
-    ThemeMode.system => 'Auto',
+    ThemeMode.system => 'Système',
     ThemeMode.light => 'Clair',
     ThemeMode.dark => 'Sombre',
   };

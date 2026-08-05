@@ -104,7 +104,7 @@ void main() {
       MaterialApp(
         home: SettingsScreen(
           themeMode: ThemeMode.system,
-          onToggleTheme: () {},
+          onToggleTheme: () async => ThemeMode.light,
           permissionService: service,
         ),
       ),
