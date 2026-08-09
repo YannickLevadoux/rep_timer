@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/weekly_history_aggregation.dart';
 import '../utils/history_status_colors.dart';
+import 'weekly_history_week_navigation.dart';
 
 class WeeklyHistorySummaryCard extends StatelessWidget {
   const WeeklyHistorySummaryCard({
@@ -36,39 +37,14 @@ class WeeklyHistorySummaryCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  IconButton(
-                    key: const Key('previous-week-button'),
-                    tooltip: 'Semaine précédente',
-                    onPressed: onPrevious,
-                    icon: const Icon(Icons.chevron_left),
-                  ),
-                  Expanded(
-                    child: Text(
-                      formatLocalWeekLabel(summary.week),
-                      key: const Key('selected-week-label'),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                  ),
-                  IconButton(
-                    key: const Key('next-week-button'),
-                    tooltip: 'Semaine suivante',
-                    onPressed: canGoNext ? onNext : null,
-                    icon: const Icon(Icons.chevron_right),
-                  ),
-                ],
+              WeeklyHistoryWeekNavigation(
+                week: summary.week,
+                canGoNext: canGoNext,
+                isCurrentWeek: isCurrentWeek,
+                onPrevious: onPrevious,
+                onNext: onNext,
+                onToday: onToday,
               ),
-              if (!isCurrentWeek)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    key: const Key('today-button'),
-                    onPressed: onToday,
-                    child: const Text("Aujourd’hui"),
-                  ),
-                ),
               Semantics(
                 key: const Key('weekly-history-chart-semantics'),
                 label: _semanticSummary(summary),

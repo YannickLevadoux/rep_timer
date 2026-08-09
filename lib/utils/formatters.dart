@@ -12,6 +12,15 @@ String formatDuration(Duration duration) {
   return hours > 0 ? "${hours.toString().padLeft(2, '0')}:$mm:$ss" : "$mm:$ss";
 }
 
+/// Formate toujours une durée en "hh:mm:ss", notamment pour les agrégats.
+String formatLongDuration(Duration duration) {
+  final clamped = duration.isNegative ? Duration.zero : duration;
+  final hours = clamped.inHours.toString().padLeft(2, '0');
+  final minutes = clamped.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final seconds = clamped.inSeconds.remainder(60).toString().padLeft(2, '0');
+  return '$hours:$minutes:$seconds';
+}
+
 /// Formate une date/heure en "jj/mm/aaaa à hh:mm".
 String formatDateTime(DateTime date) {
   final day = date.day.toString().padLeft(2, '0');

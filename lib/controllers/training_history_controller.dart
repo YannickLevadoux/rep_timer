@@ -27,6 +27,11 @@ class TrainingHistoryController extends ChangeNotifier {
   late WeeklyHistorySummary summary;
 
   LocalWeek get currentWeek => LocalWeek.containing(_now());
+  DateTime get today {
+    final local = _now().toLocal();
+    return DateTime(local.year, local.month, local.day);
+  }
+
   bool get canGoNext => _selectedWeek.start.isBefore(currentWeek.start);
   bool get isCurrentWeek => _selectedWeek.hasSameStart(currentWeek);
   bool get mutationsBlocked =>

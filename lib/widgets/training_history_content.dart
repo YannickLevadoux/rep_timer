@@ -4,11 +4,14 @@ import '../controllers/training_history_controller.dart';
 import '../models/training_history_entry.dart';
 import 'storage_read_feedback.dart';
 import 'training_history_entry_card.dart';
+import 'weekly_history_duration_card.dart';
 import 'weekly_history_summary_card.dart';
+
+enum HistoryMetric { sessionCount, timeSpent }
 
 /// Contenu défilable de l'historique, piloté uniquement par son contrôleur et
 /// ses actions de navigation.
-class TrainingHistoryContent extends StatelessWidget {
+class TrainingHistoryContent extends StatefulWidget {
   const TrainingHistoryContent({
     super.key,
     required this.controller,
@@ -23,12 +26,20 @@ class TrainingHistoryContent extends StatelessWidget {
   final ValueChanged<TrainingHistoryEntry> onDelete;
 
   @override
+  State<TrainingHistoryContent> createState() => _TrainingHistoryContentState();
+}
+
+class _TrainingHistoryContentState extends State<TrainingHistoryContent> {
+  HistoryMetric _metric = HistoryMetric.sessionCount;
+
+  @override
   Widget build(BuildContext context) {
+    final controller = widget.controller;
     final entries = controller.summary.entries;
 
     return CustomScrollView(
       slivers: [
-        if (storageWarning)
+        if (widget.storageWarning)
           const SliverToBoxAdapter(
             child: StorageReadWarningBanner(
               message:
@@ -38,16 +49,56 @@ class TrainingHistoryContent extends StatelessWidget {
             ),
           ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
           sliver: SliverToBoxAdapter(
-            child: WeeklyHistorySummaryCard(
-              summary: controller.summary,
-              canGoNext: controller.canGoNext,
-              isCurrentWeek: controller.isCurrentWeek,
-              onPrevious: controller.showPreviousWeek,
-              onNext: controller.showNextWeek,
-              onToday: controller.showCurrentWeek,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Métrique', style: Theme.of(context).textTheme.labelLarge),
+                DropdownButton<HistoryMetric>(
+                  key: const Key('history-metric-selector'),
+                  value: _metric,
+                  isExpanded: true,
+                  items: const [
+                    DropdownMenuItem(
+                      value: HistoryMetric.sessionCount,
+                      child: Text('Nombre de séances'),
+                    ),
+                    DropdownMenuItem(
+                      value: HistoryMetric.timeSpent,
+                      child: Text('Temps passé'),
+                    ),
+                  ],
+                  onChanged: (metric) {
+                    if (metric == null) return;
+                    setState(() => _metric = metric);
+                  },
+                ),
+              ],
             ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          sliver: SliverToBoxAdapter(
+            child: _metric == HistoryMetric.sessionCount
+                ? WeeklyHistorySummaryCard(
+                    summary: controller.summary,
+                    canGoNext: controller.canGoNext,
+                    isCurrentWeek: controller.isCurrentWeek,
+                    onPrevious: controller.showPreviousWeek,
+                    onNext: controller.showNextWeek,
+                    onToday: controller.showCurrentWeek,
+                  )
+                : WeeklyHistoryDurationCard(
+                    summary: controller.summary,
+                    today: controller.today,
+                    canGoNext: controller.canGoNext,
+                    isCurrentWeek: controller.isCurrentWeek,
+                    onPrevious: controller.showPreviousWeek,
+                    onNext: controller.showNextWeek,
+                    onToday: controller.showCurrentWeek,
+                  ),
           ),
         ),
         SliverPadding(
@@ -80,8 +131,10 @@ class TrainingHistoryContent extends StatelessWidget {
                 final entry = entries[index];
                 return TrainingHistoryEntryCard(
                   entry: entry,
-                  onTap: () => onOpenDetail(entry),
-                  onDelete: storageWarning ? null : () => onDelete(entry),
+                  onTap: () => widget.onOpenDetail(entry),
+                  onDelete: widget.storageWarning
+                      ? null
+                      : () => widget.onDelete(entry),
                 );
               },
             ),
