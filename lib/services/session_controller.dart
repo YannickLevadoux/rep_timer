@@ -1,34 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
 
-import '../models/notification_mode.dart';
-import '../models/notification_sound.dart';
-import '../models/session_checkpoint.dart';
-import '../models/session_step.dart';
-import '../models/training.dart';
-import '../models/training_history_entry.dart';
-import '../models/training_item.dart';
-import '../validation/business_validation.dart';
-import 'app_settings_storage.dart';
-import 'session_checkpoint_storage.dart';
-import 'session_clock.dart';
-import 'session_completion_service.dart';
-import 'session_notification_coordinator.dart';
-import 'session_notification_service.dart';
-import 'session_progress_state.dart';
-import 'step_end_notification_service.dart';
-import 'training_history_storage.dart';
-import 'training_storage.dart';
+import 'session_controller_composition.dart';
+import 'session_notification_bridge.dart';
 
-/// Indique si les modifications apportées à la séance d'origine pendant
-/// son exécution doivent être enregistrées ou rester uniquement en mémoire.
-enum TrainingChangesPersistence { persistent, memoryOnly }
+export 'training_changes_persistence.dart';
 
-/// Orchestre l'exécution d'une séance et expose son état à l'interface.
-/// Les responsabilités de temps, progression, notifications et persistance
-/// sont déléguées à des composants spécialisés.
 class SessionController extends ChangeNotifier {
   SessionController({
     required this.training,
@@ -43,101 +21,60 @@ class SessionController extends ChangeNotifier {
     SessionNotificationService? foregroundNotificationService,
     Future<void> Function()? enableWakelock,
     Future<void> Function()? disableWakelock,
-  }) : _trainingStorage = trainingStorage ?? TrainingStorage(),
-       _enableWakelock = enableWakelock ?? WakelockPlus.enable,
-       _disableWakelock = disableWakelock ?? WakelockPlus.disable {
-    final resolvedCheckpointStorage =
-        checkpointStorage ?? SessionCheckpointStorage();
-    _progress = SessionProgressState(
+  }) {
+    _composition = SessionControllerComposition(
       training: training,
-      checkpoint: initialCheckpoint,
+      initialCheckpoint: initialCheckpoint,
+      checkpointStorage: checkpointStorage,
+      trainingStorage: trainingStorage,
+      historyStorage: historyStorage,
+      settingsStorage: settingsStorage,
+      notificationService: notificationService,
+      notificationSound: notificationSound,
+      foregroundNotificationService: foregroundNotificationService,
+      enableWakelock: enableWakelock,
+      disableWakelock: disableWakelock,
     );
-
-    final restoredCheckpoint = _progress.restoredFromCheckpoint
-        ? initialCheckpoint
-        : null;
-    _clock = SessionClock(
-      initialGlobalElapsed: restoredCheckpoint?.globalElapsed ?? Duration.zero,
-      initialStepElapsed: restoredCheckpoint?.stepElapsed ?? Duration.zero,
-      initiallyPaused: restoredCheckpoint?.paused ?? false,
-      restoredAt: restoredCheckpoint?.savedAt,
-      active: !_progress.finished,
-    );
-
-    _completion = SessionCompletionService(
-      checkpointStorage: resolvedCheckpointStorage,
-      historyStorage: historyStorage ?? TrainingHistoryStorage(),
-    );
-    _notifications = SessionNotificationCoordinator(
-      settingsStorage: settingsStorage ?? AppSettingsStorage(),
-      stepEndNotifier: notificationService ?? StepEndNotificationService(),
-      notificationSound: notificationSound ?? NotificationSound.classic,
-      foregroundService:
-          foregroundNotificationService ?? SessionNotificationService(),
-      snapshotProvider: _notificationSnapshot,
+    _notifications = _composition.createNotificationBridge(
       onPausePressed: togglePause,
       onTimedStepEnded: _handleTaskStepEnded,
       onModeChanged: _notifyIfActive,
     );
-
-    if (_progress.finished) return;
-
+    if (finished) return;
     _notifications.start();
-    unawaited(_enableWakelock());
+    unawaited(_composition.enableWakelock());
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
     unawaited(_saveCheckpoint());
   }
 
   final Training training;
   final TrainingChangesPersistence trainingChangesPersistence;
-  final TrainingStorage _trainingStorage;
-  final Future<void> Function() _enableWakelock;
-  final Future<void> Function() _disableWakelock;
-
-  late final SessionProgressState _progress;
-  late final SessionClock _clock;
-  late final SessionCompletionService _completion;
-  late final SessionNotificationCoordinator _notifications;
-
+  late final SessionControllerComposition _composition;
+  late final SessionNotificationBridge _notifications;
   Timer? _ticker;
-  bool _finishing = false;
-  bool _disposed = false;
+  bool _finishing = false, _disposed = false;
 
-  List<SessionStep> get steps => _progress.steps;
-  List<bool> get completed => _progress.completed;
-  int get currentIndex => _progress.currentIndex;
-  bool get paused => _clock.paused;
-  bool get finished => _progress.finished;
+  List<SessionStep> get steps => _composition.progress.steps;
+  List<bool> get completed => _composition.progress.completed;
+  int get currentIndex => _composition.progress.currentIndex;
+  bool get paused => _composition.clock.paused;
+  bool get finished => _composition.progress.finished;
   NotificationMode get notificationMode => _notifications.mode;
-  bool get pendingIncompleteReview => _progress.pendingIncompleteReview;
-  SessionStep get currentStep => _progress.currentStep;
-  SessionStep? get nextStep => _progress.nextStep;
-  Duration get globalElapsed => _clock.globalElapsed;
-  Duration get stepElapsed => _clock.stepElapsed;
-
-  SessionNotificationSnapshot _notificationSnapshot() =>
-      SessionNotificationSnapshot(
-        currentStep: steps.isEmpty ? null : currentStep,
-        nextStep: steps.isEmpty ? null : nextStep,
-        currentIndex: currentIndex,
-        stepOccurrence: _progress.stepOccurrence,
-        stepElapsed: stepElapsed,
-        paused: paused,
-        finished: finished,
-        isAppBackgrounded: _clock.isAppBackgrounded,
-      );
-
+  bool get pendingIncompleteReview => _composition.pendingIncompleteReview;
+  SessionStep get currentStep => _composition.progress.currentStep;
+  SessionStep? get nextStep => _composition.progress.nextStep;
+  Duration get globalElapsed => _composition.clock.globalElapsed;
+  Duration get stepElapsed => _composition.clock.stepElapsed;
   void cycleNotificationMode() => _notifications.cycleMode();
-
   void handleAppBackgrounded() {
     if (finished) return;
-    _clock.handleAppBackgrounded();
+    _composition.clock.handleAppBackgrounded();
     _notifications.handleAppBackgrounded();
     unawaited(_saveCheckpoint());
   }
 
   void handleAppResumed() {
-    if (finished || !_clock.handleAppResumed()) return;
+    if (finished || !_composition.clock.handleAppResumed()) return;
     _notifications.handleAppResumed();
     _notifyIfActive();
     unawaited(_saveCheckpoint());
@@ -145,13 +82,12 @@ class SessionController extends ChangeNotifier {
 
   void _handleTaskStepEnded() {
     if (finished || paused) return;
-    _clock.captureBackgroundStepEnd();
+    _composition.clock.captureBackgroundStepEnd();
     completeCurrentStep();
   }
 
   void _onTick() {
     if (paused || finished || _finishing) return;
-
     final duration = currentStep.item.duration;
     if (duration != null && stepElapsed >= duration) {
       completeCurrentStep();
@@ -162,14 +98,11 @@ class SessionController extends ChangeNotifier {
 
   void completeCurrentStep() {
     if (finished || _finishing) return;
-
     _notifications.notifyTimedStepCompletionFallback();
-    _progress.recordCurrentStepDuration(stepElapsed);
-    final completion = _progress.completeCurrentStep();
-
-    switch (completion) {
+    _composition.progress.recordCurrentStepDuration(stepElapsed);
+    switch (_composition.progress.completeCurrentStep()) {
       case SessionStepCompletion.advanced:
-        _clock.resetStep();
+        _composition.clock.resetStep();
         _notifications.handleNaturalStepAdvanced();
         _notifyIfActive();
         unawaited(_saveCheckpoint());
@@ -184,30 +117,15 @@ class SessionController extends ChangeNotifier {
   Future<void> finishSession({bool earlyExit = false}) async {
     if (finished || _finishing) return;
     _finishing = true;
-
-    if (earlyExit) {
-      unawaited(_notifications.stop(cancelSound: true));
-    }
-
-    _progress.recordCurrentStepDuration(stepElapsed);
+    if (earlyExit) unawaited(_notifications.stop(cancelSound: true));
+    _composition.progress.recordCurrentStepDuration(stepElapsed);
     _ticker?.cancel();
-    _clock.stop();
-
+    _composition.clock.stop();
     try {
-      await _disableWakelock();
-      final status = _progress.allCompleted
-          ? TrainingSessionStatus.completed
-          : TrainingSessionStatus.incomplete;
-      await _completion.completeSession(
-        training: training,
-        steps: steps,
-        completed: completed,
-        stepActualDurations: _progress.stepActualDurations,
-        totalDuration: globalElapsed,
-        status: status,
-      );
+      await _composition.disableWakelock();
+      await _composition.completeSession();
       await _notifications.stop();
-      _progress.markFinished();
+      _composition.progress.markFinished();
       _notifyIfActive();
     } finally {
       if (!finished) _finishing = false;
@@ -220,83 +138,48 @@ class SessionController extends ChangeNotifier {
   }
 
   void _setPaused(bool paused) {
-    _clock.setPaused(paused);
+    _composition.clock.setPaused(paused);
     _notifications.handlePauseChanged();
     _notifyIfActive();
   }
 
   void jumpToStep(int index) {
-    if (!_progress.canJumpTo(index) || finished || _finishing) return;
-
+    if (!_composition.progress.canJumpTo(index) || finished || _finishing) {
+      return;
+    }
     _notifications.prepareManualStepChange();
-    _progress.recordCurrentStepDuration(stepElapsed);
+    _composition.progress.recordCurrentStepDuration(stepElapsed);
     final resumeAfterJump = pendingIncompleteReview && paused;
-    _progress.jumpTo(index);
-    _clock.resetStep();
-
+    _composition.progress.jumpTo(index);
+    _composition.clock.resetStep();
     if (resumeAfterJump) {
       _setPaused(false);
     } else {
       _notifications.handleManualStepChanged();
     }
-
     _notifyIfActive();
     unawaited(_saveCheckpoint());
   }
 
   void goToPrevious() => jumpToStep(currentIndex - 1);
-
   void goToNext() => jumpToStep(currentIndex + 1);
-
-  Future<void> updateComment(String? comment) async {
-    final issue = BusinessValidation.validateComment(comment);
-    if (issue != null) throw BusinessValidationException([issue]);
-    final normalized = BusinessValidation.normalizeComment(comment);
-    final sourceItem = currentStep.sourceItem;
-    final previousComments = <TrainingItem, String?>{
-      sourceItem: sourceItem.comment,
-    };
-    for (final step in steps) {
-      if (identical(step.sourceItem, sourceItem)) {
-        previousComments.putIfAbsent(step.item, () => step.item.comment);
-      }
-    }
-    for (final item in previousComments.keys) {
-      item.comment = normalized;
-    }
-    _notifyIfActive();
-
-    if (trainingChangesPersistence == TrainingChangesPersistence.memoryOnly) {
-      return;
-    }
-
-    try {
-      await _trainingStorage.addOrUpdateTraining(training);
-    } on Object {
-      for (final entry in previousComments.entries) {
-        entry.key.comment = entry.value;
-      }
-      _notifyIfActive();
-      rethrow;
-    }
-  }
+  Future<void> updateComment(String? comment) => _composition.comments.update(
+    comment: comment,
+    currentStep: currentStep,
+    steps: steps,
+    training: training,
+    persistence: trainingChangesPersistence,
+    onChanged: _notifyIfActive,
+  );
 
   Future<void> abandon() {
     unawaited(_notifications.stop(cancelSound: true));
-    return _completion.clearCheckpoint();
+    return _composition.completion.clearCheckpoint();
   }
 
   Future<void> _saveCheckpoint() {
     if (finished || _finishing) return Future<void>.value();
-    return _completion.saveCheckpoint(
-      trainingId: training.id,
-      currentIndex: currentIndex,
-      completed: completed,
-      globalElapsed: globalElapsed,
-      stepElapsed: stepElapsed,
-      paused: paused,
-      stepActualDurations: _progress.stepActualDurations,
-    );
+    return _composition.saveCheckpoint();
   }
 
   void _notifyIfActive() {
@@ -308,8 +191,8 @@ class SessionController extends ChangeNotifier {
     if (_disposed) return;
     _disposed = true;
     _ticker?.cancel();
-    _clock.stop();
-    unawaited(_disableWakelock());
+    _composition.clock.stop();
+    unawaited(_composition.disableWakelock());
     _notifications.dispose();
     super.dispose();
   }
