@@ -5,112 +5,159 @@ import 'json_prefs_storage.dart';
 import 'session_checkpoint_storage.dart';
 import 'training_storage.dart';
 
-typedef PendingSessionRecovery = ({
-  Training? training,
-  SessionCheckpoint? checkpoint,
-  BusinessValidationIssue? validationIssue,
-  bool storageWarning,
-  bool checkpointWarning,
-});
+typedef PendingSessionClock = DateTime Function();
+
+enum NoPendingSessionReason { absent, expired, trainingMissing }
+
+enum PendingSessionBlockedReason {
+  checkpointPartial,
+  checkpointUnreadable,
+  trainingsPartial,
+  trainingsUnreadable,
+  invalidTraining,
+}
+
+/// Décision métier de reprise. L'interface ne reçoit que cette décision : les
+/// détails du stockage et les erreurs techniques restent confinés au service.
+sealed class PendingSessionRecoveryDecision {
+  const PendingSessionRecoveryDecision();
+
+  bool get trainingStorageWarning => false;
+
+  bool get blocksSessionStart => false;
+}
+
+final class NoPendingSession extends PendingSessionRecoveryDecision {
+  const NoPendingSession(this.reason);
+
+  final NoPendingSessionReason reason;
+}
+
+final class ResumePendingSession extends PendingSessionRecoveryDecision {
+  const ResumePendingSession({
+    required this.training,
+    required this.checkpoint,
+    this.trainingsPartiallyRead = false,
+  });
+
+  final Training training;
+  final SessionCheckpoint checkpoint;
+  final bool trainingsPartiallyRead;
+
+  @override
+  bool get trainingStorageWarning => trainingsPartiallyRead;
+}
+
+final class PendingSessionRecoveryBlocked
+    extends PendingSessionRecoveryDecision {
+  const PendingSessionRecoveryBlocked({
+    required this.reason,
+    this.validationIssue,
+    this.warnAboutTrainingStorage = false,
+  });
+
+  final PendingSessionBlockedReason reason;
+  final BusinessValidationIssue? validationIssue;
+  final bool warnAboutTrainingStorage;
+
+  @override
+  bool get trainingStorageWarning => warnAboutTrainingStorage;
+
+  @override
+  bool get blocksSessionStart => true;
+}
+
+abstract interface class PendingSessionRecoveryResolver {
+  Future<PendingSessionRecoveryDecision> resolve();
+}
 
 /// Résout la séance éventuellement interrompue sans dépendre de l'interface.
-class PendingSessionRecoveryService {
+class PendingSessionRecoveryService implements PendingSessionRecoveryResolver {
   PendingSessionRecoveryService({
-    TrainingStorage? trainingStorage,
-    SessionCheckpointStorage? checkpointStorage,
-    DateTime Function()? now,
-  }) : _trainingStorage = trainingStorage ?? TrainingStorage(),
-       _checkpointStorage = checkpointStorage ?? SessionCheckpointStorage(),
-       _now = now ?? DateTime.now;
+    required this.trainingStorage,
+    required this.checkpointStorage,
+    PendingSessionClock? now,
+  }) : _now = now ?? DateTime.now;
 
-  final TrainingStorage _trainingStorage;
-  final SessionCheckpointStorage _checkpointStorage;
-  final DateTime Function() _now;
+  final TrainingStore trainingStorage;
+  final SessionCheckpointStore checkpointStorage;
+  final PendingSessionClock _now;
 
-  Future<PendingSessionRecovery> resolve() async {
-    final checkpointResult = await _checkpointStorage.loadCheckpoint();
+  @override
+  Future<PendingSessionRecoveryDecision> resolve() async {
+    final checkpointResult = await checkpointStorage.loadCheckpoint();
     final SessionCheckpoint checkpoint;
     switch (checkpointResult) {
       case StorageNoData<SessionCheckpoint>():
-        return _none();
+        return const NoPendingSession(NoPendingSessionReason.absent);
       case StorageReadSuccess<SessionCheckpoint>(:final data):
         checkpoint = data;
       case StorageReadPartial<SessionCheckpoint>():
+        return const PendingSessionRecoveryBlocked(
+          reason: PendingSessionBlockedReason.checkpointPartial,
+        );
       case StorageReadFailure<SessionCheckpoint>():
-        return _none(checkpointWarning: true);
+        return const PendingSessionRecoveryBlocked(
+          reason: PendingSessionBlockedReason.checkpointUnreadable,
+        );
     }
 
     if (_now().difference(checkpoint.savedAt) > const Duration(hours: 24)) {
-      await _checkpointStorage.clearCheckpoint();
-      return _none();
+      await checkpointStorage.clearCheckpoint();
+      return const NoPendingSession(NoPendingSessionReason.expired);
     }
 
-    final trainingsResult = await _trainingStorage.loadTrainings();
+    final trainingsResult = await trainingStorage.loadTrainings();
     final List<Training> trainings;
-    final bool storageWarning;
-    final canConcludeTrainingIsMissing = switch (trainingsResult) {
-      StorageNoData<List<Training>>() => true,
-      StorageReadSuccess<List<Training>>() => true,
-      StorageReadPartial<List<Training>>() => false,
-      StorageReadFailure<List<Training>>() => false,
-    };
+    final bool trainingsPartiallyRead;
+    final bool canConcludeTrainingIsMissing;
     switch (trainingsResult) {
       case StorageNoData<List<Training>>():
         trainings = const [];
-        storageWarning = false;
+        trainingsPartiallyRead = false;
+        canConcludeTrainingIsMissing = true;
       case StorageReadSuccess<List<Training>>(:final data):
         trainings = data;
-        storageWarning = false;
+        trainingsPartiallyRead = false;
+        canConcludeTrainingIsMissing = true;
       case StorageReadPartial<List<Training>>(:final data):
         trainings = data;
-        storageWarning = true;
+        trainingsPartiallyRead = true;
+        canConcludeTrainingIsMissing = false;
       case StorageReadFailure<List<Training>>():
-        return _none();
+        return const PendingSessionRecoveryBlocked(
+          reason: PendingSessionBlockedReason.trainingsUnreadable,
+        );
     }
 
-    Training? training;
-    for (final candidate in trainings) {
-      if (candidate.id == checkpoint.trainingId) {
-        training = candidate;
-        break;
-      }
-    }
+    final training = trainings
+        .where((candidate) => candidate.id == checkpoint.trainingId)
+        .firstOrNull;
 
     if (training == null) {
       if (canConcludeTrainingIsMissing) {
-        await _checkpointStorage.clearCheckpoint();
+        await checkpointStorage.clearCheckpoint();
+        return const NoPendingSession(NoPendingSessionReason.trainingMissing);
       }
-      return _none(storageWarning: storageWarning);
+      return const PendingSessionRecoveryBlocked(
+        reason: PendingSessionBlockedReason.trainingsPartial,
+        warnAboutTrainingStorage: true,
+      );
     }
 
     final issues = BusinessValidation.validateTraining(training);
     if (issues.isNotEmpty) {
-      return (
-        training: null,
-        checkpoint: null,
+      return PendingSessionRecoveryBlocked(
+        reason: PendingSessionBlockedReason.invalidTraining,
         validationIssue: issues.first,
-        storageWarning: storageWarning,
-        checkpointWarning: true,
+        warnAboutTrainingStorage: trainingsPartiallyRead,
       );
     }
 
-    return (
+    return ResumePendingSession(
       training: training,
       checkpoint: checkpoint,
-      validationIssue: null,
-      storageWarning: storageWarning,
-      checkpointWarning: false,
+      trainingsPartiallyRead: trainingsPartiallyRead,
     );
   }
-
-  PendingSessionRecovery _none({
-    bool storageWarning = false,
-    bool checkpointWarning = false,
-  }) => (
-    training: null,
-    checkpoint: null,
-    validationIssue: null,
-    storageWarning: storageWarning,
-    checkpointWarning: checkpointWarning,
-  );
 }

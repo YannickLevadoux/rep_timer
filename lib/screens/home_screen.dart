@@ -22,12 +22,18 @@ class HomePage extends StatefulWidget {
     super.key,
     required this.themeMode,
     required this.onToggleTheme,
+    required this.controller,
+    required this.recoveryService,
+    required this.historyStorage,
     this.onThemeRestored,
     this.settingsStorage,
   });
 
   final ThemeMode themeMode;
   final Future<ThemeMode> Function() onToggleTheme;
+  final HomeController controller;
+  final PendingSessionRecoveryResolver recoveryService;
+  final TrainingHistoryStore historyStorage;
   final ValueChanged<ThemeMode>? onThemeRestored;
   final AppSettingsStorage? settingsStorage;
 
@@ -37,13 +43,13 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late final HomeController _controller;
-  late final PendingSessionRecoveryService _recoveryService;
+  late final PendingSessionRecoveryResolver _recoveryService;
 
   @override
   void initState() {
     super.initState();
-    _controller = HomeController()..loadTrainings();
-    _recoveryService = PendingSessionRecoveryService();
+    _controller = widget.controller..loadTrainings();
+    _recoveryService = widget.recoveryService;
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _resumePendingSessionIfAny(),
     );
@@ -59,24 +65,28 @@ class _HomePageState extends State<HomePage> {
     final recovery = await _recoveryService.resolve();
     if (!mounted) return;
 
-    if (recovery.storageWarning) _controller.reportStorageWarning();
-    if (recovery.checkpointWarning) _controller.reportCheckpointWarning();
-    if (recovery.validationIssue case final issue?) {
-      showSnack(context, 'Reprise impossible : ${validationMessage(issue)}');
-      return;
+    _controller.applyRecoveryDecision(recovery);
+    switch (recovery) {
+      case PendingSessionRecoveryBlocked(:final validationIssue?):
+        showSnack(
+          context,
+          'Reprise impossible : ${validationMessage(validationIssue)}',
+        );
+        return;
+      case ResumePendingSession(:final training, :final checkpoint):
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TrainingSessionScreen(
+              training: training,
+              initialCheckpoint: checkpoint,
+            ),
+          ),
+        );
+        if (mounted) _controller.loadTrainings();
+      case NoPendingSession() || PendingSessionRecoveryBlocked():
+        return;
     }
-    if (recovery.training == null) return;
-
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TrainingSessionScreen(
-          training: recovery.training!,
-          initialCheckpoint: recovery.checkpoint!,
-        ),
-      ),
-    );
-    if (mounted) _controller.loadTrainings();
   }
 
   Future<void> _openEditor({Training? training}) async {
@@ -128,9 +138,7 @@ class _HomePageState extends State<HomePage> {
     final Widget? destination = switch (index) {
       1 => const QuickTabataScreen(),
       2 => TrainingHistoryScreen(
-        controller: TrainingHistoryController(
-          storage: TrainingHistoryStorage(),
-        ),
+        controller: TrainingHistoryController(storage: widget.historyStorage),
       ),
       _ => null,
     };
@@ -149,10 +157,8 @@ class _HomePageState extends State<HomePage> {
       builder: (context, _) => HomeScreenView(
         trainings: _controller.trainings,
         expandedTrainingId: _controller.expandedTrainingId,
-        loading: _controller.loading,
-        storageWarning: _controller.storageWarning,
-        storageFailure: _controller.storageFailure,
-        checkpointWarning: _controller.checkpointWarning,
+        status: _controller.status,
+        actions: _controller.actions,
         onOpenSettings: _openSettings,
         onRetry: _controller.loadTrainings,
         onToggleExpanded: _controller.toggleExpanded,

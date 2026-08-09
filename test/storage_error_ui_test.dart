@@ -4,10 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_history_entry.dart';
+import 'package:rep_timer/controllers/home_controller.dart';
 import 'package:rep_timer/controllers/training_history_controller.dart';
 import 'package:rep_timer/screens/home_screen.dart';
 import 'package:rep_timer/screens/training_history.dart';
 import 'package:rep_timer/services/training_history_storage.dart';
+import 'package:rep_timer/services/pending_session_recovery_service.dart';
+import 'package:rep_timer/services/session_checkpoint_storage.dart';
+import 'package:rep_timer/services/training_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -170,10 +174,17 @@ void main() {
 }
 
 Widget _homeApp() {
+  final trainingStorage = TrainingStorage();
   return MaterialApp(
     home: HomePage(
       themeMode: ThemeMode.system,
       onToggleTheme: () async => ThemeMode.light,
+      controller: HomeController(storage: trainingStorage),
+      recoveryService: PendingSessionRecoveryService(
+        trainingStorage: trainingStorage,
+        checkpointStorage: SessionCheckpointStorage(),
+      ),
+      historyStorage: TrainingHistoryStorage(),
     ),
   );
 }
