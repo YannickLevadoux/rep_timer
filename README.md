@@ -12,7 +12,10 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 ## Fonctionnalités
 
 ### Création et édition des séances
-- Séances composées de **groupes d'exercices**, chaque groupe pouvant être répété un nombre de fois défini (rounds).
+- Séances composées de **groupes d'exercices** libres ou à répétitions variables :
+  - un groupe libre répète tous ses éléments pendant un nombre de tours défini ;
+  - un groupe à répétitions variables applique une suite ordonnée (par exemple `10, 12, 15, 12, 10`) aux exercices en mode Répétitions, sans modifier les exercices chronométrés, les durées libres ni les pauses ;
+  - le passage d'un type de groupe à l'autre conserve les tours, la suite et les répétitions individuelles afin d'éviter toute perte de configuration.
 - Trois types d'exercices :
   - **Répétitions** — un nombre de répétitions à effectuer.
   - **Temps** — une durée définie (saisie via un sélecteur Minutes/Secondes).
@@ -25,6 +28,7 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Icône personnalisable par exercice, parmi une liste prédéfinie.
 - Commentaire libre et optionnel par exercice (poids, intensité...), modifiable aussi bien à l'édition que pendant l'exécution de la séance.
 - Détection des modifications non enregistrées à la fermeture de l'écran d'édition (proposition d'enregistrer, d'abandonner ou d'annuler).
+- Validation explicite des saisies : noms et commentaires limités, tours et répétitions compris entre `1` et `999`, durées programmées comprises entre `1 s` et `2 h 00 min 59 s`, et séances limitées à `10 000` étapes développées. Une valeur invalide n'est jamais corrigée ou tronquée silencieusement.
 
 ### Exécution d'une séance
 - Écran de résumé avant le lancement : nom de la séance, compteurs de groupes, d'exercices et de pauses, puis aperçu des groupes, de leurs répétitions et de leurs exercices.
@@ -40,6 +44,7 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Si une pause est définie à la fin de la séance (dernière pause du dernier groupe), cette pause sera ignorée.
 - Alerte de fin des exercices et pauses chronométrés, configurable sur **Son**, **Vibration** ou **Rien** depuis les paramètres et ajustable pendant la séance.
 - Notification Android persistante pendant qu'un chronomètre est actif (pause, exercice Temps ou Durée libre — jamais pour un exercice Répétitions) : icône Play/Pause dans la barre d'état, nom de l'exercice/de la pause et temps restant (ou écoulé en Durée libre), prochain élément de la séance et bouton **Pause** / **Reprendre**. Un appui sur la notification rouvre la séance. Repose sur un vrai Foreground Service Android (et non une simple notification), afin que la mise à jour du chronomètre ainsi que le son/la vibration de fin d'exercice restent fiables même lorsque l'application est en arrière-plan. Disparaît automatiquement à la fin, à l'abandon, ou à l'arrêt de la séance.
+- Exécution tour par tour des groupes à répétitions variables, avec la valeur résolue affichée et conservée dans l'historique. La reprise d'une séance interrompue restaure le bon tour et la bonne répétition.
 
 ### Quick Tabata
 - Lancement rapide d'une séance travail/pause répétée, sans avoir à créer de séance au préalable (accessible depuis la barre de navigation de l'accueil).
@@ -49,16 +54,19 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 
 ### Historique
 - Historique local des séances effectuées : nom, date, durée totale, statut.
+- Tableau de bord par semaine ou par mois, avec navigation entre les périodes et liste filtrée sur la période affichée.
+- Bilan des séances terminées et incomplètes, ainsi que du temps global passé : détail quotidien en vue hebdomadaire et agrégation par semaine en vue mensuelle.
 - Suppression d'une entrée d'historique avec confirmation.
 - Détail d'une séance avec sa date et son heure, ses statistiques de réalisation, ses durées de travail et de pause, puis le temps passé sur chaque exercice ou pause, regroupé dans des groupes initialement repliés.
 
 ### Import / Export
-- Export des séances enregistrées via la fenêtre standard de partage.
-- Import des séances au format JSON depuis un fichier précédemment exporté.
+- Export d'une sauvegarde complète v2 via la fenêtre standard de partage : séances, historique, thème, préremplissage des noms et mode de notification.
+- Compatibilité avec les anciens exports v1, importés de façon additive sans modifier l'historique ni les préférences.
+- Restauration v2 complète après présentation d'un résumé et confirmation explicite : elle remplace les séances, l'historique et les trois préférences exportables.
 - Lecture défensive du stockage local : les données récupérables restent consultables, les erreurs sont signalées sans exposer leur contenu et les mutations susceptibles d'écraser des données illisibles sont bloquées.
 
 ### Interface
-- Thème clair/sombre (suit le système, réglable manuellement).
+- Thème système, clair ou sombre, réglable manuellement et conservé après redémarrage.
 - Interface entièrement en français.
 - Interface uniquement en mode portrait pour conserver la lisibilité des écrans.
 
@@ -114,12 +122,18 @@ releases](docs/release.md).
 
 ## Documentation
 
+- [Créer et exécuter des séances](docs/training-sessions.md) : groupes libres,
+  groupes à répétitions variables, édition et exécution.
+- [Importer, exporter et restaurer](docs/import-export.md) : sauvegarde v2,
+  compatibilité v1 et précautions avant une restauration.
 - [Contribuer au projet](CONTRIBUTING.md) : environnement de développement,
   structure du projet, branches, issues et mises à jour Renovate.
 - [Intégration continue et déploiement](docs/ci-cd.md) : workflows,
   authentification, validations et reproductibilité.
 - [Builds et releases](docs/release.md) : distributions DEV et officielles,
   métadonnées, signature, dialogue « À propos » et publication.
+- [Notes de version 1.3.0](docs/release-notes-1.3.0.md) : nouveautés,
+  compatibilité et corrections importantes de cette version.
 
 ## Auteur
 
