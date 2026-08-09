@@ -11,6 +11,16 @@
 
   "packageRules": [
     {
+      "description": "Ignore Flutter plugin loader provided by the local Flutter SDK",
+      "matchManagers": ["gradle"],
+      "matchDatasources": ["maven"],
+      "matchFileNames": ["android/settings.gradle.kts"],
+      "matchPackageNames": [
+        "dev.flutter.flutter-plugin-loader:dev.flutter.flutter-plugin-loader.gradle.plugin"
+      ],
+      "enabled": false
+    },
+    {
       "matchManagers": ["github-actions"],
       "groupName": "GitHub Actions"
     },

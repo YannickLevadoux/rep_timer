@@ -15,7 +15,7 @@ module.exports = function(core) {
    */
   function info(message) {
     core.info(message);
-    summaryRows.push(["ℹ️", message]);
+    summaryRows.push(["\u2139\uFE0F", message]);
   }
 
   /**
@@ -23,7 +23,7 @@ module.exports = function(core) {
    */
   function warning(message) {
     core.warning(message);
-    summaryRows.push(["ℹ️", message]);
+    summaryRows.push(["\u26A0\uFE0F", message]);
   }
 
   /**
