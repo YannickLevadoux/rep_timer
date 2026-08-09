@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../controllers/training_history_controller.dart';
 import '../models/training_history_entry.dart';
+import 'monthly_history_card.dart';
 import 'storage_read_feedback.dart';
 import 'training_history_entry_card.dart';
 import 'weekly_history_duration_card.dart';
@@ -35,7 +36,8 @@ class _TrainingHistoryContentState extends State<TrainingHistoryContent> {
   @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
-    final entries = controller.summary.entries;
+    final entries = controller.displayedEntries;
+    final isMonthly = controller.period == HistoryPeriod.month;
 
     return CustomScrollView(
       slivers: [
@@ -54,23 +56,10 @@ class _TrainingHistoryContentState extends State<TrainingHistoryContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Métrique', style: Theme.of(context).textTheme.labelLarge),
-                DropdownButton<HistoryMetric>(
-                  key: const Key('history-metric-selector'),
-                  value: _metric,
-                  isExpanded: true,
-                  items: const [
-                    DropdownMenuItem(
-                      value: HistoryMetric.sessionCount,
-                      child: Text('Nombre de séances'),
-                    ),
-                    DropdownMenuItem(
-                      value: HistoryMetric.timeSpent,
-                      child: Text('Temps passé'),
-                    ),
-                  ],
-                  onChanged: (metric) {
-                    if (metric == null) return;
+                _HistorySelectors(
+                  controller: controller,
+                  metric: _metric,
+                  onMetricChanged: (metric) {
                     setState(() => _metric = metric);
                   },
                 ),
@@ -81,7 +70,19 @@ class _TrainingHistoryContentState extends State<TrainingHistoryContent> {
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           sliver: SliverToBoxAdapter(
-            child: _metric == HistoryMetric.sessionCount
+            child: isMonthly
+                ? MonthlyHistoryCard(
+                    summary: controller.monthlySummary,
+                    today: controller.today,
+                    showDuration: _metric == HistoryMetric.timeSpent,
+                    canGoNext: controller.canGoNextMonth,
+                    isCurrentMonth: controller.isCurrentMonth,
+                    onPrevious: controller.showPreviousMonth,
+                    onNext: controller.showNextMonth,
+                    onToday: controller.showCurrentMonth,
+                    onOpenWeek: controller.showWeek,
+                  )
+                : _metric == HistoryMetric.sessionCount
                 ? WeeklyHistorySummaryCard(
                     summary: controller.summary,
                     canGoNext: controller.canGoNext,
@@ -105,8 +106,13 @@ class _TrainingHistoryContentState extends State<TrainingHistoryContent> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           sliver: SliverToBoxAdapter(
             child: Text(
-              'Séances de la semaine — ${entries.length}',
-              key: const Key('weekly-history-list-title'),
+              '${isMonthly ? 'Séances du mois' : 'Séances de la semaine'} — '
+              '${entries.length}',
+              key: Key(
+                isMonthly
+                    ? 'monthly-history-list-title'
+                    : 'weekly-history-list-title',
+              ),
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
@@ -139,6 +145,118 @@ class _TrainingHistoryContentState extends State<TrainingHistoryContent> {
               },
             ),
           ),
+      ],
+    );
+  }
+}
+
+class _HistorySelectors extends StatelessWidget {
+  const _HistorySelectors({
+    required this.controller,
+    required this.metric,
+    required this.onMetricChanged,
+  });
+
+  final TrainingHistoryController controller;
+  final HistoryMetric metric;
+  final ValueChanged<HistoryMetric> onMetricChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final period = _PeriodSelector(controller: controller);
+    final metricSelector = _MetricSelector(
+      metric: metric,
+      onChanged: onMetricChanged,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textScale = MediaQuery.textScalerOf(context).scale(1);
+        if (constraints.maxWidth < 360 || textScale > 1.5) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [period, const SizedBox(height: 12), metricSelector],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: period),
+            const SizedBox(width: 16),
+            Expanded(child: metricSelector),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _PeriodSelector extends StatelessWidget {
+  const _PeriodSelector({required this.controller});
+
+  final TrainingHistoryController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Période', style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 4),
+        SegmentedButton<HistoryPeriod>(
+          key: const Key('history-period-selector'),
+          segments: const [
+            ButtonSegment(
+              value: HistoryPeriod.week,
+              label: FittedBox(child: Text('Semaine')),
+            ),
+            ButtonSegment(
+              value: HistoryPeriod.month,
+              label: FittedBox(child: Text('Mois')),
+            ),
+          ],
+          selected: {controller.period},
+          onSelectionChanged: (selection) {
+            controller.setPeriod(selection.single);
+          },
+          expandedInsets: EdgeInsets.zero,
+          showSelectedIcon: false,
+        ),
+      ],
+    );
+  }
+}
+
+class _MetricSelector extends StatelessWidget {
+  const _MetricSelector({required this.metric, required this.onChanged});
+
+  final HistoryMetric metric;
+  final ValueChanged<HistoryMetric> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Métrique', style: Theme.of(context).textTheme.labelLarge),
+        DropdownButton<HistoryMetric>(
+          key: const Key('history-metric-selector'),
+          value: metric,
+          isExpanded: true,
+          items: const [
+            DropdownMenuItem(
+              value: HistoryMetric.sessionCount,
+              child: Text('Nombre de séances'),
+            ),
+            DropdownMenuItem(
+              value: HistoryMetric.timeSpent,
+              child: Text('Temps passé'),
+            ),
+          ],
+          onChanged: (value) {
+            if (value != null) onChanged(value);
+          },
+        ),
       ],
     );
   }
