@@ -10,8 +10,9 @@ import '../widgets/storage_read_feedback.dart';
 import '../widgets/training_history_content.dart';
 import 'training_history_detail.dart';
 
-/// Historique hebdomadaire. Le contrôleur injecté est possédé puis libéré par
-/// cet écran ; la composition de l'application lui fournit le stockage réel.
+/// Historique hebdomadaire et mensuel. Le contrôleur injecté est possédé puis
+/// libéré par cet écran ; la composition de l'application lui fournit le
+/// stockage réel.
 class TrainingHistoryScreen extends StatefulWidget {
   const TrainingHistoryScreen({super.key, required this.controller});
 

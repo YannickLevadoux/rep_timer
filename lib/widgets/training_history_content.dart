@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../controllers/training_history_controller.dart';
 import '../models/training_history_entry.dart';
+import 'monthly_history_card.dart';
 import 'storage_read_feedback.dart';
 import 'training_history_entry_card.dart';
+import 'training_history_selectors.dart';
 import 'weekly_history_duration_card.dart';
 import 'weekly_history_summary_card.dart';
 
-enum HistoryMetric { sessionCount, timeSpent }
+export 'training_history_selectors.dart' show HistoryMetric;
 
 /// Contenu défilable de l'historique, piloté uniquement par son contrôleur et
 /// ses actions de navigation.
@@ -35,7 +37,8 @@ class _TrainingHistoryContentState extends State<TrainingHistoryContent> {
   @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
-    final entries = controller.summary.entries;
+    final entries = controller.displayedEntries;
+    final isMonthly = controller.period == HistoryPeriod.month;
 
     return CustomScrollView(
       slivers: [
@@ -51,37 +54,31 @@ class _TrainingHistoryContentState extends State<TrainingHistoryContent> {
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
           sliver: SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('Métrique', style: Theme.of(context).textTheme.labelLarge),
-                DropdownButton<HistoryMetric>(
-                  key: const Key('history-metric-selector'),
-                  value: _metric,
-                  isExpanded: true,
-                  items: const [
-                    DropdownMenuItem(
-                      value: HistoryMetric.sessionCount,
-                      child: Text('Nombre de séances'),
-                    ),
-                    DropdownMenuItem(
-                      value: HistoryMetric.timeSpent,
-                      child: Text('Temps passé'),
-                    ),
-                  ],
-                  onChanged: (metric) {
-                    if (metric == null) return;
-                    setState(() => _metric = metric);
-                  },
-                ),
-              ],
+            child: TrainingHistorySelectors(
+              controller: controller,
+              metric: _metric,
+              onMetricChanged: (metric) {
+                setState(() => _metric = metric);
+              },
             ),
           ),
         ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           sliver: SliverToBoxAdapter(
-            child: _metric == HistoryMetric.sessionCount
+            child: isMonthly
+                ? MonthlyHistoryCard(
+                    summary: controller.monthlySummary,
+                    today: controller.today,
+                    showDuration: _metric == HistoryMetric.timeSpent,
+                    canGoNext: controller.canGoNextMonth,
+                    isCurrentMonth: controller.isCurrentMonth,
+                    onPrevious: controller.showPreviousMonth,
+                    onNext: controller.showNextMonth,
+                    onToday: controller.showCurrentMonth,
+                    onOpenWeek: controller.showWeek,
+                  )
+                : _metric == HistoryMetric.sessionCount
                 ? WeeklyHistorySummaryCard(
                     summary: controller.summary,
                     canGoNext: controller.canGoNext,
@@ -105,8 +102,13 @@ class _TrainingHistoryContentState extends State<TrainingHistoryContent> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           sliver: SliverToBoxAdapter(
             child: Text(
-              'Séances de la semaine — ${entries.length}',
-              key: const Key('weekly-history-list-title'),
+              '${isMonthly ? 'Séances du mois' : 'Séances de la semaine'} — '
+              '${entries.length}',
+              key: Key(
+                isMonthly
+                    ? 'monthly-history-list-title'
+                    : 'weekly-history-list-title',
+              ),
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),

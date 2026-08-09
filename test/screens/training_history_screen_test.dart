@@ -460,6 +460,347 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('sélectionne le mois contenant l’ancre de la semaine', (
+    tester,
+  ) async {
+    final storage = _FakeHistoryStorage(
+      StorageReadSuccess([
+        _entry('juillet', DateTime(2026, 7, 29)),
+        _entry('août', DateTime(2026, 8, 4)),
+      ]),
+    );
+
+    await _pumpHistory(tester, storage, now: now);
+    expect(
+      tester
+          .widget<SegmentedButton<HistoryPeriod>>(
+            find.byKey(const Key('history-period-selector')),
+          )
+          .selected,
+      {HistoryPeriod.week},
+    );
+    await tester.tap(find.byKey(const Key('previous-week-button')));
+    await tester.pump();
+    await _selectMonth(tester);
+
+    expect(find.text('juillet 2026'), findsOneWidget);
+    expect(find.text('Séances du mois — 1'), findsOneWidget);
+    expect(find.text('juillet'), findsOneWidget);
+    expect(find.text('août'), findsNothing);
+  });
+
+  testWidgets('affiche six barres et filtre la liste sur le mois civil', (
+    tester,
+  ) async {
+    final storage = _FakeHistoryStorage(
+      StorageReadSuccess([
+        _entry('fin juillet', DateTime(2026, 7, 31)),
+        _entry('début août', DateTime(2026, 8, 1)),
+        _entry('fin août', DateTime(2026, 8, 31)),
+        _entry('début septembre', DateTime(2026, 9, 1)),
+      ]),
+    );
+
+    await _pumpHistory(tester, storage, now: now);
+    await _selectMonth(tester);
+
+    expect(find.text('août 2026'), findsOneWidget);
+    expect(find.byKey(const Key('monthly-history-card')), findsOneWidget);
+    for (var index = 0; index < 6; index++) {
+      expect(find.byKey(Key('monthly-week-bar-$index')), findsOneWidget);
+    }
+    expect(find.text('2 séances — 2 terminées · 0 incomplète'), findsOneWidget);
+    expect(find.text('Séances du mois — 2'), findsOneWidget);
+    expect(find.text('début août'), findsOneWidget);
+    expect(find.text('fin juillet'), findsNothing);
+    expect(find.text('début septembre'), findsNothing);
+  });
+
+  testWidgets('navigue entre les mois sans permettre un mois futur', (
+    tester,
+  ) async {
+    await _pumpHistory(
+      tester,
+      _FakeHistoryStorage(const StorageNoData()),
+      now: now,
+    );
+    await _selectMonth(tester);
+
+    expect(
+      tester
+          .widget<IconButton>(find.byKey(const Key('next-month-button')))
+          .onPressed,
+      isNull,
+    );
+    await tester.tap(find.byKey(const Key('previous-month-button')));
+    await tester.pump();
+    expect(find.text('juillet 2026'), findsOneWidget);
+    expect(find.byKey(const Key('month-today-button')), findsOneWidget);
+    expect(
+      tester
+          .widget<IconButton>(find.byKey(const Key('next-month-button')))
+          .onPressed,
+      isNotNull,
+    );
+
+    await tester.tap(find.byKey(const Key('month-today-button')));
+    await tester.pump();
+    expect(find.text('août 2026'), findsOneWidget);
+    expect(find.byKey(const Key('month-today-button')), findsNothing);
+  });
+
+  testWidgets('conserve la métrique et cumule les durées de tous les statuts', (
+    tester,
+  ) async {
+    final storage = _FakeHistoryStorage(
+      StorageReadSuccess([
+        _entry(
+          'terminée',
+          DateTime(2026, 8, 4),
+          duration: const Duration(hours: 1),
+        ),
+        _entry(
+          'incomplète',
+          DateTime(2026, 8, 10),
+          status: TrainingSessionStatus.incomplete,
+          duration: const Duration(minutes: 12, seconds: 35),
+        ),
+      ]),
+    );
+
+    await _pumpHistory(tester, storage, now: now);
+    await _selectTimeSpent(tester);
+    await _selectMonth(tester);
+
+    expect(find.text('Temps total — 01:12:35'), findsOneWidget);
+    expect(find.byKey(const Key('monthly-duration-value-1')), findsOneWidget);
+    expect(find.byKey(const Key('monthly-duration-value-2')), findsOneWidget);
+    expect(
+      tester
+          .widget<DropdownButton<HistoryMetric>>(
+            find.byKey(const Key('history-metric-selector')),
+          )
+          .value,
+      HistoryMetric.timeSpent,
+    );
+  });
+
+  testWidgets('une barre partielle ouvre sa semaine civile complète', (
+    tester,
+  ) async {
+    final storage = _FakeHistoryStorage(
+      StorageReadSuccess([
+        _entry('voisine de juillet', DateTime(2026, 7, 31)),
+        _entry('dans août', DateTime(2026, 8, 1)),
+        _entry('autre semaine', DateTime(2026, 8, 4)),
+      ]),
+    );
+
+    await _pumpHistory(tester, storage, now: now);
+    await _selectMonth(tester);
+    await tester.tap(find.byKey(const Key('monthly-week-bar-0')));
+    await tester.pump();
+
+    expect(find.text('27 juillet–2 août 2026'), findsOneWidget);
+    expect(find.text('Séances de la semaine — 2'), findsOneWidget);
+    expect(find.text('voisine de juillet'), findsOneWidget);
+    expect(find.text('dans août'), findsOneWidget);
+    expect(find.text('autre semaine'), findsNothing);
+    expect(
+      tester
+          .widget<SegmentedButton<HistoryPeriod>>(
+            find.byKey(const Key('history-period-selector')),
+          )
+          .selected,
+      {HistoryPeriod.week},
+    );
+  });
+
+  testWidgets('recalcule le mois immédiatement après suppression', (
+    tester,
+  ) async {
+    final storage = _FakeHistoryStorage(
+      StorageReadSuccess([
+        _entry('à supprimer du mois', DateTime(2026, 8, 5)),
+        _entry(
+          'à garder dans le mois',
+          DateTime(2026, 8, 4),
+          status: TrainingSessionStatus.incomplete,
+        ),
+      ]),
+    );
+
+    await _pumpHistory(tester, storage, now: now);
+    await _selectMonth(tester);
+    expect(find.text('2 séances — 1 terminée · 1 incomplète'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.widgetWithIcon(IconButton, Icons.delete_outline).first,
+      200,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.tap(
+      find.widgetWithIcon(IconButton, Icons.delete_outline).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Supprimer'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 séance — 0 terminée · 1 incomplète'), findsOneWidget);
+    expect(find.text('Séances du mois — 1'), findsOneWidget);
+  });
+
+  testWidgets('un mois vide conserve ses six barres', (tester) async {
+    await _pumpHistory(
+      tester,
+      _FakeHistoryStorage(const StorageNoData()),
+      now: now,
+    );
+    await _selectMonth(tester);
+
+    expect(find.text('0 séance'), findsOneWidget);
+    expect(find.text('Aucune séance sur cette période'), findsOneWidget);
+    expect(find.text('Séances du mois — 0'), findsOneWidget);
+    expect(find.byKey(const Key('monthly-week-bar-5')), findsOneWidget);
+  });
+
+  testWidgets('affiche quatre barres pour février 2021', (tester) async {
+    await _pumpHistory(
+      tester,
+      _FakeHistoryStorage(const StorageNoData()),
+      now: DateTime(2021, 2, 10),
+    );
+    await _selectMonth(tester);
+
+    for (var index = 0; index < 4; index++) {
+      expect(find.byKey(Key('monthly-week-bar-$index')), findsOneWidget);
+    }
+    expect(find.byKey(const Key('monthly-week-bar-4')), findsNothing);
+  });
+
+  testWidgets(
+    'les données partielles alimentent le mois et bloquent la suppression',
+    (tester) async {
+      final storage = _FakeHistoryStorage(
+        StorageReadPartial(
+          [_entry('valide du mois', DateTime(2026, 8, 4))],
+          rejectedIndexes: const [1],
+        ),
+      );
+
+      await _pumpHistory(tester, storage, now: now);
+      await _selectMonth(tester);
+
+      expect(find.text('1 séance — 1 terminée · 0 incomplète'), findsOneWidget);
+      expect(
+        find.textContaining('statistiques peuvent être incomplètes'),
+        findsOneWidget,
+      );
+      expect(find.text('valide du mois'), findsOneWidget);
+      expect(
+        tester
+            .widget<IconButton>(
+              find.widgetWithIcon(IconButton, Icons.delete_outline),
+            )
+            .onPressed,
+        isNull,
+      );
+    },
+  );
+
+  testWidgets(
+    'les durées mensuelles utilisent la couleur principale des thèmes',
+    (tester) async {
+      for (final brightness in [Brightness.light, Brightness.dark]) {
+        final scheme = ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: brightness,
+        );
+        await _pumpHistory(
+          tester,
+          _FakeHistoryStorage(
+            StorageReadSuccess([_entry('activité', DateTime(2026, 8, 4))]),
+          ),
+          now: now,
+          colorScheme: scheme,
+        );
+        await _selectTimeSpent(tester);
+        await _selectMonth(tester);
+
+        final value = tester.widget<DecoratedBox>(
+          find.byKey(const Key('monthly-duration-value-1')),
+        );
+        expect((value.decoration as BoxDecoration).color, scheme.primary);
+        await tester.pumpWidget(const SizedBox.shrink());
+      }
+    },
+  );
+
+  testWidgets('le mois et chaque barre exposent un résumé sémantique', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    final storage = _FakeHistoryStorage(
+      StorageReadSuccess([
+        _entry('une', DateTime(2026, 8, 1)),
+        _entry(
+          'deux',
+          DateTime(2026, 8, 2),
+          status: TrainingSessionStatus.incomplete,
+        ),
+      ]),
+    );
+
+    await _pumpHistory(tester, storage, now: now);
+    await _selectMonth(tester);
+
+    expect(
+      find.bySemanticsLabel(
+        'Bilan mensuel de août 2026 : '
+        '2 séances — 1 terminée · 1 incomplète',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel('1–2 août — 2 séances · 1 terminée · 1 incomplète'),
+      findsOneWidget,
+    );
+    semantics.dispose();
+  });
+
+  testWidgets('la vue mensuelle reste utilisable sur petit écran en sombre', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(240, 360));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final scheme = ColorScheme.fromSeed(
+      seedColor: Colors.deepPurple,
+      brightness: Brightness.dark,
+    );
+
+    await _pumpHistory(
+      tester,
+      _FakeHistoryStorage(
+        StorageReadSuccess([_entry('activité', DateTime(2026, 8, 4))]),
+      ),
+      now: now,
+      textScale: 2,
+      colorScheme: scheme,
+    );
+    await _selectMonth(tester);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('monthly-history-card')),
+      150,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(find.byKey(const Key('monthly-week-bar-5')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
 }
 
 Future<void> _pumpHistory(
@@ -506,6 +847,11 @@ Future<void> _selectTimeSpent(WidgetTester tester) async {
   await tester.tap(find.byKey(const Key('history-metric-selector')));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Temps passé').last);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _selectMonth(WidgetTester tester) async {
+  await tester.tap(find.text('Mois'));
   await tester.pumpAndSettle();
 }
 
