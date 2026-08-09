@@ -41,14 +41,31 @@ class WeeklyHistorySummary {
     required this.entries,
     required this.completedCount,
     required this.incompleteCount,
+    required this.days,
+    required this.totalDuration,
   });
 
   final LocalWeek week;
   final List<TrainingHistoryEntry> entries;
   final int completedCount;
   final int incompleteCount;
+  final List<WeeklyHistoryDay> days;
+  final Duration totalDuration;
 
   int get totalCount => entries.length;
+}
+
+/// Agrégat d'une journée calendaire locale de la semaine affichée.
+class WeeklyHistoryDay {
+  const WeeklyHistoryDay({
+    required this.date,
+    required this.duration,
+    required this.sessionCount,
+  });
+
+  final DateTime date;
+  final Duration duration;
+  final int sessionCount;
 }
 
 /// Agrégation pure de l'historique pour une semaine calendaire locale.
@@ -62,13 +79,61 @@ WeeklyHistorySummary aggregateHistoryWeek(
   final completedCount = entries
       .where((entry) => entry.status == TrainingSessionStatus.completed)
       .length;
+  final durationsInMicroseconds = List<int>.filled(7, 0);
+  final sessionCounts = List<int>.filled(7, 0);
+
+  for (final entry in entries) {
+    final local = entry.date.toLocal();
+    final dayIndex = _dayIndex(
+      week,
+      DateTime(local.year, local.month, local.day),
+    );
+    // Une donnée historique invalide ne doit ni inverser une barre ni réduire
+    // le total. La valeur persistée reste volontairement inchangée.
+    final duration = entry.totalDuration.isNegative
+        ? Duration.zero
+        : entry.totalDuration;
+    durationsInMicroseconds[dayIndex] += duration.inMicroseconds;
+    sessionCounts[dayIndex]++;
+  }
+
+  final days = List<WeeklyHistoryDay>.generate(7, (index) {
+    return WeeklyHistoryDay(
+      date: DateTime(week.start.year, week.start.month, week.start.day + index),
+      duration: Duration(microseconds: durationsInMicroseconds[index]),
+      sessionCount: sessionCounts[index],
+    );
+  });
+  final totalMicroseconds = durationsInMicroseconds.fold<int>(
+    0,
+    (total, duration) => total + duration,
+  );
 
   return WeeklyHistorySummary(
     week: week,
     entries: List.unmodifiable(entries),
     completedCount: completedCount,
     incompleteCount: entries.length - completedCount,
+    days: List.unmodifiable(days),
+    totalDuration: Duration(microseconds: totalMicroseconds),
   );
+}
+
+int _dayIndex(LocalWeek week, DateTime localDay) {
+  for (var index = 0; index < 7; index++) {
+    final candidate = DateTime(
+      week.start.year,
+      week.start.month,
+      week.start.day + index,
+    );
+    if (candidate.year == localDay.year &&
+        candidate.month == localDay.month &&
+        candidate.day == localDay.day) {
+      return index;
+    }
+  }
+  // Les entrées ont déjà été filtrées par les bornes de la semaine.
+  throw StateError('Jour absent de la semaine sélectionnée : $localDay');
 }
 
 /// Libellé français compact de la période, sans dépendance à Flutter.
