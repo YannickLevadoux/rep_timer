@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../controllers/home_state.dart';
 import '../models/training.dart';
 import 'home_training_list.dart';
 import 'storage_read_feedback.dart';
@@ -10,10 +11,8 @@ class HomeScreenView extends StatelessWidget {
     super.key,
     required this.trainings,
     required this.expandedTrainingId,
-    required this.loading,
-    required this.storageWarning,
-    required this.storageFailure,
-    required this.checkpointWarning,
+    required this.status,
+    required this.actions,
     required this.onOpenSettings,
     required this.onRetry,
     required this.onToggleExpanded,
@@ -26,10 +25,8 @@ class HomeScreenView extends StatelessWidget {
 
   final List<Training> trainings;
   final String? expandedTrainingId;
-  final bool loading;
-  final bool storageWarning;
-  final bool storageFailure;
-  final bool checkpointWarning;
+  final HomeLoadStatus status;
+  final HomeActionAvailability actions;
   final VoidCallback onOpenSettings;
   final VoidCallback onRetry;
   final ValueChanged<String> onToggleExpanded;
@@ -52,16 +49,17 @@ class HomeScreenView extends StatelessWidget {
           ),
         ],
       ),
-      body: loading
+      body: status == HomeLoadStatus.loading
           ? const Center(child: CircularProgressIndicator())
-          : storageFailure
+          : status == HomeLoadStatus.failure
           ? StorageReadErrorView(
               message: "Les séances enregistrées n'ont pas pu être lues.",
               onRetry: onRetry,
             )
           : Column(
               children: [
-                if (storageWarning || checkpointWarning)
+                if (status == HomeLoadStatus.partial ||
+                    !actions.sessionStartAllowed)
                   const StorageReadWarningBanner(
                     message:
                         "Certaines données n'ont pas pu être lues. Les actions "
@@ -72,8 +70,8 @@ class HomeScreenView extends StatelessWidget {
                   child: HomeTrainingList(
                     trainings: trainings,
                     expandedTrainingId: expandedTrainingId,
-                    mutationsBlocked: storageWarning,
-                    startBlocked: checkpointWarning,
+                    mutationsBlocked: !actions.trainingMutationsAllowed,
+                    startBlocked: !actions.sessionStartAllowed,
                     onToggleExpanded: onToggleExpanded,
                     onDuplicate: onDuplicate,
                     onEdit: onEdit,
@@ -92,7 +90,7 @@ class HomeScreenView extends StatelessWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: storageWarning || storageFailure ? null : onCreate,
+        onPressed: actions.trainingMutationsAllowed ? onCreate : null,
         child: const Icon(Icons.add),
       ),
     );

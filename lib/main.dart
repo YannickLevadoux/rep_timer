@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'controllers/home_controller.dart';
 import 'screens/home_screen.dart';
 import 'services/app_settings_storage.dart';
+import 'services/pending_session_recovery_service.dart';
+import 'services/session_checkpoint_storage.dart';
 import 'services/session_notification_service.dart';
+import 'services/training_history_storage.dart';
+import 'services/training_storage.dart';
 
 Future<void> main() async {
   // Verrouille l'orientation en portrait pour toute l'application : le
@@ -59,12 +64,25 @@ class _MyAppState extends State<MyApp> {
   // écrans qui en ont besoin (HomePage -> SettingsScreen).
   late ThemeMode _themeMode;
   late final AppSettingsStorage _settingsStorage;
+  late final TrainingStorage _trainingStorage;
+  late final SessionCheckpointStorage _checkpointStorage;
+  late final TrainingHistoryStorage _historyStorage;
+  late final HomeController _homeController;
+  late final PendingSessionRecoveryService _recoveryService;
 
   @override
   void initState() {
     super.initState();
     _themeMode = widget.initialThemeMode;
     _settingsStorage = widget.settingsStorage ?? AppSettingsStorage();
+    _trainingStorage = TrainingStorage();
+    _checkpointStorage = SessionCheckpointStorage();
+    _historyStorage = TrainingHistoryStorage();
+    _homeController = HomeController(storage: _trainingStorage);
+    _recoveryService = PendingSessionRecoveryService(
+      trainingStorage: _trainingStorage,
+      checkpointStorage: _checkpointStorage,
+    );
   }
 
   Future<ThemeMode> _cycleThemeMode() async {
@@ -113,6 +131,9 @@ class _MyAppState extends State<MyApp> {
       home: HomePage(
         themeMode: _themeMode,
         onToggleTheme: _cycleThemeMode,
+        controller: _homeController,
+        recoveryService: _recoveryService,
+        historyStorage: _historyStorage,
         onThemeRestored: _applyRestoredTheme,
         settingsStorage: _settingsStorage,
       ),

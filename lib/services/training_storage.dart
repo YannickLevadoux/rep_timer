@@ -2,9 +2,19 @@ import '../models/training.dart';
 import '../validation/business_validation.dart';
 import 'json_prefs_storage.dart';
 
+/// Contrat minimal de persistance des séances utilisé par l'accueil et les
+/// cas d'usage qui doivent rester testables sans SharedPreferences.
+abstract interface class TrainingStore {
+  Future<StorageReadResult<List<Training>>> loadTrainings();
+
+  Future<void> addOrUpdateTraining(Training training);
+
+  Future<void> deleteTraining(String id);
+}
+
 /// Sauvegarde locale des séances (persistées en JSON via SharedPreferences).
 /// Fonctionne directement sur Android/iOS/desktop, sans configuration native.
-class TrainingStorage {
+class TrainingStorage implements TrainingStore {
   static const storageKey = 'trainings';
 
   final JsonListStorage<Training> _storage = JsonListStorage<Training>(
@@ -13,12 +23,14 @@ class TrainingStorage {
     toJson: (t) => t.toJson(),
   );
 
+  @override
   Future<StorageReadResult<List<Training>>> loadTrainings() =>
       _storage.loadList();
 
   Future<void> saveTrainings(List<Training> trainings) =>
       _storage.saveList(trainings);
 
+  @override
   Future<void> addOrUpdateTraining(Training training) async {
     final normalized = BusinessValidation.normalizedTrainingCopy(training);
     BusinessValidation.requireValidTraining(normalized);
@@ -34,6 +46,7 @@ class TrainingStorage {
     await saveTrainings(trainings);
   }
 
+  @override
   Future<void> deleteTraining(String id) async {
     final trainings = await _healthyTrainingsForMutation();
     trainings.removeWhere((t) => t.id == id);
