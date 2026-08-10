@@ -3,8 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/session_step.dart';
-import '../models/training_item.dart';
-import '../utils/exercise_icons.dart';
+import '../widgets/session_progress_step_tile.dart';
 
 /// Vue détaillée de la progression d'une séance en cours : exercices
 /// terminés (coche verte) vs en attente. Poussé par-dessus l'écran de
@@ -110,19 +109,6 @@ class _SessionProgressScreenState extends State<SessionProgressScreen> {
     Navigator.pop(context);
   }
 
-  String _stepDetail(SessionStep step) {
-    final item = step.item;
-    if (item.type == ItemType.rest) {
-      return "${item.duration?.inSeconds ?? 0} s";
-    }
-    if (item.isFreeDuration) {
-      return "Durée libre";
-    }
-    return item.duration != null
-        ? "${item.duration!.inSeconds} s"
-        : "× ${item.repetitions ?? 0}";
-  }
-
   @override
   Widget build(BuildContext context) {
     final currentIndex = widget.currentIndexProvider();
@@ -139,84 +125,13 @@ class _SessionProgressScreenState extends State<SessionProgressScreen> {
           final done = widget.completed[index];
           final isCurrent = index == currentIndex;
 
-          final leadingIcon = Icon(
-            done ? Icons.check_circle : Icons.radio_button_unchecked,
-            color: done
-                ? Colors.green
-                : isCurrent
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.outline,
-          );
-
-          final titleText = Row(
-            children: [
-              Icon(
-                step.item.type == ItemType.exercise
-                    ? iconForExercise(step.item.iconName)
-                    : Icons.timer,
-                size: 18,
-                color: isCurrent
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.outline,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  step.item.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                    color: isCurrent
-                        ? Theme.of(context).colorScheme.primary
-                        : null,
-                  ),
-                ),
-              ),
-            ],
-          );
-
-          return ListTile(
+          return SessionProgressStepTile(
             key: _itemKeys[index],
-            // L'exercice en cours clignote (icône + nom), avec le même
-            // contrôleur que l'écran d'exécution : se fige en pause,
-            // reprend avec la séance.
-            leading: isCurrent
-                ? FadeTransition(
-                    opacity: Tween<double>(begin: 1, end: 0.35).animate(
-                      CurvedAnimation(
-                        parent: widget.blinkController,
-                        curve: Curves.easeInOut,
-                      ),
-                    ),
-                    child: leadingIcon,
-                  )
-                : leadingIcon,
-            title: isCurrent
-                ? FadeTransition(
-                    opacity: Tween<double>(begin: 1, end: 0.35).animate(
-                      CurvedAnimation(
-                        parent: widget.blinkController,
-                        curve: Curves.easeInOut,
-                      ),
-                    ),
-                    child: titleText,
-                  )
-                : titleText,
-            subtitle: Text(
-              "${step.group.name} · répétition ${step.roundIndex}/${step.totalRounds} · "
-              "${_stepDetail(step)}",
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: isCurrent
-                ? null
-                : IconButton(
-                    icon: const Icon(Icons.play_arrow),
-                    tooltip: "Lancer cet exercice",
-                    onPressed: () => _confirmAndSelect(index),
-                  ),
-            onTap: () => _confirmAndSelect(index),
+            step: step,
+            done: done,
+            isCurrent: isCurrent,
+            blinkController: widget.blinkController,
+            onSelect: () => _confirmAndSelect(index),
           );
         },
       ),
