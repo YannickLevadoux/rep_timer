@@ -22,10 +22,12 @@ comprendre les métadonnées DEV, consulter le guide des
 
 ```text
 lib/
-├── main.dart                  # Écran d'accueil, liste des séances
+├── main.dart                  # Point d'entrée et composition de l'application
+├── controllers/               # État et actions indépendants des widgets
 ├── models/                    # Modèles métier et historique
 ├── screens/                   # Édition, résumé, exécution et historique
-├── services/                  # Stockage local
+├── services/                  # Stockage et orchestration métier
+├── validation/                # Contrats et règles de validation
 ├── widgets/                   # Composants réutilisables
 └── utils/                     # Formatage et registre d'icônes
 ```

@@ -132,8 +132,8 @@ releases](docs/release.md).
   authentification, validations et reproductibilité.
 - [Builds et releases](docs/release.md) : distributions DEV et officielles,
   métadonnées, signature, dialogue « À propos » et publication.
-- [Notes de version 1.3.0](docs/release-notes-1.3.0.md) : nouveautés,
-  compatibilité et corrections importantes de cette version.
+- [Notes de version 1.3.1](docs/release-notes-1.3.1.md) : maintenance,
+  refactorisations internes et couverture de cette version.
 
 ## Auteur
 

@@ -92,7 +92,7 @@ Le build debug ne démarre pas si le job de validation échoue.
 
 Les jobs Flutter utilisent les mêmes versions et paramètres :
 
-- Flutter `3.44.8`, explicitement épinglé avec le cache activé ;
+- Flutter `3.44.9`, explicitement épinglé avec le cache activé ;
 - Java `17`, distribution Temurin ;
 - versions épinglées des GitHub Actions utilisées par les workflows ;
 - fichier `pubspec.lock` suivi dans le dépôt.
