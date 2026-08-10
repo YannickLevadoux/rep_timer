@@ -57,6 +57,25 @@ void main() {
     expect(find.text('Ouvrir les réglages Android'), findsNothing);
   });
 
+  testWidgets('affiche et actualise les statuts indisponibles', (tester) async {
+    final platform = _FakePlatform(
+      notificationStatus: SessionNotificationPermissionStatus.unavailable,
+      batteryStatus: BatteryOptimizationStatus.unavailable,
+    );
+    await _pumpPermissions(tester, platform);
+
+    expect(find.text('État indisponible'), findsNWidgets(2));
+    expect(find.text('Actualiser'), findsNWidgets(2));
+
+    platform.notificationStatus = SessionNotificationPermissionStatus.granted;
+    platform.batteryStatus = BatteryOptimizationStatus.exempt;
+    await tester.tap(find.text('Actualiser').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Autorisées'), findsOneWidget);
+    expect(find.text('Fiabilité renforcée'), findsOneWidget);
+  });
+
   testWidgets('confirme la demande batterie et la présente comme facultative', (
     tester,
   ) async {
@@ -68,6 +87,12 @@ void main() {
     expect(find.textContaining('Cette option est facultative'), findsOneWidget);
     expect(platform.batteryRequests, 0);
 
+    await tester.tap(find.text('Plus tard'));
+    await tester.pumpAndSettle();
+    expect(platform.batteryRequests, 0);
+
+    await tester.tap(find.text('Améliorer la fiabilité'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Continuer'));
     await tester.pumpAndSettle();
     expect(platform.batteryRequests, 1);
@@ -88,6 +113,10 @@ void main() {
       find.widgetWithText(FilledButton, 'Demande en cours…'),
     );
     expect(button.onPressed, isNull);
+    final batteryButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Améliorer la fiabilité'),
+    );
+    expect(batteryButton.onPressed, isNull);
     expect(platform.notificationRequests, 1);
 
     requestCompleter.complete();
