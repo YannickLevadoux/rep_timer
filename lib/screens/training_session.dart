@@ -8,35 +8,32 @@ import '../utils/snack.dart';
 import '../validation/business_validation.dart';
 import '../widgets/dialogs/comment_dialog.dart';
 import '../widgets/dialogs/exit_session_dialog.dart';
-import '../widgets/session_finished_view.dart';
-import '../widgets/session_running_body.dart';
-import 'session_progress.dart';
 import '../widgets/dialogs/incomplete_session_dialog.dart';
+import '../widgets/session_blink_controller.dart';
+import '../widgets/training_session_view.dart';
+import 'session_progress.dart';
 
-/// Écran principal d'exécution d'une séance : empêche la mise en veille,
-/// fait défiler les exercices dans l'ordre (avec répétition des groupes),
-/// et enregistre la séance dans l'historique une fois terminée.
-///
-/// Toute la logique de progression/chronométrage/persistance vit dans
-/// [SessionController] ; cet écran ne s'occupe que de l'affichage et des
-/// éléments purement liés au cycle de vie du widget (observateur du
-/// cycle de vie de l'app, animation de clignotement).
+typedef SessionControllerFactory =
+    SessionController Function({
+      required Training training,
+      required SessionCheckpoint? initialCheckpoint,
+      required TrainingChangesPersistence trainingChangesPersistence,
+    });
+
 class TrainingSessionScreen extends StatefulWidget {
-  final Training training;
-  final TrainingChangesPersistence trainingChangesPersistence;
-
-  // Si fourni, l'écran reprend la séance exactement là où elle en était
-  // plutôt que de repartir de la première étape (reprise après une mort
-  // de processus par le système).
-  final SessionCheckpoint? initialCheckpoint;
-
   const TrainingSessionScreen({
     super.key,
     required this.training,
     this.initialCheckpoint,
     this.trainingChangesPersistence = TrainingChangesPersistence.persistent,
+    this.controllerFactory,
   });
 
+  final Training training;
+  final SessionCheckpoint? initialCheckpoint;
+  final TrainingChangesPersistence trainingChangesPersistence;
+  @visibleForTesting
+  final SessionControllerFactory? controllerFactory;
   @override
   State<TrainingSessionScreen> createState() => _TrainingSessionScreenState();
 }
@@ -44,112 +41,73 @@ class TrainingSessionScreen extends StatefulWidget {
 class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final SessionController _controller;
-
-  // Anime le clignotement (nom + icône) de l'exercice en cours. Nullable
-  // car non créé si la séance ne contient aucune étape.
-  AnimationController? _blinkController;
-
+  late final SessionBlinkController _blink;
+  bool _showingIncompleteDialog = false;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-
-    _controller = SessionController(
+    _controller = (widget.controllerFactory ?? _createController)(
       training: widget.training,
       initialCheckpoint: widget.initialCheckpoint,
       trainingChangesPersistence: widget.trainingChangesPersistence,
+    )..addListener(_onControllerChanged);
+    _blink = SessionBlinkController(
+      vsync: this,
+      enabled: _controller.steps.isNotEmpty,
+      initiallyPaused: _controller.paused,
     );
-    _controller.addListener(_onControllerChanged);
-
-    if (_controller.steps.isNotEmpty) {
-      _blinkController = AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 900),
-      );
-      if (_controller.paused) {
-        _blinkController!.value = 1;
-      } else {
-        _blinkController!.repeat(reverse: true);
-      }
-    }
   }
+
+  SessionController _createController({
+    required Training training,
+    required SessionCheckpoint? initialCheckpoint,
+    required TrainingChangesPersistence trainingChangesPersistence,
+  }) => SessionController(
+    training: training,
+    initialCheckpoint: initialCheckpoint,
+    trainingChangesPersistence: trainingChangesPersistence,
+  );
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _controller.removeListener(_onControllerChanged);
-    _controller.dispose();
-    _blinkController?.dispose();
+    _controller
+      ..removeListener(_onControllerChanged)
+      ..dispose();
+    _blink.dispose();
     super.dispose();
   }
 
-  // Empêche l'ouverture simultanée de plusieurs dialogues "Séance
-  // incomplète" si le contrôleur notifie plusieurs fois pendant que le
-  // dialogue est déjà affiché.
-  bool _showingIncompleteDialog = false;
-
   void _onControllerChanged() {
-    // La séance vient de se terminer (auto-complétion du dernier
-    // exercice, ou fin anticipée via le menu de sortie) : le
-    // clignotement n'a plus lieu d'être. Inoffensif si déjà arrêté.
-    if (_controller.finished) {
-      _blinkController?.stop();
-    } else if (_blinkController != null) {
-      // Synchronise le clignotement avec l'état de pause du contrôleur,
-      // quelle que soit son origine (bouton pause manuel, ou mise en
-      // pause automatique suite à une séance incomplète).
-      if (_controller.paused && _blinkController!.isAnimating) {
-        _blinkController!.stop();
-      } else if (!_controller.paused && !_blinkController!.isAnimating) {
-        _blinkController!.repeat(reverse: true);
-      }
-    }
-
-    // La dernière étape possible vient d'être franchie avec des
-    // exercices/pauses restants : le contrôleur s'est mis en pause tout
-    // seul, à l'écran de proposer le choix à l'utilisateur.
+    _blink.synchronize(
+      paused: _controller.paused,
+      finished: _controller.finished,
+    );
     if (_controller.pendingIncompleteReview && !_showingIncompleteDialog) {
       _showingIncompleteDialog = true;
       WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _showIncompleteSessionDialog(),
+        (_) => _reviewIncompleteSession(),
       );
     }
-
     setState(() {});
   }
 
-  Future<void> _showIncompleteSessionDialog() async {
+  Future<void> _reviewIncompleteSession() async {
     if (!mounted) return;
-
     final choice = await showIncompleteSessionDialog(context);
     _showingIncompleteDialog = false;
-
     if (!mounted) return;
-
-    switch (choice) {
-      case IncompleteSessionChoice.chooseStep:
-        // Réutilise l'écran de progression existant : la sélection d'un
-        // exercice y relance elle-même la séance (voir
-        // SessionController.jumpToStep).
-        _openProgress();
-        break;
-      case IncompleteSessionChoice.finish:
-        // Arrêt définitif : le statut Incomplète est déterminé par le
-        // contrôleur lui-même à partir de la progression réelle, pas
-        // besoin de le préciser ici.
-        await _controller.finishSession(earlyExit: true);
-        break;
-      case null:
-        // Ne devrait pas arriver (dialogue non-annulable), mais laisse
-        // la séance en pause plutôt que de risquer un état incohérent.
-        break;
+    if (choice == IncompleteSessionChoice.chooseStep) {
+      _openProgress();
+    } else if (choice == IncompleteSessionChoice.finish) {
+      await _controller.finishSession(earlyExit: true);
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (_controller.finished) return;
-
     if (state == AppLifecycleState.paused) {
       _controller.handleAppBackgrounded();
     } else if (state == AppLifecycleState.resumed) {
@@ -157,164 +115,85 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     }
   }
 
-  // Animation de clignotement partagée : réutilisée pour l'icône, le nom
-  // et le commentaire de l'exercice en cours (ici et sur l'écran de
-  // progression), afin qu'ils restent synchronisés.
-  Animation<double> get _blinkOpacity => _blinkController != null
-      ? Tween<double>(begin: 1, end: 0.35).animate(
-          CurvedAnimation(parent: _blinkController!, curve: Curves.easeInOut),
-        )
-      : const AlwaysStoppedAnimation(1);
-
-  void _handleTogglePause() {
-    _controller.togglePause();
-    if (_controller.paused) {
-      _blinkController?.stop();
-    } else {
-      _blinkController?.repeat(reverse: true);
-    }
-  }
-
-  // Ouvre le commentaire dans un Dialog dédié ; en cas de validation, la
-  // mise à jour est reportée sur le contrôleur, qui applique la politique
-  // de persistance choisie par l'écran appelant.
-  Future<void> _startEditComment() async {
+  Future<void> _editComment() async {
     final result = await showCommentDialog(
       context,
       initialComment: _controller.currentStep.item.comment ?? '',
     );
-
-    // Annulé (bouton ou fermeture du dialogue) : on ne touche à rien, le
-    // commentaire précédent est conservé tel quel.
     if (result == null) return;
-
     try {
       await _controller.updateComment(result);
     } on BusinessValidationException {
-      // Le dialogue applique le même contrat. Ce garde-fou protège aussi les
-      // appels programmatiques et laisse la valeur précédente intacte.
       return;
     } on StorageMutationBlockedException {
       if (!mounted) return;
       showSnack(
         context,
         "Commentaire non enregistré : les séances stockées n'ont pas pu "
-        "être lues intégralement.",
+        'être lues intégralement.',
       );
     }
   }
 
   Future<void> _showExitMenu() async {
     final choice = await showExitSessionDialog(context);
-
     if (!mounted) return;
-
-    switch (choice) {
-      case ExitSessionChoice.finish:
-        // Arrêt immédiat. Le statut réellement enregistré (Terminée ou
-        // Incomplète) dépend uniquement de la progression réelle — voir
-        // SessionController.finishSession — pas du simple fait d'avoir
-        // cliqué ce bouton.
-        await _controller.finishSession(earlyExit: true);
-        break;
-      case ExitSessionChoice.abandon:
-        // Quitte immédiatement, aucun enregistrement dans l'historique,
-        // et aucune trace ne doit permettre de reprendre cette séance.
-        await _controller.abandon();
-        if (!mounted) return;
-        Navigator.pop(context);
-        break;
-      case ExitSessionChoice.continueSession:
-      case null:
-        break;
+    if (choice == ExitSessionChoice.finish) {
+      await _controller.finishSession(earlyExit: true);
+    } else if (choice == ExitSessionChoice.abandon) {
+      await _controller.abandon();
+      if (mounted) Navigator.pop(context);
     }
   }
 
   void _openProgress() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => SessionProgressScreen(
+      MaterialPageRoute<void>(
+        builder: (_) => SessionProgressScreen(
           steps: _controller.steps,
           completed: _controller.completed,
           currentIndexProvider: () => _controller.currentIndex,
-          // Même contrôleur que l'écran d'exécution : le clignotement
-          // reste synchronisé et se fige/reprend avec la même pause.
-          blinkController: _blinkController!,
+          blinkController: _blink.animationController!,
           onSelectStep: _controller.jumpToStep,
         ),
       ),
     );
   }
 
+  void _backHome() => Navigator.popUntil(context, (route) => route.isFirst);
+
   @override
   Widget build(BuildContext context) {
-    if (_controller.steps.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(
-            widget.training.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        body: const Center(
-          child: Text("Cette séance ne contient aucun exercice."),
-        ),
-      );
-    }
-
-    if (_controller.finished) {
-      return SessionFinishedView(
-        trainingName: widget.training.name,
-        totalDuration: _controller.globalElapsed,
-        onBackHome: () {
-          Navigator.popUntil(context, (route) => route.isFirst);
-        },
-      );
-    }
-
+    final view = TrainingSessionView(
+      trainingName: widget.training.name,
+      finished: _controller.finished,
+      totalDuration: _controller.globalElapsed,
+      onBackHome: _backHome,
+      step: _controller.steps.isEmpty ? null : _controller.currentStep,
+      nextStep: _controller.steps.isEmpty ? null : _controller.nextStep,
+      currentIndex: _controller.currentIndex,
+      totalSteps: _controller.steps.length,
+      globalElapsed: _controller.globalElapsed,
+      stepElapsed: _controller.stepElapsed,
+      paused: _controller.paused,
+      notificationMode: _controller.notificationMode,
+      blinkOpacity: _blink.opacity,
+      onPrevious: _controller.goToPrevious,
+      onNext: _controller.goToNext,
+      onComplete: _controller.completeCurrentStep,
+      onTogglePause: _controller.togglePause,
+      onEditComment: _editComment,
+      onCycleNotificationMode: _controller.cycleNotificationMode,
+      onOpenProgress: _openProgress,
+    );
+    if (_controller.steps.isEmpty || _controller.finished) return view;
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        await _showExitMenu();
+      onPopInvokedWithResult: (didPop, _) async {
+        if (!didPop) await _showExitMenu();
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            widget.training.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.checklist),
-              tooltip: "Progression détaillée",
-              onPressed: _openProgress,
-            ),
-          ],
-        ),
-        body: SafeArea(
-          child: SessionRunningBody(
-            step: _controller.currentStep,
-            nextStep: _controller.nextStep,
-            currentIndex: _controller.currentIndex,
-            totalSteps: _controller.steps.length,
-            globalElapsed: _controller.globalElapsed,
-            stepElapsed: _controller.stepElapsed,
-            paused: _controller.paused,
-            notificationMode: _controller.notificationMode,
-            blinkOpacity: _blinkOpacity,
-            onPrevious: _controller.goToPrevious,
-            onNext: _controller.goToNext,
-            onComplete: _controller.completeCurrentStep,
-            onTogglePause: _handleTogglePause,
-            onEditComment: _startEditComment,
-            onCycleNotificationMode: _controller.cycleNotificationMode,
-          ),
-        ),
-      ),
+      child: view,
     );
   }
 }
