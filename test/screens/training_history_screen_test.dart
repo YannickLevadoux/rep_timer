@@ -693,14 +693,19 @@ void main() {
       expect(find.byKey(Key('monthly-week-bar-$index')), findsOneWidget);
     }
     expect(
-      tester.widget<Text>(find.byKey(const Key('monthly-count-label-0'))).data,
+      tester
+          .widget<Text>(find.byKey(const Key('monthly-completed-label-0')))
+          .data,
       '1',
     );
     expect(
-      tester.widget<Text>(find.byKey(const Key('monthly-count-label-5'))).data,
+      tester
+          .widget<Text>(find.byKey(const Key('monthly-completed-label-5')))
+          .data,
       '1',
     );
-    expect(find.byKey(const Key('monthly-count-label-1')), findsNothing);
+    expect(find.byKey(const Key('monthly-count-label-0')), findsNothing);
+    expect(find.byKey(const Key('monthly-incomplete-label-0')), findsNothing);
     expect(find.text('2 séances — 2 terminées · 0 incomplète'), findsOneWidget);
     expect(find.text('Séances du mois — 2'), findsOneWidget);
     expect(find.text('début août'), findsOneWidget);
@@ -741,6 +746,41 @@ void main() {
     expect(find.byKey(const Key('month-today-button')), findsNothing);
   });
 
+  testWidgets('place hors de sa portion un compteur mensuel trop à l’étroit', (
+    tester,
+  ) async {
+    final storage = _FakeHistoryStorage(
+      StorageReadSuccess([
+        for (var index = 0; index < 19; index++)
+          _entry('terminée $index', DateTime(2026, 8, 4, index)),
+        _entry(
+          'incomplète',
+          DateTime(2026, 8, 4, 23),
+          status: TrainingSessionStatus.incomplete,
+        ),
+      ]),
+    );
+
+    await _pumpHistory(tester, storage, now: now);
+    await _selectMonth(tester);
+
+    expect(
+      find.byKey(const Key('monthly-incomplete-label-outside-1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('monthly-completed-label-inside-1')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('monthly-incomplete-label-1')))
+          .data,
+      '1',
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('conserve la métrique et cumule les durées de tous les statuts', (
     tester,
   ) async {
@@ -767,7 +807,19 @@ void main() {
     expect(find.text('Temps total — 01:12:35'), findsOneWidget);
     expect(find.byKey(const Key('monthly-duration-value-1')), findsOneWidget);
     expect(find.byKey(const Key('monthly-duration-value-2')), findsOneWidget);
-    expect(find.byKey(const Key('monthly-count-label-1')), findsNothing);
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('monthly-duration-label-1')))
+          .data,
+      '1 h',
+    );
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('monthly-duration-label-2')))
+          .data,
+      '12 min\n35 s',
+    );
+    expect(find.byKey(const Key('monthly-completed-label-1')), findsNothing);
     expect(
       tester
           .widget<DropdownButton<HistoryMetric>>(
@@ -776,6 +828,50 @@ void main() {
           .value,
       HistoryMetric.timeSpent,
     );
+  });
+
+  testWidgets('place hors de la barre une durée mensuelle trop à l’étroit', (
+    tester,
+  ) async {
+    final storage = _FakeHistoryStorage(
+      StorageReadSuccess([
+        _entry(
+          'longue',
+          DateTime(2026, 8, 4),
+          duration: const Duration(hours: 1),
+        ),
+        _entry(
+          'courte',
+          DateTime(2026, 8, 10),
+          duration: const Duration(minutes: 1),
+        ),
+      ]),
+    );
+
+    await _pumpHistory(tester, storage, now: now);
+    await _selectTimeSpent(tester);
+    await _selectMonth(tester);
+
+    expect(
+      find.byKey(const Key('monthly-duration-label-outside-2')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('monthly-duration-label-2')))
+          .data,
+      '1 min',
+    );
+    final durationLabel = tester.widget<Text>(
+      find.byKey(const Key('monthly-duration-label-2')),
+    );
+    expect(
+      durationLabel.style?.fontSize,
+      Theme.of(
+        tester.element(find.byKey(const Key('monthly-duration-label-2'))),
+      ).textTheme.labelSmall?.fontSize,
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('ouvre une semaine mensuelle en conservant le temps passé', (
@@ -986,8 +1082,33 @@ void main() {
       findsOneWidget,
     );
     expect(
-      tester.widget<Text>(find.byKey(const Key('monthly-count-label-0'))).data,
-      '2',
+      tester
+          .widget<Text>(find.byKey(const Key('monthly-completed-label-0')))
+          .data,
+      '1',
+    );
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('monthly-incomplete-label-0')))
+          .data,
+      '1',
+    );
+    expect(
+      find.byKey(const Key('monthly-completed-label-inside-0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('monthly-incomplete-label-inside-0')),
+      findsOneWidget,
+    );
+    final completedLabel = tester.widget<Text>(
+      find.byKey(const Key('monthly-completed-label-0')),
+    );
+    expect(
+      completedLabel.style?.fontSize,
+      Theme.of(
+        tester.element(find.byKey(const Key('monthly-completed-label-0'))),
+      ).textTheme.labelSmall?.fontSize,
     );
     semantics.dispose();
   });
@@ -1019,7 +1140,7 @@ void main() {
       scrollable: find.byType(Scrollable),
     );
     expect(find.byKey(const Key('monthly-week-bar-5')), findsOneWidget);
-    expect(find.byKey(const Key('monthly-count-label-1')), findsOneWidget);
+    expect(find.byKey(const Key('monthly-completed-label-1')), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
     await tester.pump();

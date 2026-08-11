@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../services/monthly_history_aggregation.dart';
-import '../utils/history_status_colors.dart';
+import 'monthly_history_count_value.dart';
+import 'monthly_history_duration_value.dart';
 import 'monthly_history_labels.dart';
 
 class MonthlyHistoryWeekBar extends StatelessWidget {
@@ -97,92 +98,10 @@ class MonthlyHistoryWeekBar extends StatelessWidget {
       );
     }
     return showDuration
-        ? _DurationValue(index: index)
-        : _CountValue(index: index, bucket: bucket);
-  }
-}
-
-class _DurationValue extends StatelessWidget {
-  const _DurationValue({required this.index});
-
-  final int index;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      key: Key('monthly-duration-value-$index'),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-      ),
-    );
-  }
-}
-
-class _CountValue extends StatelessWidget {
-  const _CountValue({required this.index, required this.bucket});
-
-  final int index;
-  final MonthlyHistoryWeekBucket bucket;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-      child: Stack(
-        fit: StackFit.expand,
-        alignment: Alignment.center,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (bucket.incompleteCount > 0)
-                Expanded(
-                  flex: bucket.incompleteCount,
-                  child: ColoredBox(
-                    key: Key('monthly-incomplete-value-$index'),
-                    color: incompleteHistoryColor(context),
-                  ),
-                ),
-              if (bucket.completedCount > 0)
-                Expanded(
-                  flex: bucket.completedCount,
-                  child: ColoredBox(
-                    key: Key('monthly-completed-value-$index'),
-                    color: completedHistoryColor(context),
-                  ),
-                ),
-            ],
-          ),
-          Center(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: colorScheme.surface.withAlpha(230),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 1,
-                  ),
-                  child: Text(
-                    '${bucket.totalCount}',
-                    key: Key('monthly-count-label-$index'),
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.bold,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+        ? MonthlyHistoryDurationValue(
+            index: index,
+            duration: bucket.totalDuration,
+          )
+        : MonthlyHistoryCountValue(index: index, bucket: bucket);
   }
 }
