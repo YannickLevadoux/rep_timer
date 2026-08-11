@@ -60,12 +60,16 @@ class WeeklyHistoryDay {
   const WeeklyHistoryDay({
     required this.date,
     required this.duration,
-    required this.sessionCount,
+    required this.completedCount,
+    required this.incompleteCount,
   });
 
   final DateTime date;
   final Duration duration;
-  final int sessionCount;
+  final int completedCount;
+  final int incompleteCount;
+
+  int get sessionCount => completedCount + incompleteCount;
 }
 
 /// Agrégation pure de l'historique pour une semaine calendaire locale.
@@ -80,7 +84,8 @@ WeeklyHistorySummary aggregateHistoryWeek(
       .where((entry) => entry.status == TrainingSessionStatus.completed)
       .length;
   final durationsInMicroseconds = List<int>.filled(7, 0);
-  final sessionCounts = List<int>.filled(7, 0);
+  final completedCounts = List<int>.filled(7, 0);
+  final incompleteCounts = List<int>.filled(7, 0);
 
   for (final entry in entries) {
     final local = entry.date.toLocal();
@@ -94,14 +99,19 @@ WeeklyHistorySummary aggregateHistoryWeek(
         ? Duration.zero
         : entry.totalDuration;
     durationsInMicroseconds[dayIndex] += duration.inMicroseconds;
-    sessionCounts[dayIndex]++;
+    if (entry.status == TrainingSessionStatus.completed) {
+      completedCounts[dayIndex]++;
+    } else {
+      incompleteCounts[dayIndex]++;
+    }
   }
 
   final days = List<WeeklyHistoryDay>.generate(7, (index) {
     return WeeklyHistoryDay(
       date: DateTime(week.start.year, week.start.month, week.start.day + index),
       duration: Duration(microseconds: durationsInMicroseconds[index]),
-      sessionCount: sessionCounts[index],
+      completedCount: completedCounts[index],
+      incompleteCount: incompleteCounts[index],
     );
   });
   final totalMicroseconds = durationsInMicroseconds.fold<int>(

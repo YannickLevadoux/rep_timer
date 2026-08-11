@@ -103,37 +103,44 @@ void main() {
         everyElement(Duration.zero),
       );
       expect(summary.days.map((day) => day.sessionCount), everyElement(0));
+      expect(summary.days.map((day) => day.completedCount), everyElement(0));
+      expect(summary.days.map((day) => day.incompleteCount), everyElement(0));
       expect(summary.totalDuration, Duration.zero);
     });
 
-    test(
-      'cumule plusieurs séances le même jour sans distinguer leur statut',
-      () {
-        final week = LocalWeek.containing(DateTime(2026, 8, 5));
+    test('cumule plusieurs séances et leurs statuts le même jour', () {
+      final week = LocalWeek.containing(DateTime(2026, 8, 5));
 
-        final summary = aggregateHistoryWeek([
-          _entry(
-            'terminée',
-            DateTime(2026, 8, 4, 8),
-            TrainingSessionStatus.completed,
-            duration: const Duration(minutes: 20),
-          ),
-          _entry(
-            'incomplète',
-            DateTime(2026, 8, 4, 18),
-            TrainingSessionStatus.incomplete,
-            duration: const Duration(minutes: 12, seconds: 35),
-          ),
-        ], week);
+      final summary = aggregateHistoryWeek([
+        _entry(
+          'terminée',
+          DateTime(2026, 8, 4, 8),
+          TrainingSessionStatus.completed,
+          duration: const Duration(minutes: 20),
+        ),
+        _entry(
+          'incomplète',
+          DateTime(2026, 8, 4, 18),
+          TrainingSessionStatus.incomplete,
+          duration: const Duration(minutes: 12, seconds: 35),
+        ),
+        _entry(
+          'terminée 2',
+          DateTime(2026, 8, 4, 20),
+          TrainingSessionStatus.completed,
+          duration: const Duration(minutes: 5),
+        ),
+      ], week);
 
-        expect(
-          summary.days[1].duration,
-          const Duration(minutes: 32, seconds: 35),
-        );
-        expect(summary.days[1].sessionCount, 2);
-        expect(summary.totalDuration, const Duration(minutes: 32, seconds: 35));
-      },
-    );
+      expect(
+        summary.days[1].duration,
+        const Duration(minutes: 37, seconds: 35),
+      );
+      expect(summary.days[1].sessionCount, 3);
+      expect(summary.days[1].completedCount, 2);
+      expect(summary.days[1].incompleteCount, 1);
+      expect(summary.totalDuration, const Duration(minutes: 37, seconds: 35));
+    });
 
     test('répartit les séances entre les jours et inclut Quick Tabata', () {
       final week = LocalWeek.containing(DateTime(2026, 8, 5));
@@ -158,6 +165,8 @@ void main() {
       expect(summary.days[4].duration, const Duration(minutes: 4));
       expect(summary.days[0].sessionCount, 1);
       expect(summary.days[4].sessionCount, 1);
+      expect(summary.days[0].completedCount, 1);
+      expect(summary.days[4].completedCount, 1);
       expect(summary.totalDuration, const Duration(minutes: 14));
     });
 
@@ -184,6 +193,8 @@ void main() {
 
         expect(summary.days[0].duration, Duration.zero);
         expect(summary.days[0].sessionCount, 2);
+        expect(summary.days[0].completedCount, 1);
+        expect(summary.days[0].incompleteCount, 1);
         expect(summary.totalDuration, Duration.zero);
         expect(negative.totalDuration, const Duration(seconds: -30));
       },
@@ -209,6 +220,8 @@ void main() {
 
       expect(summary.totalCount, 1);
       expect(summary.days[0].duration, const Duration(minutes: 5));
+      expect(summary.days[0].completedCount, 1);
+      expect(summary.days[6].sessionCount, 0);
       expect(summary.totalDuration, const Duration(minutes: 5));
     });
 

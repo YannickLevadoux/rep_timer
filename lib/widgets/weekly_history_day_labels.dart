@@ -37,8 +37,35 @@ const _months = [
 ];
 
 String formatWeeklyHistoryDayDetail(WeeklyHistoryDay day) {
-  final sessions = day.sessionCount > 1 ? 'séances' : 'séance';
-  return '${_longWeekdays[day.date.weekday - 1]} ${day.date.day} '
-      '${_months[day.date.month - 1]} — ${formatLongDuration(day.duration)} '
-      '· ${day.sessionCount} $sessions';
+  return '${_formatDayDate(day)} — ${formatLongDuration(day.duration)} '
+      '· ${day.sessionCount} '
+      '${weeklyHistoryPlural(day.sessionCount, 'séance')}';
 }
+
+String formatWeeklyHistoryCountSummary(WeeklyHistorySummary summary) {
+  if (summary.totalCount == 0) return '0 séance';
+  return '${summary.totalCount} '
+      '${weeklyHistoryPlural(summary.totalCount, 'séance')} — '
+      '${summary.completedCount} '
+      '${weeklyHistoryPlural(summary.completedCount, 'terminée')} · '
+      '${summary.incompleteCount} '
+      '${weeklyHistoryPlural(summary.incompleteCount, 'incomplète')}';
+}
+
+String formatWeeklyHistoryCountSemanticSummary(WeeklyHistorySummary summary) =>
+    'Bilan hebdomadaire : ${formatWeeklyHistoryCountSummary(summary)}';
+
+String formatWeeklyHistoryCountDayDetail(WeeklyHistoryDay day) =>
+    '${_formatDayDate(day)} — ${day.sessionCount} '
+    '${weeklyHistoryPlural(day.sessionCount, 'séance')} · '
+    '${day.completedCount} '
+    '${weeklyHistoryPlural(day.completedCount, 'terminée')} · '
+    '${day.incompleteCount} '
+    '${weeklyHistoryPlural(day.incompleteCount, 'incomplète')}';
+
+String weeklyHistoryPlural(int count, String singular) =>
+    count > 1 ? '${singular}s' : singular;
+
+String _formatDayDate(WeeklyHistoryDay day) =>
+    '${_longWeekdays[day.date.weekday - 1]} ${day.date.day} '
+    '${_months[day.date.month - 1]}';
