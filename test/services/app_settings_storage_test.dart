@@ -8,7 +8,19 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('thème', () {
-    setUp(() => SharedPreferences.setMockInitialValues({}));
+    late void Function(String? message, {int? wrapWidth}) previousDebugPrint;
+    late List<String> diagnostics;
+
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      diagnostics = [];
+      previousDebugPrint = debugPrint;
+      debugPrint = (message, {wrapWidth}) {
+        if (message != null) diagnostics.add(message);
+      };
+    });
+
+    tearDown(() => debugPrint = previousDebugPrint);
 
     test('utilise le système lorsque la clé est absente', () async {
       expect(await AppSettingsStorage().loadThemeMode(), ThemeMode.system);
@@ -27,15 +39,28 @@ void main() {
     }
 
     test('une valeur inconnue revient au système sans crash', () async {
-      SharedPreferences.setMockInitialValues({'theme_mode': 'future-theme'});
+      const storedValue = 'future-theme-sensitive-value';
+      SharedPreferences.setMockInitialValues({'theme_mode': storedValue});
 
       expect(await AppSettingsStorage().loadThemeMode(), ThemeMode.system);
+      expect(diagnostics, hasLength(1));
+      expect(diagnostics.single, contains('Préférence de thème inconnue'));
+      expect(diagnostics.single, contains('utilisation du système'));
+      expect(diagnostics.single, isNot(contains(storedValue)));
     });
 
     test('une erreur de lecture revient au système sans bloquer', () async {
-      SharedPreferences.setMockInitialValues({'theme_mode': 42});
+      const storedValue = 424242;
+      SharedPreferences.setMockInitialValues({'theme_mode': storedValue});
 
       expect(await AppSettingsStorage().loadThemeMode(), ThemeMode.system);
+      expect(diagnostics, hasLength(1));
+      expect(
+        diagnostics.single,
+        contains('Lecture de la préférence de thème impossible'),
+      );
+      expect(diagnostics.single, contains('utilisation du système'));
+      expect(diagnostics.single, isNot(contains('$storedValue')));
     });
 
     for (final entry in <ThemeMode, String>{

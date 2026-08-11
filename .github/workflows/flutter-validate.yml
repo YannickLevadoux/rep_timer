@@ -14,6 +14,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Report large files in lib
         continue-on-error: true
@@ -85,3 +87,19 @@ jobs:
 
       - name: Run tests
         run: flutter test --coverage
+
+      - name: Check and summarize coverage
+        if: ${{ !cancelled() }}
+        env:
+          COVERAGE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          COVERAGE_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: dart .github/scripts/coverage_report.dart coverage/lcov.info
+
+      - name: Upload LCOV report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: test-coverage-lcov
+          path: coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 14
