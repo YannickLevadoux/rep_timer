@@ -64,6 +64,29 @@ void main() {
     final pickers = find.byType(DurationMinutesSecondsPicker);
     _expectCompactDurationRow(tester, find.text('Work'), pickers.at(0));
     _expectCompactDurationRow(tester, find.text('Pause'), pickers.at(1));
+
+    final dividers = find.byType(Divider);
+    expect(dividers, findsNWidgets(2));
+    for (var index = 0; index < 2; index++) {
+      final divider = tester.widget<Divider>(dividers.at(index));
+      expect(divider.height, 10);
+      expect(divider.thickness, 1);
+    }
+
+    expect(
+      tester.getCenter(dividers.at(0)).dy,
+      allOf(
+        greaterThan(tester.getBottomLeft(pickers.at(0)).dy),
+        lessThan(tester.getTopLeft(pickers.at(1)).dy),
+      ),
+    );
+    expect(
+      tester.getCenter(dividers.at(1)).dy,
+      allOf(
+        greaterThan(tester.getBottomLeft(pickers.at(1)).dy),
+        lessThan(tester.getTopLeft(find.byType(RoundsEditor)).dy),
+      ),
+    );
   });
 
   testWidgets('conserve les dimensions des roues de durée partagées', (
@@ -123,6 +146,26 @@ void main() {
       find.byType(TrainingSessionScreen, skipOffstage: false),
       findsOneWidget,
     );
+  });
+
+  testWidgets('répartit la hauteur disponible entre les sections', (
+    tester,
+  ) async {
+    await _pumpScreen(tester, surfaceSize: const Size(360, 640));
+    final compactGaps = _verticalSectionGaps(tester);
+
+    await tester.binding.setSurfaceSize(const Size(360, 800));
+    await tester.pump();
+
+    final expandedGaps = _verticalSectionGaps(tester);
+    for (var index = 0; index < compactGaps.length; index++) {
+      expect(expandedGaps[index], greaterThan(compactGaps[index]));
+    }
+
+    final start = find.widgetWithText(FilledButton, 'Commencer');
+    final scrollable = Scrollable.of(tester.element(start));
+    expect(scrollable.position.maxScrollExtent, 0);
+    expect(tester.getBottomLeft(start).dy, closeTo(792, 0.1));
   });
 
   testWidgets('affiche 01:20 pour 20 s, 10 s et 3 répétitions', (tester) async {
@@ -282,6 +325,26 @@ void _expectCompactDurationRow(
   expect(tester.getCenter(label).dy, closeTo(tester.getCenter(picker).dy, 0.1));
   expect(tester.getTopLeft(label).dx, closeTo(16, 0.1));
   expect(tester.getTopRight(picker).dx, closeTo(344, 0.1));
+}
+
+List<double> _verticalSectionGaps(WidgetTester tester) {
+  final pickers = find.byType(DurationMinutesSecondsPicker);
+  final rounds = find.byType(RoundsEditor);
+  final card = find.ancestor(
+    of: find.text('Temps total estimé'),
+    matching: find.byType(Card),
+  );
+  final start = find.widgetWithText(FilledButton, 'Commencer');
+
+  return [
+    tester.getTopLeft(pickers.at(0)).dy -
+        tester.getBottomLeft(find.byType(TextField)).dy,
+    tester.getTopLeft(pickers.at(1)).dy -
+        tester.getBottomLeft(pickers.at(0)).dy,
+    tester.getTopLeft(rounds).dy - tester.getBottomLeft(pickers.at(1)).dy,
+    tester.getTopLeft(card).dy - tester.getBottomLeft(rounds).dy,
+    tester.getTopLeft(start).dy - tester.getBottomLeft(card).dy,
+  ];
 }
 
 int _rounds(WidgetTester tester) {

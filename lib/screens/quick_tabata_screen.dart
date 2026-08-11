@@ -119,55 +119,67 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text("Quick Tabata")),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _nameController,
-              maxLength: BusinessLimits.maximumNameCharacters,
-              maxLengthEnforcement: MaxLengthEnforcement.none,
-              decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                labelText: "Nom de la séance",
-                errorText: _nameError,
+      body: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: _nameController,
+                    maxLength: BusinessLimits.maximumNameCharacters,
+                    maxLengthEnforcement: MaxLengthEnforcement.none,
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: "Nom de la séance",
+                      errorText: _nameError,
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  QuickTabataDurationSection(
+                    title: "Work",
+                    value: _workDuration,
+                    onChanged: (duration) =>
+                        setState(() => _workDuration = duration),
+                  ),
+
+                  const Divider(height: 10, thickness: 1),
+
+                  QuickTabataDurationSection(
+                    title: "Pause",
+                    value: _pauseDuration,
+                    onChanged: (duration) =>
+                        setState(() => _pauseDuration = duration),
+                  ),
+
+                  const Divider(height: 10, thickness: 1),
+
+                  RoundsEditor(
+                    rounds: _repetitions,
+                    onChanged: _setRepetitions,
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  QuickTabataEstimatedDurationCard(duration: estimatedDuration),
+
+                  const SizedBox(height: 4),
+
+                  FilledButton.icon(
+                    onPressed: _starting ? null : _start,
+                    icon: const Icon(Icons.play_arrow),
+                    label: Text(_starting ? "Préparation…" : "Commencer"),
+                  ),
+                ],
               ),
             ),
-
-            const SizedBox(height: 8),
-
-            QuickTabataDurationSection(
-              title: "Work",
-              value: _workDuration,
-              onChanged: (duration) => setState(() => _workDuration = duration),
-            ),
-
-            const SizedBox(height: 8),
-
-            QuickTabataDurationSection(
-              title: "Pause",
-              value: _pauseDuration,
-              onChanged: (duration) =>
-                  setState(() => _pauseDuration = duration),
-            ),
-
-            const SizedBox(height: 8),
-
-            RoundsEditor(rounds: _repetitions, onChanged: _setRepetitions),
-
-            const SizedBox(height: 8),
-
-            QuickTabataEstimatedDurationCard(duration: estimatedDuration),
-
-            const SizedBox(height: 8),
-
-            FilledButton.icon(
-              onPressed: _starting ? null : _start,
-              icon: const Icon(Icons.play_arrow),
-              label: Text(_starting ? "Préparation…" : "Commencer"),
-            ),
-          ],
+          ),
         ),
       ),
     );
