@@ -127,27 +127,60 @@ class _CountValue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Stack(
+        fit: StackFit.expand,
+        alignment: Alignment.center,
         children: [
-          if (bucket.incompleteCount > 0)
-            Expanded(
-              flex: bucket.incompleteCount,
-              child: ColoredBox(
-                key: Key('monthly-incomplete-value-$index'),
-                color: incompleteHistoryColor(context),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (bucket.incompleteCount > 0)
+                Expanded(
+                  flex: bucket.incompleteCount,
+                  child: ColoredBox(
+                    key: Key('monthly-incomplete-value-$index'),
+                    color: incompleteHistoryColor(context),
+                  ),
+                ),
+              if (bucket.completedCount > 0)
+                Expanded(
+                  flex: bucket.completedCount,
+                  child: ColoredBox(
+                    key: Key('monthly-completed-value-$index'),
+                    color: completedHistoryColor(context),
+                  ),
+                ),
+            ],
+          ),
+          Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: colorScheme.surface.withAlpha(230),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  child: Text(
+                    '${bucket.totalCount}',
+                    key: Key('monthly-count-label-$index'),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                      height: 1,
+                    ),
+                  ),
+                ),
               ),
             ),
-          if (bucket.completedCount > 0)
-            Expanded(
-              flex: bucket.completedCount,
-              child: ColoredBox(
-                key: Key('monthly-completed-value-$index'),
-                color: completedHistoryColor(context),
-              ),
-            ),
+          ),
         ],
       ),
     );

@@ -692,6 +692,15 @@ void main() {
     for (var index = 0; index < 6; index++) {
       expect(find.byKey(Key('monthly-week-bar-$index')), findsOneWidget);
     }
+    expect(
+      tester.widget<Text>(find.byKey(const Key('monthly-count-label-0'))).data,
+      '1',
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('monthly-count-label-5'))).data,
+      '1',
+    );
+    expect(find.byKey(const Key('monthly-count-label-1')), findsNothing);
     expect(find.text('2 séances — 2 terminées · 0 incomplète'), findsOneWidget);
     expect(find.text('Séances du mois — 2'), findsOneWidget);
     expect(find.text('début août'), findsOneWidget);
@@ -758,6 +767,7 @@ void main() {
     expect(find.text('Temps total — 01:12:35'), findsOneWidget);
     expect(find.byKey(const Key('monthly-duration-value-1')), findsOneWidget);
     expect(find.byKey(const Key('monthly-duration-value-2')), findsOneWidget);
+    expect(find.byKey(const Key('monthly-count-label-1')), findsNothing);
     expect(
       tester
           .widget<DropdownButton<HistoryMetric>>(
@@ -975,6 +985,10 @@ void main() {
       find.bySemanticsLabel('1–2 août — 2 séances · 1 terminée · 1 incomplète'),
       findsOneWidget,
     );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('monthly-count-label-0'))).data,
+      '2',
+    );
     semantics.dispose();
   });
 
@@ -1005,6 +1019,7 @@ void main() {
       scrollable: find.byType(Scrollable),
     );
     expect(find.byKey(const Key('monthly-week-bar-5')), findsOneWidget);
+    expect(find.byKey(const Key('monthly-count-label-1')), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
     await tester.pump();
