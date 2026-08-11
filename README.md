@@ -78,6 +78,7 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - `file_picker` pour l'import des séances
 - `share_plus` pour l'export des séances via la fenêtre standard de partage d'éléments
 - `flutter_launcher_icons` pour la gestion du logo
+- `flutter_native_splash` pour les ressources du splash natif Android
 - `package_info_plus` pour l'affichage des informations du package dans la boîte « À propos »
 - `flutter_foreground_task` pour le Foreground Service Android de la notification persistante pendant l'exécution d'une séance
 
@@ -132,6 +133,8 @@ releases](docs/release.md).
   authentification, validations et reproductibilité.
 - [Builds et releases](docs/release.md) : distributions DEV et officielles,
   métadonnées, signature, dialogue « À propos » et publication.
+- [Notes de version 1.3.2](docs/release-notes-1.3.2.md) : couverture CI,
+  tests des frontières plateforme et ajustements ergonomiques.
 - [Notes de version 1.3.1](docs/release-notes-1.3.1.md) : maintenance,
   refactorisations internes et couverture de cette version.
 

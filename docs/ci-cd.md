@@ -79,6 +79,38 @@ Le workflow poursuit ensuite les contrôles Flutter :
 Les informations remontées par l'analyseur ne sont pas bloquantes actuellement,
 contrairement aux avertissements et aux erreurs.
 
+### Couverture des tests
+
+Après `flutter test --coverage`, le script
+`.github/scripts/coverage_report.dart` vérifie que `coverage/lcov.info` existe,
+n'est pas vide et contient des lignes Dart instrumentables sous `lib/`. Une
+entrée absente ou invalide fait échouer la validation avec un diagnostic
+explicite.
+
+Le résumé GitHub Actions présente :
+
+- les lignes couvertes, les lignes instrumentables et le pourcentage global ;
+- la baseline informative de 90,38 % établie à la fin de la version 1.3.1 ;
+- la couverture des domaines `models`, `services`, `controllers`, `screens`,
+  `widgets`, `validation`, `utils` et de la racine de `lib` ;
+- les fichiers à 0 % et ceux sous 80 % ;
+- dans une Pull Request, la couverture des lignes Dart ajoutées ou modifiées.
+
+La couverture globale est bloquante sous **90,00 %**. La couverture
+différentielle reste informative pour la version 1.3.2 ; elle affiche `N/A`
+lorsque le contexte de Pull Request est indisponible ou qu'aucune ligne
+instrumentable n'a changé.
+
+La baseline finale de la version 1.3.2, mesurée sur le commit `3f8820e`, est de
+**91,78 %** (`5 079 / 5 534` lignes) avec 422 tests réussis. Cette valeur reste
+un indicateur de couverture de lignes : elle ne remplace pas les validations
+des comportements natifs Android.
+
+Le fichier `coverage/lcov.info` est publié dans l'artefact
+`test-coverage-lcov` pendant 14 jours. Aucun service de couverture externe,
+commentaire automatique de Pull Request ou permission d'écriture
+supplémentaire n'est nécessaire.
+
 Une fois la validation réussie, un second job configure Java et Flutter,
 récupère les dépendances puis construit un APK Android debug avec :
 
