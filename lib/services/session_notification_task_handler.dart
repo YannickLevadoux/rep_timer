@@ -2,24 +2,36 @@ import 'dart:async';
 
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
-import '../utils/formatters.dart';
+import 'session_notification_platform.dart';
 import 'session_notification_protocol.dart';
 import 'step_end_trigger_scheduler.dart';
 
 /// Point d'entrée Android exigé par flutter_foreground_task.
 @pragma('vm:entry-point')
 void sessionNotificationTaskHandlerCallback() {
-  FlutterForegroundTask.setTaskHandler(SessionNotificationTaskHandler());
+  const platform = FlutterSessionNotificationPlatform();
+  platform.setTaskHandler(SessionNotificationTaskHandler(platform: platform));
 }
 
 /// Adaptateur entre le Foreground Service Android et le domaine de
 /// notification. Le calcul des seuils et l'anti-doublon sont délégués à
 /// [StepEndTriggerScheduler].
 class SessionNotificationTaskHandler extends TaskHandler {
+  SessionNotificationTaskHandler({
+    SessionNotificationTaskPlatform? platform,
+    DateTime Function()? now,
+    ScheduleTrigger? schedule,
+  }) : _platform = platform ?? const FlutterSessionNotificationPlatform() {
+    _scheduler = StepEndTriggerScheduler(
+      onEvent: (event) => _sendDataToMain(event.toWire()),
+      now: now,
+      schedule: schedule,
+    );
+  }
+
+  final SessionNotificationTaskPlatform _platform;
   SessionNotificationPinData? _state;
-  late final StepEndTriggerScheduler _scheduler = StepEndTriggerScheduler(
-    onEvent: (event) => FlutterForegroundTask.sendDataToMain(event.toWire()),
-  );
+  late final StepEndTriggerScheduler _scheduler;
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {}
@@ -28,7 +40,7 @@ class SessionNotificationTaskHandler extends TaskHandler {
   void onRepeatEvent(DateTime timestamp) {
     if (!_scheduler.hasState) return;
     _scheduler.evaluate();
-    _updateNotification();
+    unawaited(_updateNotification());
   }
 
   @override
@@ -38,44 +50,43 @@ class SessionNotificationTaskHandler extends TaskHandler {
 
     _state = state;
     _scheduler.update(state);
-    _updateNotification();
+    unawaited(_updateNotification());
   }
 
-  void _updateNotification() {
+  Future<void> _updateNotification() async {
     final state = _state;
     if (state == null) return;
 
-    final chronoText = formatDuration(
-      Duration(milliseconds: _scheduler.currentMilliseconds),
-    );
-
-    unawaited(
-      FlutterForegroundTask.updateService(
-        notificationTitle: '$chronoText — ${state.stepLabel}',
-        notificationText: state.nextStepLabel,
-        notificationIcon: NotificationIcon(
-          metaDataName: state.isPlaying
-              ? 'session_notification_icon_play'
-              : 'session_notification_icon_pause',
+    try {
+      await _platform.updateNotification(
+        SessionForegroundNotification.fromPin(
+          state,
+          _scheduler.currentMilliseconds,
         ),
-        notificationButtons: <NotificationButton>[
-          NotificationButton(
-            id: SessionNotificationAction.pause.name,
-            text: state.isPlaying ? 'Pause' : 'Reprendre',
-          ),
-        ],
-      ),
-    );
+      );
+    } catch (_) {
+      // Best effort : le service ne doit jamais interrompre la séance.
+    }
   }
 
   @override
   void onNotificationButtonPressed(String id) {
     final action = SessionNotificationAction.fromWire(id);
-    if (action != null) FlutterForegroundTask.sendDataToMain(action.name);
+    if (action != null) _sendDataToMain(action.name);
   }
 
   @override
-  void onNotificationPressed() => FlutterForegroundTask.launchApp();
+  void onNotificationPressed() {
+    try {
+      _platform.launchApp();
+    } catch (_) {}
+  }
+
+  void _sendDataToMain(Object data) {
+    try {
+      _platform.sendDataToMain(data);
+    } catch (_) {}
+  }
 
   @override
   Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {

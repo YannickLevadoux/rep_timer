@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
-import 'package:vibration/vibration.dart';
 
 import '../models/notification_sound.dart';
+import 'step_end_notification_platform.dart';
 
 /// Lecture audio/vibration des notifications de fin d'exercice/pause.
 /// Ne connaît aucune logique temporelle (quand déclencher, quand
@@ -26,20 +26,31 @@ class StepEndNotificationService implements StepEndNotifier {
   // Lecteur dédié à la séquence "3-2-1-GO" pendant une séance. Un seul
   // fichier composite par déclenchement ne nécessite plus le pool de
   // lecteurs alternés utilisé par l'ancienne approche multi-fichiers.
-  final AudioPlayer _countdownPlayer;
+  final StepEndAudioPlayer _countdownPlayer;
 
   // Lecteur séparé pour les aperçus (écran Paramètres) : les isoler du
   // lecteur de séance évite toute interférence entre les deux, et rend
   // chacun plus simple à raisonner indépendamment.
-  final AudioPlayer _previewPlayer;
+  final StepEndAudioPlayer _previewPlayer;
+
+  final StepEndVibrationPlatform _vibrationPlatform;
 
   bool _disposed = false;
 
   StepEndNotificationService({
     AudioPlayer? countdownPlayer,
     AudioPlayer? previewPlayer,
-  }) : _countdownPlayer = countdownPlayer ?? AudioPlayer(),
-       _previewPlayer = previewPlayer ?? AudioPlayer();
+    StepEndAudioPlayer? countdownAudio,
+    StepEndAudioPlayer? previewAudio,
+    StepEndVibrationPlatform? vibrationPlatform,
+  }) : assert(countdownPlayer == null || countdownAudio == null),
+       assert(previewPlayer == null || previewAudio == null),
+       _countdownPlayer =
+           countdownAudio ?? AudioplayersStepEndAudioPlayer(countdownPlayer),
+       _previewPlayer =
+           previewAudio ?? AudioplayersStepEndAudioPlayer(previewPlayer),
+       _vibrationPlatform =
+           vibrationPlatform ?? const PluginStepEndVibrationPlatform();
 
   /// Précharge la source audio de [sound] à l'avance (typiquement une
   /// fois au démarrage d'une séance), pour réduire la latence de la
@@ -50,7 +61,7 @@ class StepEndNotificationService implements StepEndNotifier {
   Future<void> preload(NotificationSound sound) async {
     if (_disposed) return;
     try {
-      await _countdownPlayer.setSource(AssetSource(sound.sequenceAsset));
+      await _countdownPlayer.setSource(sound.sequenceAsset);
     } catch (_) {
       // Ignoré : la lecture réelle rechargera la source elle-même.
     }
@@ -64,7 +75,7 @@ class StepEndNotificationService implements StepEndNotifier {
     if (_disposed) return;
     try {
       await _countdownPlayer.stop();
-      await _countdownPlayer.play(AssetSource(sound.sequenceAsset));
+      await _countdownPlayer.play(sound.sequenceAsset);
     } catch (_) {
       // Lecture best-effort : une erreur de lecture audio ne doit
       // jamais faire planter la séance en cours.
@@ -90,7 +101,7 @@ class StepEndNotificationService implements StepEndNotifier {
     if (_disposed) return;
     try {
       await _previewPlayer.stop();
-      await _previewPlayer.play(AssetSource(sound.sequenceAsset));
+      await _previewPlayer.play(sound.sequenceAsset);
     } catch (_) {}
   }
 
@@ -104,17 +115,24 @@ class StepEndNotificationService implements StepEndNotifier {
   Future<void> vibrate() async {
     if (_disposed) return;
     try {
-      final hasVibrator = await Vibration.hasVibrator();
+      final hasVibrator = await _vibrationPlatform.hasVibrator();
       if (hasVibrator == true) {
-        await Vibration.vibrate(duration: _vibrationDurationMs);
+        await _vibrationPlatform.vibrate(duration: _vibrationDurationMs);
       }
     } catch (_) {}
   }
 
   @override
   void dispose() {
+    if (_disposed) return;
     _disposed = true;
-    unawaited(_countdownPlayer.dispose());
-    unawaited(_previewPlayer.dispose());
+    unawaited(_disposePlayer(_countdownPlayer));
+    unawaited(_disposePlayer(_previewPlayer));
+  }
+
+  Future<void> _disposePlayer(StepEndAudioPlayer player) async {
+    try {
+      await player.dispose();
+    } catch (_) {}
   }
 }

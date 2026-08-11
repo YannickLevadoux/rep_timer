@@ -1,7 +1,5 @@
-import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-
 import '../models/notification_mode.dart';
-import '../utils/formatters.dart';
+import 'session_notification_platform.dart';
 import 'session_notification_permission_service.dart';
 import 'session_notification_protocol.dart';
 import 'session_notification_task_handler.dart';
@@ -38,10 +36,13 @@ const int _serviceId = 4200;
 class SessionNotificationService {
   SessionNotificationService({
     SessionNotificationPermissionService? permissionService,
+    SessionNotificationServicePlatform? platform,
   }) : _permissionService =
-           permissionService ?? SessionNotificationPermissionService();
+           permissionService ?? SessionNotificationPermissionService(),
+       _platform = platform ?? const FlutterSessionNotificationPlatform();
 
   final SessionNotificationPermissionService _permissionService;
+  final SessionNotificationServicePlatform _platform;
   bool _dataCallbackRegistered = false;
   int _pinRevision = 0;
   Future<void> _pinQueue = Future<void>.value();
@@ -50,7 +51,7 @@ class SessionNotificationService {
   void Function(String stepToken)? _onSoundThreshold;
   void Function(String stepToken, NotificationMode mode)? _onTimedStepEnded;
 
-  void _handleTaskData(dynamic data) {
+  void _handleTaskData(Object data) {
     if (SessionNotificationAction.fromWire(data) ==
         SessionNotificationAction.pause) {
       _onPausePressed?.call();
@@ -69,8 +70,13 @@ class SessionNotificationService {
   /// par le plugin pour que l'isolate principal puisse recevoir les
   /// messages envoyés par le TaskHandler, y compris avant qu'une séance
   /// n'ait démarré.
-  static void initCommunicationPort() {
-    FlutterForegroundTask.initCommunicationPort();
+  static void initCommunicationPort({
+    SessionNotificationServicePlatform? platform,
+  }) {
+    try {
+      (platform ?? const FlutterSessionNotificationPlatform())
+          .initCommunicationPort();
+    } catch (_) {}
   }
 
   /// Affiche ou met à jour la notification persistante à partir d'un
@@ -101,8 +107,12 @@ class SessionNotificationService {
     _onTimedStepEnded = onTimedStepEnded;
 
     if (!_dataCallbackRegistered) {
-      _dataCallbackRegistered = true;
-      FlutterForegroundTask.addTaskDataCallback(_handleTaskData);
+      try {
+        _platform.addTaskDataCallback(_handleTaskData);
+        _dataCallbackRegistered = true;
+      } catch (_) {
+        // Best effort : le suivi de la séance reste prioritaire.
+      }
     }
 
     final revision = ++_pinRevision;
@@ -120,9 +130,9 @@ class SessionNotificationService {
     if (revision != _pinRevision) return;
 
     try {
-      if (await FlutterForegroundTask.isRunningService) {
+      if (await _platform.isRunningService) {
         if (revision != _pinRevision) return;
-        FlutterForegroundTask.sendDataToTask(data.toWire());
+        _platform.sendDataToTask(data.toWire());
         return;
       }
       if (revision != _pinRevision) return;
@@ -131,30 +141,17 @@ class SessionNotificationService {
       // fournit donc un contenu initial correct directement à
       // startService (le TaskHandler prendra ensuite le relai dès qu'il
       // aura reçu ce même point de référence, envoyé juste après).
-      final chronoText = formatDuration(
-        Duration(milliseconds: data.baseMilliseconds),
-      );
-
-      await FlutterForegroundTask.startService(
+      await _platform.startService(
         serviceId: _serviceId,
-        notificationTitle: '$chronoText — ${data.stepLabel}',
-        notificationText: data.nextStepLabel,
-        notificationIcon: NotificationIcon(
-          metaDataName: data.isPlaying
-              ? 'session_notification_icon_play'
-              : 'session_notification_icon_pause',
+        notification: SessionForegroundNotification.fromPin(
+          data,
+          data.baseMilliseconds,
         ),
-        notificationButtons: <NotificationButton>[
-          NotificationButton(
-            id: SessionNotificationAction.pause.name,
-            text: data.isPlaying ? 'Pause' : 'Reprendre',
-          ),
-        ],
         callback: sessionNotificationTaskHandlerCallback,
       );
 
       if (revision == _pinRevision) {
-        FlutterForegroundTask.sendDataToTask(data.toWire());
+        _platform.sendDataToTask(data.toWire());
       }
     } catch (_) {
       // Cf. commentaire de classe : jamais bloquant pour la séance.
@@ -174,9 +171,9 @@ class SessionNotificationService {
   Future<void> _applyStop(int revision) async {
     if (revision != _pinRevision) return;
     try {
-      if (await FlutterForegroundTask.isRunningService) {
+      if (await _platform.isRunningService) {
         if (revision != _pinRevision) return;
-        await FlutterForegroundTask.stopService();
+        await _platform.stopService();
       }
     } catch (_) {
       // Best effort, comme pin() ci-dessus.
@@ -185,7 +182,9 @@ class SessionNotificationService {
 
   void dispose() {
     if (_dataCallbackRegistered) {
-      FlutterForegroundTask.removeTaskDataCallback(_handleTaskData);
+      try {
+        _platform.removeTaskDataCallback(_handleTaskData);
+      } catch (_) {}
       _dataCallbackRegistered = false;
     }
     _onPausePressed = null;
