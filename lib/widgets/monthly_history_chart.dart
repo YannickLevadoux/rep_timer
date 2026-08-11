@@ -12,12 +12,14 @@ class MonthlyHistoryChart extends StatelessWidget {
     required this.summary,
     required this.today,
     required this.showDuration,
+    required this.durationLabelHeight,
     required this.onOpenWeek,
   });
 
   final MonthlyHistorySummary summary;
   final DateTime today;
   final bool showDuration;
+  final double durationLabelHeight;
   final ValueChanged<LocalWeek> onOpenWeek;
 
   @override
@@ -40,6 +42,7 @@ class MonthlyHistoryChart extends StatelessWidget {
               bucket: summary.weeks[index],
               today: today,
               showDuration: showDuration,
+              durationLabelHeight: durationLabelHeight,
               maximum: maximum,
               onTap: () => onOpenWeek(summary.weeks[index].week),
             ),

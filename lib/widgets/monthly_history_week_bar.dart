@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../services/monthly_history_aggregation.dart';
-import '../utils/history_status_colors.dart';
+import 'monthly_history_count_value.dart';
+import 'monthly_history_duration_label.dart';
 import 'monthly_history_labels.dart';
 
 class MonthlyHistoryWeekBar extends StatelessWidget {
@@ -11,6 +12,7 @@ class MonthlyHistoryWeekBar extends StatelessWidget {
     required this.bucket,
     required this.today,
     required this.showDuration,
+    required this.durationLabelHeight,
     required this.maximum,
     required this.onTap,
   });
@@ -19,6 +21,7 @@ class MonthlyHistoryWeekBar extends StatelessWidget {
   final MonthlyHistoryWeekBucket bucket;
   final DateTime today;
   final bool showDuration;
+  final double durationLabelHeight;
   final int maximum;
   final VoidCallback onTap;
 
@@ -70,13 +73,34 @@ class MonthlyHistoryWeekBar extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     child: Text(
                       formatMonthlyBucketLabel(bucket),
+                      key: Key('monthly-week-label-$index'),
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ),
+                  if (showDuration && durationLabelHeight > 0 && !future) ...[
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: durationLabelHeight,
+                      child: bucket.totalDuration == Duration.zero
+                          ? null
+                          : MonthlyHistoryDurationLabel(
+                              index: index,
+                              duration: bucket.totalDuration,
+                            ),
+                    ),
+                  ],
                   SizedBox(
                     height: 14,
-                    child: future ? const Icon(Icons.schedule, size: 12) : null,
+                    child: future
+                        ? Icon(
+                            Icons.schedule,
+                            key: Key('monthly-future-icon-$index'),
+                            size: 12,
+                          )
+                        : null,
                   ),
+                  if (showDuration && durationLabelHeight > 0 && future)
+                    SizedBox(height: durationLabelHeight + 4),
                 ],
               ),
             ),
@@ -97,59 +121,15 @@ class MonthlyHistoryWeekBar extends StatelessWidget {
       );
     }
     return showDuration
-        ? _DurationValue(index: index)
-        : _CountValue(index: index, bucket: bucket);
-  }
-}
-
-class _DurationValue extends StatelessWidget {
-  const _DurationValue({required this.index});
-
-  final int index;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      key: Key('monthly-duration-value-$index'),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-      ),
-    );
-  }
-}
-
-class _CountValue extends StatelessWidget {
-  const _CountValue({required this.index, required this.bucket});
-
-  final int index;
-  final MonthlyHistoryWeekBucket bucket;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (bucket.incompleteCount > 0)
-            Expanded(
-              flex: bucket.incompleteCount,
-              child: ColoredBox(
-                key: Key('monthly-incomplete-value-$index'),
-                color: incompleteHistoryColor(context),
+        ? DecoratedBox(
+            key: Key('monthly-duration-value-$index'),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(4),
               ),
             ),
-          if (bucket.completedCount > 0)
-            Expanded(
-              flex: bucket.completedCount,
-              child: ColoredBox(
-                key: Key('monthly-completed-value-$index'),
-                color: completedHistoryColor(context),
-              ),
-            ),
-        ],
-      ),
-    );
+          )
+        : MonthlyHistoryCountValue(index: index, bucket: bucket);
   }
 }

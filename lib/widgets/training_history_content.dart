@@ -6,8 +6,8 @@ import 'monthly_history_card.dart';
 import 'storage_read_feedback.dart';
 import 'training_history_entry_card.dart';
 import 'training_history_selectors.dart';
+import 'weekly_history_count_card.dart';
 import 'weekly_history_duration_card.dart';
-import 'weekly_history_summary_card.dart';
 
 export 'training_history_selectors.dart' show HistoryMetric;
 
@@ -79,8 +79,9 @@ class _TrainingHistoryContentState extends State<TrainingHistoryContent> {
                     onOpenWeek: controller.showWeek,
                   )
                 : _metric == HistoryMetric.sessionCount
-                ? WeeklyHistorySummaryCard(
+                ? WeeklyHistoryCountCard(
                     summary: controller.summary,
+                    today: controller.today,
                     canGoNext: controller.canGoNext,
                     isCurrentWeek: controller.isCurrentWeek,
                     onPrevious: controller.showPreviousWeek,
