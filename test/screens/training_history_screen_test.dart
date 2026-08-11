@@ -142,7 +142,7 @@ void main() {
     await tester.tap(find.byKey(const Key('weekly-duration-bar-1')));
     await tester.pump();
 
-    expect(find.text('Mardi 4 août — 01:12:35 · 2 séances'), findsOneWidget);
+    expect(find.text('Mardi 4 août\n01:12:35 · 2 séances'), findsOneWidget);
   });
 
   testWidgets('un appui détaille les statuts sans filtrer la liste', (
@@ -819,6 +819,23 @@ void main() {
           .data,
       '12 min\n35 s',
     );
+    expect(
+      tester.getRect(find.byKey(const Key('monthly-duration-badge-1'))).top,
+      greaterThan(
+        tester.getRect(find.byKey(const Key('monthly-week-label-1'))).bottom,
+      ),
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('monthly-week-value-1')),
+        matching: find.byKey(const Key('monthly-duration-label-1')),
+      ),
+      findsNothing,
+    );
+    final badge = tester.widget<DecoratedBox>(
+      find.byKey(const Key('monthly-duration-badge-1')),
+    );
+    expect((badge.decoration as BoxDecoration).border, isNotNull);
     expect(find.byKey(const Key('monthly-completed-label-1')), findsNothing);
     expect(
       tester
@@ -830,49 +847,47 @@ void main() {
     );
   });
 
-  testWidgets('place hors de la barre une durée mensuelle trop à l’étroit', (
-    tester,
-  ) async {
-    final storage = _FakeHistoryStorage(
-      StorageReadSuccess([
-        _entry(
-          'longue',
-          DateTime(2026, 8, 4),
-          duration: const Duration(hours: 1),
-        ),
-        _entry(
-          'courte',
-          DateTime(2026, 8, 10),
-          duration: const Duration(minutes: 1),
-        ),
-      ]),
-    );
+  testWidgets(
+    'place la durée mensuelle sous les jours sans réduire la police',
+    (tester) async {
+      final storage = _FakeHistoryStorage(
+        StorageReadSuccess([
+          _entry(
+            'longue',
+            DateTime(2026, 8, 4),
+            duration: const Duration(hours: 1),
+          ),
+          _entry(
+            'courte',
+            DateTime(2026, 8, 10),
+            duration: const Duration(minutes: 1),
+          ),
+        ]),
+      );
 
-    await _pumpHistory(tester, storage, now: now);
-    await _selectTimeSpent(tester);
-    await _selectMonth(tester);
+      await _pumpHistory(tester, storage, now: now);
+      await _selectTimeSpent(tester);
+      await _selectMonth(tester);
 
-    expect(
-      find.byKey(const Key('monthly-duration-label-outside-2')),
-      findsOneWidget,
-    );
-    expect(
-      tester
-          .widget<Text>(find.byKey(const Key('monthly-duration-label-2')))
-          .data,
-      '1 min',
-    );
-    final durationLabel = tester.widget<Text>(
-      find.byKey(const Key('monthly-duration-label-2')),
-    );
-    expect(
-      durationLabel.style?.fontSize,
-      Theme.of(
-        tester.element(find.byKey(const Key('monthly-duration-label-2'))),
-      ).textTheme.labelSmall?.fontSize,
-    );
-    expect(tester.takeException(), isNull);
-  });
+      expect(find.byKey(const Key('monthly-duration-badge-2')), findsOneWidget);
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('monthly-duration-label-2')))
+            .data,
+        '1 min',
+      );
+      final durationLabel = tester.widget<Text>(
+        find.byKey(const Key('monthly-duration-label-2')),
+      );
+      expect(
+        durationLabel.style?.fontSize,
+        Theme.of(
+          tester.element(find.byKey(const Key('monthly-duration-label-2'))),
+        ).textTheme.labelSmall?.fontSize,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('ouvre une semaine mensuelle en conservant le temps passé', (
     tester,
@@ -1141,6 +1156,42 @@ void main() {
     );
     expect(find.byKey(const Key('monthly-week-bar-5')), findsOneWidget);
     expect(find.byKey(const Key('monthly-completed-label-1')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('les durées mensuelles restent lisibles avec le texte agrandi', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(240, 360));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final storage = _FakeHistoryStorage(
+      StorageReadSuccess([
+        _entry(
+          'activité',
+          DateTime(2026, 8, 4),
+          duration: const Duration(hours: 1, minutes: 12, seconds: 35),
+        ),
+      ]),
+    );
+
+    await _pumpHistory(tester, storage, now: now, textScale: 2);
+    await _selectTimeSpent(tester);
+    await _selectMonth(tester);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('monthly-history-card')),
+      150,
+      scrollable: find.byType(Scrollable),
+    );
+
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('monthly-duration-label-1')))
+          .data,
+      '1 h\n12 min\n35 s',
+    );
     expect(tester.takeException(), isNull);
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
     await tester.pump();

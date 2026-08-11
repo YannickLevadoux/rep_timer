@@ -36,7 +36,9 @@ class WeeklyHistoryDurationChart extends StatelessWidget {
               index: index,
               day: summary.days[index],
               today: today,
-              detail: formatWeeklyHistoryDayDetail(summary.days[index]),
+              detail: formatWeeklyHistoryDurationDaySemantic(
+                summary.days[index],
+              ),
               value: WeeklyHistoryBarValue(
                 valueKey: Key('weekly-duration-value-$index'),
                 fraction: _fraction(summary.days[index], maximum),

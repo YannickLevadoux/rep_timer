@@ -37,7 +37,16 @@ const _months = [
 ];
 
 String formatWeeklyHistoryDayDetail(WeeklyHistoryDay day) {
-  return '${_formatDayDate(day)} — ${formatLongDuration(day.duration)} '
+  return '${_formatDayDate(day)}\n${_formatWeeklyHistoryDurationBreakdown(day)}';
+}
+
+String formatWeeklyHistoryDurationDaySemantic(WeeklyHistoryDay day) {
+  return '${_formatDayDate(day)} — '
+      '${_formatWeeklyHistoryDurationBreakdown(day)}';
+}
+
+String _formatWeeklyHistoryDurationBreakdown(WeeklyHistoryDay day) {
+  return '${formatLongDuration(day.duration)} '
       '· ${day.sessionCount} '
       '${weeklyHistoryPlural(day.sessionCount, 'séance')}';
 }

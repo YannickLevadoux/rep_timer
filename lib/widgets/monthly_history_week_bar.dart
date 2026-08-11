@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/monthly_history_aggregation.dart';
 import 'monthly_history_count_value.dart';
-import 'monthly_history_duration_value.dart';
+import 'monthly_history_duration_label.dart';
 import 'monthly_history_labels.dart';
 
 class MonthlyHistoryWeekBar extends StatelessWidget {
@@ -12,6 +12,7 @@ class MonthlyHistoryWeekBar extends StatelessWidget {
     required this.bucket,
     required this.today,
     required this.showDuration,
+    required this.durationLabelHeight,
     required this.maximum,
     required this.onTap,
   });
@@ -20,6 +21,7 @@ class MonthlyHistoryWeekBar extends StatelessWidget {
   final MonthlyHistoryWeekBucket bucket;
   final DateTime today;
   final bool showDuration;
+  final double durationLabelHeight;
   final int maximum;
   final VoidCallback onTap;
 
@@ -71,9 +73,22 @@ class MonthlyHistoryWeekBar extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     child: Text(
                       formatMonthlyBucketLabel(bucket),
+                      key: Key('monthly-week-label-$index'),
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ),
+                  if (showDuration && durationLabelHeight > 0) ...[
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: durationLabelHeight,
+                      child: bucket.totalDuration == Duration.zero
+                          ? null
+                          : MonthlyHistoryDurationLabel(
+                              index: index,
+                              duration: bucket.totalDuration,
+                            ),
+                    ),
+                  ],
                   SizedBox(
                     height: 14,
                     child: future ? const Icon(Icons.schedule, size: 12) : null,
@@ -98,9 +113,14 @@ class MonthlyHistoryWeekBar extends StatelessWidget {
       );
     }
     return showDuration
-        ? MonthlyHistoryDurationValue(
-            index: index,
-            duration: bucket.totalDuration,
+        ? DecoratedBox(
+            key: Key('monthly-duration-value-$index'),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(4),
+              ),
+            ),
           )
         : MonthlyHistoryCountValue(index: index, bucket: bucket);
   }
