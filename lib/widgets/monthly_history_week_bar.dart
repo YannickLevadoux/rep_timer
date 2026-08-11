@@ -77,7 +77,7 @@ class MonthlyHistoryWeekBar extends StatelessWidget {
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ),
-                  if (showDuration && durationLabelHeight > 0) ...[
+                  if (showDuration && durationLabelHeight > 0 && !future) ...[
                     const SizedBox(height: 4),
                     SizedBox(
                       height: durationLabelHeight,
@@ -91,7 +91,13 @@ class MonthlyHistoryWeekBar extends StatelessWidget {
                   ],
                   SizedBox(
                     height: 14,
-                    child: future ? const Icon(Icons.schedule, size: 12) : null,
+                    child: future
+                        ? Icon(
+                            Icons.schedule,
+                            key: Key('monthly-future-icon-$index'),
+                            size: 12,
+                          )
+                        : null,
                   ),
                 ],
               ),

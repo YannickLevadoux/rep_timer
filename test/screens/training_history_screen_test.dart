@@ -800,7 +800,7 @@ void main() {
       ]),
     );
 
-    await _pumpHistory(tester, storage, now: now);
+    await _pumpHistory(tester, storage, now: DateTime(2026, 8, 12, 12));
     await _selectTimeSpent(tester);
     await _selectMonth(tester);
 
@@ -836,6 +836,11 @@ void main() {
       find.byKey(const Key('monthly-duration-badge-1')),
     );
     expect((badge.decoration as BoxDecoration).border, isNotNull);
+    expect(
+      tester.getRect(find.byKey(const Key('monthly-future-icon-3'))).top -
+          tester.getRect(find.byKey(const Key('monthly-week-label-3'))).bottom,
+      lessThan(4),
+    );
     expect(find.byKey(const Key('monthly-completed-label-1')), findsNothing);
     expect(
       tester
@@ -865,7 +870,7 @@ void main() {
         ]),
       );
 
-      await _pumpHistory(tester, storage, now: now);
+      await _pumpHistory(tester, storage, now: DateTime(2026, 8, 12, 12));
       await _selectTimeSpent(tester);
       await _selectMonth(tester);
 
