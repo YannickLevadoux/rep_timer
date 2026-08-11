@@ -166,8 +166,14 @@ void main() {
     await tester.pump();
 
     expect(
-      find.text('Mardi 4 août — 3 séances · 2 terminées · 1 incomplète'),
+      find.text('Mardi 4 août\n3 séances · 2 terminées · 1 incomplète'),
       findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('weekly-count-day-detail')))
+          .textAlign,
+      TextAlign.center,
     );
     expect(find.text('Séances de la semaine — 4'), findsOneWidget);
     expect(find.text('mercredi'), findsOneWidget);
@@ -628,7 +634,7 @@ void main() {
     await tester.pump();
 
     expect(
-      find.text('Mardi 4 août — 3 séances · 2 terminées · 1 incomplète'),
+      find.text('Mardi 4 août\n3 séances · 2 terminées · 1 incomplète'),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);

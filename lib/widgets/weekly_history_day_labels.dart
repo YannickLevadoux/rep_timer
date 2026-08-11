@@ -56,7 +56,13 @@ String formatWeeklyHistoryCountSemanticSummary(WeeklyHistorySummary summary) =>
     'Bilan hebdomadaire : ${formatWeeklyHistoryCountSummary(summary)}';
 
 String formatWeeklyHistoryCountDayDetail(WeeklyHistoryDay day) =>
-    '${_formatDayDate(day)} — ${day.sessionCount} '
+    '${_formatDayDate(day)}\n${_formatWeeklyHistoryCountBreakdown(day)}';
+
+String formatWeeklyHistoryCountDaySemantic(WeeklyHistoryDay day) =>
+    '${_formatDayDate(day)} — ${_formatWeeklyHistoryCountBreakdown(day)}';
+
+String _formatWeeklyHistoryCountBreakdown(WeeklyHistoryDay day) =>
+    '${day.sessionCount} '
     '${weeklyHistoryPlural(day.sessionCount, 'séance')} · '
     '${day.completedCount} '
     '${weeklyHistoryPlural(day.completedCount, 'terminée')} · '

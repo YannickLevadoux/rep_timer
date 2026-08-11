@@ -37,7 +37,7 @@ class WeeklyHistoryCountChart extends StatelessWidget {
               index: index,
               day: summary.days[index],
               today: today,
-              detail: formatWeeklyHistoryCountDayDetail(summary.days[index]),
+              detail: formatWeeklyHistoryCountDaySemantic(summary.days[index]),
               value: WeeklyHistoryBarValue(
                 valueKey: Key('weekly-count-value-$index'),
                 fraction: _fraction(summary.days[index], maximum),
