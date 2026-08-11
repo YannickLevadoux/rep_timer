@@ -1,0 +1,17 @@
+flutter_native_splash:
+  android: true
+  ios: false
+  web: false
+
+  color: "#673AB7"
+  color_dark: "#673AB7"
+  image: assets/icon/app_icon_foreground.png
+  image_dark: assets/icon/app_icon_foreground.png
+  android_gravity: center
+  android_screen_orientation: portrait
+
+  android_12:
+    color: "#673AB7"
+    color_dark: "#673AB7"
+    image: assets/icon/app_icon_foreground.png
+    image_dark: assets/icon/app_icon_foreground.png
