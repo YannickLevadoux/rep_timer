@@ -99,6 +99,8 @@ class MonthlyHistoryWeekBar extends StatelessWidget {
                           )
                         : null,
                   ),
+                  if (showDuration && durationLabelHeight > 0 && future)
+                    SizedBox(height: durationLabelHeight + 4),
                 ],
               ),
             ),

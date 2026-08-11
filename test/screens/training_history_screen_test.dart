@@ -841,6 +841,13 @@ void main() {
           tester.getRect(find.byKey(const Key('monthly-week-label-3'))).bottom,
       lessThan(4),
     );
+    expect(
+      tester.getRect(find.byKey(const Key('monthly-week-value-3'))).bottom,
+      moreOrLessEquals(
+        tester.getRect(find.byKey(const Key('monthly-week-value-1'))).bottom,
+        epsilon: 0.01,
+      ),
+    );
     expect(find.byKey(const Key('monthly-completed-label-1')), findsNothing);
     expect(
       tester
