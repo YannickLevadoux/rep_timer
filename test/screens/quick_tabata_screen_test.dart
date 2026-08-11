@@ -4,6 +4,7 @@ import 'package:rep_timer/screens/quick_tabata_screen.dart';
 import 'package:rep_timer/screens/training_session.dart';
 import 'package:rep_timer/services/session_notification_permission_service.dart';
 import 'package:rep_timer/widgets/duration_minutes_seconds_picker.dart';
+import 'package:rep_timer/widgets/number_wheel_field.dart';
 import 'package:rep_timer/widgets/rounds_editor.dart';
 
 import '../support/fake_session_permission_platform.dart';
@@ -53,6 +54,75 @@ void main() {
       findsNothing,
     );
     expect(find.byType(TextField), findsOneWidget);
+  });
+
+  testWidgets('Work et Pause alignent libellé à gauche et saisie à droite', (
+    tester,
+  ) async {
+    await _pumpScreen(tester, surfaceSize: const Size(360, 640));
+
+    final pickers = find.byType(DurationMinutesSecondsPicker);
+    _expectCompactDurationRow(tester, find.text('Work'), pickers.at(0));
+    _expectCompactDurationRow(tester, find.text('Pause'), pickers.at(1));
+  });
+
+  testWidgets('conserve les dimensions des roues de durée partagées', (
+    tester,
+  ) async {
+    await _pumpScreen(tester, surfaceSize: const Size(360, 640));
+
+    final wheels = find.byType(NumberWheelField);
+    expect(wheels, findsNWidgets(4));
+    for (var index = 0; index < 4; index++) {
+      final wheel = find.descendant(
+        of: wheels.at(index),
+        matching: find.byType(ListWheelScrollView),
+      );
+      expect(tester.getSize(wheel), const Size(64, 120));
+    }
+  });
+
+  testWidgets('compacte la carte sans réduire la durée ni son aide', (
+    tester,
+  ) async {
+    await _pumpScreen(tester, surfaceSize: const Size(360, 640));
+
+    final card = find.ancestor(
+      of: find.text('Temps total estimé'),
+      matching: find.byType(Card),
+    );
+    expect(tester.getSize(card).height, lessThan(88));
+
+    final durationText = tester.widget<Text>(find.text('00:20'));
+    expect(durationText.style?.fontSize, 18);
+    expect(durationText.style?.fontWeight, FontWeight.bold);
+
+    final help = find.byTooltip('Informations sur la durée estimée');
+    final helpSize = tester.getSize(help);
+    expect(helpSize, const Size.square(40));
+  });
+
+  testWidgets('Commencer est visible et lance la séance sur 360 × 640', (
+    tester,
+  ) async {
+    await _pumpScreen(tester, surfaceSize: const Size(360, 640));
+
+    final start = find.widgetWithText(FilledButton, 'Commencer');
+    final scrollable = Scrollable.of(tester.element(start));
+    expect(scrollable.position.pixels, 0);
+
+    final buttonRect = tester.getRect(start);
+    expect(buttonRect.top, greaterThanOrEqualTo(0));
+    expect(buttonRect.bottom, lessThanOrEqualTo(640));
+    expect(start.hitTestable(), findsOneWidget);
+
+    await tester.tap(start);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(
+      find.byType(TrainingSessionScreen, skipOffstage: false),
+      findsOneWidget,
+    );
   });
 
   testWidgets('affiche 01:20 pour 20 s, 10 s et 3 répétitions', (tester) async {
@@ -135,31 +205,66 @@ void main() {
   testWidgets('la carte ne déborde pas sur une largeur réduite', (
     tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(240, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: MediaQuery(
-          data: MediaQueryData(textScaler: TextScaler.linear(1.5)),
-          child: QuickTabataScreen(),
-        ),
-      ),
+    await _pumpScreen(
+      tester,
+      surfaceSize: const Size(240, 640),
+      textScaler: const TextScaler.linear(1.5),
     );
-    await tester.pump();
 
-    await tester.ensureVisible(find.text('Temps total estimé'));
-    await tester.pump();
+    final work = find.text('Work');
+    final workPicker = find.byType(DurationMinutesSecondsPicker).first;
+    expect(
+      tester.getBottomLeft(work).dy,
+      lessThanOrEqualTo(tester.getTopLeft(workPicker).dy),
+    );
+
+    final start = find.widgetWithText(FilledButton, 'Commencer');
+    final scrollable = Scrollable.of(tester.element(start));
+    expect(scrollable.position.maxScrollExtent, greaterThan(0));
 
     expect(tester.takeException(), isNull);
     expect(find.text('Temps total estimé'), findsOneWidget);
     expect(find.text('00:20'), findsOneWidget);
+
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -600),
+    );
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(start.hitTestable(), findsOneWidget);
+  });
+
+  testWidgets('le nom vide reste refusé', (tester) async {
+    await _pumpScreen(tester);
+
+    await tester.enterText(find.byType(TextField), '   ');
+    final start = find.widgetWithText(FilledButton, 'Commencer');
+    await tester.ensureVisible(start);
+    await tester.tap(start);
+    await tester.pump();
+
+    expect(find.text('Ce champ est obligatoire.'), findsOneWidget);
+    expect(find.byType(TrainingSessionScreen), findsNothing);
   });
 }
 
-Future<void> _pumpScreen(WidgetTester tester) {
+Future<void> _pumpScreen(
+  WidgetTester tester, {
+  Size? surfaceSize,
+  TextScaler textScaler = TextScaler.noScaling,
+}) async {
+  if (surfaceSize != null) {
+    await tester.binding.setSurfaceSize(surfaceSize);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+  }
+
   return tester.pumpWidget(
     MaterialApp(
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+        child: child!,
+      ),
       home: QuickTabataScreen(
         permissionService: SessionNotificationPermissionService(
           platform: GrantedSessionPermissionPlatform(),
@@ -167,6 +272,16 @@ Future<void> _pumpScreen(WidgetTester tester) {
       ),
     ),
   );
+}
+
+void _expectCompactDurationRow(
+  WidgetTester tester,
+  Finder label,
+  Finder picker,
+) {
+  expect(tester.getCenter(label).dy, closeTo(tester.getCenter(picker).dy, 0.1));
+  expect(tester.getTopLeft(label).dx, closeTo(16, 0.1));
+  expect(tester.getTopRight(picker).dx, closeTo(344, 0.1));
 }
 
 int _rounds(WidgetTester tester) {

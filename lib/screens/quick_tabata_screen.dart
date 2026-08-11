@@ -120,7 +120,7 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text("Quick Tabata")),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -135,7 +135,7 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
               ),
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 8),
 
             QuickTabataDurationSection(
               title: "Work",
@@ -143,7 +143,7 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
               onChanged: (duration) => setState(() => _workDuration = duration),
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 8),
 
             QuickTabataDurationSection(
               title: "Pause",
@@ -152,15 +152,15 @@ class _QuickTabataScreenState extends State<QuickTabataScreen> {
                   setState(() => _pauseDuration = duration),
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 8),
 
             RoundsEditor(rounds: _repetitions, onChanged: _setRepetitions),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 8),
 
             QuickTabataEstimatedDurationCard(duration: estimatedDuration),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 8),
 
             FilledButton.icon(
               onPressed: _starting ? null : _start,
