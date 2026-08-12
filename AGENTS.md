@@ -107,10 +107,16 @@ For refactoring issues:
 
 * Development branches follow `<type>/<issue>-<description>`, where `type` is
   `feature`, `bugfix`, `hotfix`, or `clean`.
-* Do not create commits unless explicitly requested.
-* When an issue requests delivery, push the associated branch and let
-  `.github/workflows/issue-lifecycle.yml` create or recover the pull request.
-  Do not create a duplicate pull request manually.
+* When a GitHub issue specifies a development branch, work on that exact
+  branch. The specified branch authorizes commits for that issue. If the issue
+  does not specify a branch, do not create a commit.
+* After completing the issue and its required validation, commit the scoped
+  changes and push the specified branch to the remote repository.
+* Let `.github/workflows/issue-lifecycle.yml` create or recover the pull
+  request, then verify that an open pull request targeting `main` exists and
+  references the issue. Do not create a duplicate pull request manually.
+* After that verification, the Product Owner is responsible for following the
+  GitHub Actions checks and merging the pull request.
 * Do not push directly to `main`, merge a pull request, create a tag, or publish
   a release unless explicitly authorized.
 * Do not modify CI/CD workflows unless the issue concerns CI/CD.
