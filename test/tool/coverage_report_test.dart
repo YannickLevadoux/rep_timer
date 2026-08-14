@@ -166,6 +166,42 @@ void main() {
     expect(markdown, contains('90.00 % — ℹ️ non évalué'));
   });
 
+  test('prépare les annotations de succès global et différentiel', () {
+    final result = coverage.CoverageReportResult(
+      summary: coverage.summarizeCoverage(
+        coverage.parseLcov(fixture('above-threshold.info')),
+      ),
+      changedCoverage: const coverage.ChangedCoverage.available(
+        covered: 9,
+        total: 10,
+      ),
+      markdown: '',
+    );
+
+    expect(coverage.coverageNotices(result), [
+      'Le seuil de test global de 91.78 % est atteint : 92.31 %.',
+      'Le seuil de test différentiel de 90.00 % est atteint : 90.00 %.',
+    ]);
+  });
+
+  test('annote honnêtement une couverture différentielle indisponible', () {
+    final result = coverage.CoverageReportResult(
+      summary: coverage.summarizeCoverage(
+        coverage.parseLcov(fixture('above-threshold.info')),
+      ),
+      changedCoverage: const coverage.ChangedCoverage.unavailable(
+        'contexte de pull request indisponible',
+      ),
+      markdown: '',
+    );
+
+    expect(coverage.coverageNotices(result), [
+      'Le seuil de test global de 91.78 % est atteint : 92.31 %.',
+      'Le seuil de test différentiel de 90.00 % n’est pas évalué : '
+          'contexte de pull request indisponible.',
+    ]);
+  });
+
   test(
     'rend la couverture différentielle insuffisante bloquante en CLI',
     () async {

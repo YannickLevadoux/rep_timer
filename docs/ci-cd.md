@@ -96,6 +96,11 @@ Le résumé GitHub Actions présente :
 - les fichiers à 0 % et ceux sous 80 % ;
 - dans une Pull Request, la couverture des lignes Dart ajoutées ou modifiées.
 
+Lorsque les seuils sont atteints, le script ajoute aussi deux annotations dans
+le job : l'une indique le seuil et la mesure de couverture globale, l'autre le
+seuil et la mesure de couverture différentielle. Si cette dernière n'est pas
+calculable, l'annotation conserve le diagnostic à la place d'un faux succès.
+
 La couverture globale est bloquante sous **91,78 %**. La couverture des lignes
 ajoutées ou modifiées est bloquante sous **90,00 %** lorsqu'elle est
 calculable. Elle affiche `N/A` sans faire échouer ce second contrôle lorsque le

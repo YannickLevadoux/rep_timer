@@ -464,6 +464,45 @@ void appendSummary(String markdown, String? summaryPath) {
   File(summaryPath).writeAsStringSync(markdown, mode: FileMode.append);
 }
 
+List<String> coverageNotices(CoverageReportResult result) {
+  return [
+    if (result.summary.passesThreshold)
+      'Le seuil de test global de '
+          '${formatPercentage(result.summary.threshold)} est atteint : '
+          '${formatPercentage(result.summary.percentage)}.',
+    if (result.changedCoverage.isAvailable &&
+        result.changedCoverage.passesThreshold)
+      'Le seuil de test différentiel de '
+          '${formatPercentage(changedCoverageThreshold)} est atteint : '
+          '${formatPercentage(result.changedCoverage.percentage)}.',
+    if (!result.changedCoverage.isAvailable)
+      'Le seuil de test différentiel de '
+          '${formatPercentage(changedCoverageThreshold)} n’est pas évalué : '
+          '${result.changedCoverage.reason}.',
+  ];
+}
+
+String escapeWorkflowCommandData(String value) {
+  return value
+      .replaceAll('%', '%25')
+      .replaceAll('\r', '%0D')
+      .replaceAll('\n', '%0A');
+}
+
+void writeCoverageNotices(
+  CoverageReportResult result,
+  Map<String, String> environment,
+) {
+  if (environment['GITHUB_ACTIONS'] != 'true') return;
+
+  for (final notice in coverageNotices(result)) {
+    stdout.writeln(
+      '::notice title=Couverture des tests::'
+      '${escapeWorkflowCommandData(notice)}',
+    );
+  }
+}
+
 int runCli(List<String> arguments, Map<String, String> environment) {
   try {
     final workspace = environment['GITHUB_WORKSPACE'] ?? Directory.current.path;
@@ -474,6 +513,7 @@ int runCli(List<String> arguments, Map<String, String> environment) {
       headSha: environment['COVERAGE_HEAD_SHA'],
     );
     appendSummary(result.markdown, environment['GITHUB_STEP_SUMMARY']);
+    writeCoverageNotices(result, environment);
     stdout.writeln(
       'Couverture globale : ${result.summary.covered} / '
       '${result.summary.total} '
