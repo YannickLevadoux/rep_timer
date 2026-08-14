@@ -64,7 +64,6 @@ class SessionControllerComposition {
     );
     final timedGroups = SessionTimedGroupState(
       steps: progress.steps,
-      currentIndex: progress.currentIndex,
       checkpoint: restored,
     );
     final checkpoints = checkpointStorage ?? SessionCheckpointStorage();
@@ -150,7 +149,7 @@ class SessionControllerComposition {
     stepElapsed: clock.stepElapsed,
     paused: clock.paused,
     stepActualDurations: progress.stepActualDurations,
-    amrapState: timedGroups.checkpointFor(
+    amrapStates: timedGroups.checkpoints(
       index: progress.currentIndex,
       stepElapsed: clock.stepElapsed,
     ),

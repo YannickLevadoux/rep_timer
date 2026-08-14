@@ -4,6 +4,7 @@ Future<bool> showAmrapRestartDialog(BuildContext context) async =>
     await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
         title: const Text("Recommencer l'AMRAP ?"),
         content: const Text(
           'Les tours enregistrés pour cette tentative seront supprimés.',

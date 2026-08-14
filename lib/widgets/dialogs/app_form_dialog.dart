@@ -28,6 +28,7 @@ Future<T?> showAppFormDialog<T extends Object>(
       return StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
+            scrollable: true,
             title: Text(title),
             content: contentBuilder(context, setDialogState),
             actions: [

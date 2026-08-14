@@ -91,4 +91,19 @@ void main() {
     expect(state.requiresRestart, isFalse);
     expect(state.activeRemaining, const Duration(minutes: 1));
   });
+
+  test('un checkpoint conserve le statut incomplet après navigation', () {
+    final original = AmrapExecutionState(const Duration(minutes: 1));
+    original.markIncomplete(const Duration(seconds: 12));
+
+    final checkpoint = original.toCheckpoint();
+    final restored = AmrapExecutionState.fromCheckpoint(checkpoint);
+
+    expect(checkpoint.incomplete, isTrue);
+    expect(restored.requiresRestart, isTrue);
+    expect(
+      restored.toHistory(stepCompleted: false).partialLapDuration,
+      const Duration(seconds: 12),
+    );
+  });
 }

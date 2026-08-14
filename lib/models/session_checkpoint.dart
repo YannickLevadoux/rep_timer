@@ -17,7 +17,10 @@ class SessionCheckpoint {
   // l'historique détaillé) ; l'étape courante n'y figure pas encore tant
   // qu'on ne l'a pas quittée, voir stepElapsed pour son temps en cours.
   final List<Duration> stepActualDurations;
-  final AmrapCheckpointState? amrapState;
+  final Map<int, AmrapCheckpointState> amrapStates;
+
+  /// Alias rétro-compatible de l'état de l'occurrence courante.
+  AmrapCheckpointState? get amrapState => amrapStates[currentIndex];
 
   SessionCheckpoint({
     required this.trainingId,
@@ -29,9 +32,14 @@ class SessionCheckpoint {
     required this.savedAt,
     required List<Duration> stepActualDurations,
     AmrapCheckpointState? amrapState,
+    Map<int, AmrapCheckpointState> amrapStates = const {},
   }) : completed = List.unmodifiable(completed),
        stepActualDurations = List.unmodifiable(stepActualDurations),
-       amrapState = amrapState?.copy();
+       amrapStates = _copyAmrapStates(
+         currentIndex: currentIndex,
+         currentState: amrapState,
+         states: amrapStates,
+       );
 
   Map<String, dynamic> toJson() => {
     'trainingId': trainingId,
@@ -45,6 +53,9 @@ class SessionCheckpoint {
         .map((d) => d.inSeconds)
         .toList(),
     'amrapState': amrapState?.toJson(),
+    'amrapStates': amrapStates.map(
+      (index, state) => MapEntry('$index', state.toJson()),
+    ),
   };
 
   factory SessionCheckpoint.fromJson(Map<String, dynamic> json) {
@@ -70,6 +81,33 @@ class SessionCheckpoint {
           : AmrapCheckpointState.fromJson(
               json['amrapState'] as Map<String, dynamic>,
             ),
+      amrapStates: _statesFromJson(json['amrapStates']),
+    );
+  }
+
+  static Map<int, AmrapCheckpointState> _copyAmrapStates({
+    required int currentIndex,
+    required AmrapCheckpointState? currentState,
+    required Map<int, AmrapCheckpointState> states,
+  }) {
+    final copy = <int, AmrapCheckpointState>{
+      for (final entry in states.entries) entry.key: entry.value.copy(),
+    };
+    if (currentState != null) copy.putIfAbsent(currentIndex, currentState.copy);
+    if (copy.keys.any((index) => index < 0)) {
+      throw const FormatException("L'index AMRAP doit être positif.");
+    }
+    return Map.unmodifiable(copy);
+  }
+
+  static Map<int, AmrapCheckpointState> _statesFromJson(Object? value) {
+    if (value == null) return const {};
+    final json = value as Map<String, dynamic>;
+    return json.map(
+      (index, state) => MapEntry(
+        int.parse(index),
+        AmrapCheckpointState.fromJson(state as Map<String, dynamic>),
+      ),
     );
   }
 }

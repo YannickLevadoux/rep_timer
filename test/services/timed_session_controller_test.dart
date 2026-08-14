@@ -85,6 +85,113 @@ void main() {
     },
   );
 
+  test('la récupération AMRAP reste une pause classique', () async {
+    final amrap = ExerciseGroup.amrap(id: 'amrap')
+      ..items.single.duration = const Duration(minutes: 1)
+      ..postGroupRestDuration = const Duration(seconds: 30);
+    final harness = TimedSessionHarness(_amrapTraining(amrap: amrap));
+    final controller = harness.build();
+    addTearDown(controller.dispose);
+
+    harness.advance(const Duration(minutes: 1));
+    await _flush();
+    expect(controller.currentStep.item.type, ItemType.rest);
+    expect(controller.amrap, isNull);
+
+    harness.advance(const Duration(seconds: 30));
+    expect(controller.currentStep.group.id, 'next');
+    await controller.finishSession(earlyExit: true);
+    final recovery = harness.history.entries.single.steps.singleWhere(
+      (step) => step.itemType == ItemType.rest,
+    );
+    expect(recovery.actualDuration, const Duration(seconds: 30));
+    expect(recovery.amrap, isNull);
+  });
+
+  test('le checkpoint conserve un AMRAP quitté puis repris ailleurs', () async {
+    final harness = TimedSessionHarness(_amrapTraining());
+    final controller = harness.build();
+    harness.advance(const Duration(seconds: 12));
+    expect(controller.goToNext(), isTrue);
+    await _flush();
+    final checkpoint = harness.checkpoints.saved.last;
+    controller.dispose();
+
+    final restored = harness.build(checkpoint: checkpoint);
+    addTearDown(restored.dispose);
+    expect(restored.currentIndex, 1);
+    expect(restored.requiresAmrapRestart(0), isTrue);
+    expect(restored.jumpToStep(0), isFalse);
+
+    await restored.finishSession(earlyExit: true);
+    final amrap = harness.history.entries.single.steps.first.amrap!;
+    expect(amrap.completed, isFalse);
+    expect(amrap.partialLapDuration, const Duration(seconds: 12));
+  });
+
+  test('recommencer un AMRAP expiré efface aussi sa complétion', () async {
+    final harness = TimedSessionHarness(_amrapTraining());
+    final controller = harness.build();
+    addTearDown(controller.dispose);
+    harness.advance(const Duration(minutes: 1));
+    await _flush();
+    expect(controller.completed.first, isTrue);
+
+    expect(controller.jumpToStep(0, restartAmrap: true), isTrue);
+    expect(controller.completed.first, isFalse);
+    harness.advance(const Duration(seconds: 5));
+    await controller.finishSession(earlyExit: true);
+
+    final amrap = harness.history.entries.single.steps.first.amrap!;
+    expect(amrap.completed, isFalse);
+    expect(amrap.completedLapDurations, isEmpty);
+    expect(amrap.partialLapDuration, const Duration(seconds: 5));
+  });
+
+  test('borne l’historique AMRAP au temps actif configuré', () async {
+    final harness = TimedSessionHarness(_amrapTraining());
+    final controller = harness.build();
+    addTearDown(controller.dispose);
+    harness.advance(const Duration(seconds: 65));
+    await _flush();
+    await controller.finishSession(earlyExit: true);
+
+    final step = harness.history.entries.single.steps.first;
+    expect(step.actualDuration, const Duration(minutes: 1));
+    expect(step.amrap!.activeDuration, const Duration(minutes: 1));
+    expect(step.amrap!.completedLapDurations, isEmpty);
+    expect(step.amrap!.partialLapDuration, const Duration(minutes: 1));
+  });
+
+  test('le mode désactivé ne notifie pas à expiration AMRAP', () async {
+    final harness = TimedSessionHarness(_amrapTraining());
+    final controller = harness.build();
+    addTearDown(controller.dispose);
+    await _flush();
+
+    harness.advance(const Duration(minutes: 1));
+    await _flush();
+    expect(harness.notifier.soundCalls, 0);
+    expect(harness.notifier.vibrationCalls, 0);
+  });
+
+  test('le mode vibration notifie uniquement l’expiration AMRAP', () async {
+    final harness = TimedSessionHarness(
+      _amrapTraining(),
+      mode: NotificationMode.vibration,
+    );
+    final controller = harness.build();
+    addTearDown(controller.dispose);
+    await _flush();
+
+    harness.advance(const Duration(seconds: 20));
+    expect(controller.recordAmrapLap(), isTrue);
+    expect(harness.notifier.vibrationCalls, 0);
+    harness.advance(const Duration(seconds: 40));
+    await _flush();
+    expect(harness.notifier.vibrationCalls, 1);
+  });
+
   test(
     'EMOM avance à zéro, vibre et remet une minute revisitée à faire',
     () async {
@@ -209,12 +316,13 @@ void main() {
 
 Future<void> _flush() => Future<void>.delayed(Duration.zero);
 
-Training _amrapTraining() => Training(
+Training _amrapTraining({ExerciseGroup? amrap}) => Training(
   id: 'training',
   name: 'Séance',
   groups: [
-    ExerciseGroup.amrap(id: 'amrap')
-      ..items.single.duration = const Duration(minutes: 1),
+    amrap ??
+        (ExerciseGroup.amrap(id: 'amrap')
+          ..items.single.duration = const Duration(minutes: 1)),
     ExerciseGroup(
       id: 'next',
       name: 'Suite',

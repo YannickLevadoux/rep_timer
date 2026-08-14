@@ -34,7 +34,7 @@ class SessionAmrapControls extends StatelessWidget {
           onPressed: state.canRecordLap ? onRecordLap : null,
           child: const Padding(
             padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-            child: Text('+ Tour terminé'),
+            child: Text('+ Tour terminé', style: TextStyle(fontSize: 16)),
           ),
         ),
         const SizedBox(height: 8),

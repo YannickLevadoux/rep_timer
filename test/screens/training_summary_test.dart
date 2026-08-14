@@ -228,6 +228,19 @@ void main() {
 
     expect(find.text('Tabata · 8 cycles · 04:07'), findsOneWidget);
   });
+
+  testWidgets('résume l’AMRAP et sa récupération selon sa position', (
+    tester,
+  ) async {
+    final amrap = ExerciseGroup.amrap(id: 'amrap')
+      ..postGroupRestDuration = const Duration(minutes: 1);
+
+    await _pumpSummary(tester, _training(groups: [amrap]));
+    expect(find.text('AMRAP · Effort · 02:00'), findsOneWidget);
+
+    await _pumpSummary(tester, _training(groups: [amrap, _group('Suite')]));
+    expect(find.text('AMRAP · Effort · 03:00'), findsOneWidget);
+  });
 }
 
 void _expectBadge(

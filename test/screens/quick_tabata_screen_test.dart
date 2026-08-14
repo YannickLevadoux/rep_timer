@@ -70,6 +70,30 @@ void main() {
     expect(find.text('02:00'), findsNWidgets(2));
   });
 
+  testWidgets('AMRAP rapide lance le moteur partagé sans récupération', (
+    tester,
+  ) async {
+    await _pumpScreen(tester);
+    await _chooseType(tester, GroupType.amrap);
+    await tester.tap(find.text('Continuer'));
+    await tester.pumpAndSettle();
+
+    final start = find.text('Commencer');
+    await tester.ensureVisible(start);
+    await tester.tap(start);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final session = tester.widget<TrainingSessionScreen>(
+      find.byType(TrainingSessionScreen, skipOffstage: false),
+    );
+    expect(session.training.groups.single.type, GroupType.amrap);
+    expect(session.training.groups.single.postGroupRestDuration, isNull);
+    expect(
+      session.trainingChangesPersistence,
+      TrainingChangesPersistence.memoryOnly,
+    );
+  });
+
   testWidgets('EMOM utilise dix minutes fixes sans récupération rapide', (
     tester,
   ) async {
@@ -122,7 +146,7 @@ void main() {
 
   for (final brightness in Brightness.values) {
     testWidgets(
-      'reste utilisable sur petit écran, texte agrandi, $brightness',
+      'AMRAP reste utilisable sur petit écran, texte agrandi, $brightness',
       (tester) async {
         await _pumpScreen(
           tester,
@@ -130,6 +154,10 @@ void main() {
           textScaler: const TextScaler.linear(1.5),
           brightness: brightness,
         );
+
+        await _chooseType(tester, GroupType.amrap);
+        await tester.tap(find.text('Continuer'));
+        await tester.pumpAndSettle();
 
         expect(tester.takeException(), isNull);
         final start = find.text('Commencer');
@@ -143,7 +171,9 @@ void main() {
 }
 
 Future<void> _chooseType(WidgetTester tester, GroupType type) async {
-  await tester.tap(find.byType(TypeSelector));
+  final dropdown = find.byType(DropdownButton<GroupType>);
+  await tester.ensureVisible(dropdown);
+  await tester.tap(dropdown);
   await tester.pumpAndSettle();
   await tester.tap(find.text(type.shortLabel).last);
   await tester.pumpAndSettle();

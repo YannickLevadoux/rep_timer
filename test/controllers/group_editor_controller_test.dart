@@ -102,6 +102,30 @@ void main() {
     controller.dispose();
   });
 
+  test('l’effort AMRAP conserve sa durée principale pendant l’édition', () {
+    final controller = GroupEditorController(ExerciseGroup.amrap(id: 'g'));
+    controller.setEffortDuration(const Duration(minutes: 12));
+    controller.updateTimedExercise(
+      TrainingItem(
+        type: ItemType.exercise,
+        name: 'Burpees',
+        repetitions: 20,
+        isFreeDuration: true,
+        comment: 'Rester fluide',
+        iconName: 'rowing',
+      ),
+    );
+
+    final effort = controller.group.items.single;
+    expect(effort.name, 'Burpees');
+    expect(effort.duration, const Duration(minutes: 12));
+    expect(effort.repetitions, isNull);
+    expect(effort.isFreeDuration, isFalse);
+    expect(effort.comment, 'Rester fluide');
+    expect(effort.iconName, 'rowing');
+    controller.dispose();
+  });
+
   test('crée les brouillons Libre et Variables depuis Tabata', () {
     final controller = GroupEditorController(ExerciseGroup.tabata(id: 'g'));
     controller.switchType(GroupType.free);

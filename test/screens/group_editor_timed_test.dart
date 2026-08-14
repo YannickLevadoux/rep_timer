@@ -198,6 +198,22 @@ void main() {
     expect(find.text('03:00'), findsNothing);
   });
 
+  testWidgets('AMRAP expose le sélecteur principal avec ses bornes exactes', (
+    tester,
+  ) async {
+    await _pumpEditor(tester, ExerciseGroup.amrap(id: 'amrap'));
+
+    final picker = tester.widget<DurationMinutesSecondsPicker>(
+      find.byType(DurationMinutesSecondsPicker),
+    );
+    expect(picker.value, const Duration(minutes: 2));
+    expect(picker.minimum, const Duration(minutes: 1));
+    expect(picker.maximum, const Duration(minutes: 60));
+    expect(find.text("Durée de l'AMRAP"), findsOneWidget);
+    expect(find.text('Effort'), findsOneWidget);
+    expect(find.textContaining('chaque tour terminé'), findsOneWidget);
+  });
+
   testWidgets('EMOM borne les minutes et conserve l’effort à 60 secondes', (
     tester,
   ) async {

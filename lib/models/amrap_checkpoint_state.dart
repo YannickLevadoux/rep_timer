@@ -13,6 +13,7 @@ class AmrapCheckpointState {
     required Duration currentLapDuration,
     required Duration buttonDelayRemaining,
     required bool completed,
+    bool incomplete = false,
   }) {
     AmrapExecutionValidation.requireCheckpoint(
       configuredDuration: configuredDuration,
@@ -22,6 +23,7 @@ class AmrapCheckpointState {
       currentLapDuration: currentLapDuration,
       buttonDelayRemaining: buttonDelayRemaining,
       completed: completed,
+      incomplete: incomplete,
     );
     return AmrapCheckpointState._(
       configuredDuration: configuredDuration,
@@ -31,6 +33,7 @@ class AmrapCheckpointState {
       currentLapDuration: currentLapDuration,
       buttonDelayRemaining: buttonDelayRemaining,
       completed: completed,
+      incomplete: incomplete,
     );
   }
 
@@ -42,6 +45,7 @@ class AmrapCheckpointState {
     required this.currentLapDuration,
     required this.buttonDelayRemaining,
     required this.completed,
+    required this.incomplete,
   });
 
   final Duration configuredDuration;
@@ -51,6 +55,7 @@ class AmrapCheckpointState {
   final Duration currentLapDuration;
   final Duration buttonDelayRemaining;
   final bool completed;
+  final bool incomplete;
 
   AmrapCheckpointState copy() => AmrapCheckpointState(
     configuredDuration: configuredDuration,
@@ -60,6 +65,7 @@ class AmrapCheckpointState {
     currentLapDuration: currentLapDuration,
     buttonDelayRemaining: buttonDelayRemaining,
     completed: completed,
+    incomplete: incomplete,
   );
 
   Map<String, dynamic> toJson() => {
@@ -72,6 +78,7 @@ class AmrapCheckpointState {
     'currentLapDurationSeconds': currentLapDuration.inSeconds,
     'buttonDelayRemainingSeconds': buttonDelayRemaining.inSeconds,
     'completed': completed,
+    'incomplete': incomplete,
   };
 
   factory AmrapCheckpointState.fromJson(Map<String, dynamic> json) =>
@@ -86,6 +93,7 @@ class AmrapCheckpointState {
         currentLapDuration: _duration(json, 'currentLapDurationSeconds'),
         buttonDelayRemaining: _duration(json, 'buttonDelayRemainingSeconds'),
         completed: json['completed'] as bool,
+        incomplete: json['incomplete'] as bool? ?? false,
       );
 
   static Duration _duration(Map<String, dynamic> json, String key) =>
