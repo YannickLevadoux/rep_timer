@@ -31,6 +31,8 @@ class GroupItemsList extends StatelessWidget {
     }
 
     return ReorderableListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       buildDefaultDragHandles: false,
       itemCount: items.length,
       onReorderItem: onReorder,

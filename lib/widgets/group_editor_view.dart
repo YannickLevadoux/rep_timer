@@ -3,18 +3,20 @@ import 'package:flutter/services.dart';
 
 import '../controllers/group_editor_controller.dart';
 import '../models/group_type.dart';
+import '../models/group_editor_mode.dart';
 import '../utils/repetition_sequence_format.dart';
 import '../validation/business_validation.dart';
 import 'group_editor_actions.dart';
 import 'group_items_list.dart';
 import 'rounds_editor.dart';
 import 'type_selector.dart';
+import 'timed_group_editor.dart';
 
 class GroupEditorView extends StatelessWidget {
   const GroupEditorView({
     super.key,
     required this.controller,
-    required this.isNewGroup,
+    required this.mode,
     required this.onOpenSettings,
     required this.onAddExercise,
     required this.onAddRest,
@@ -22,11 +24,14 @@ class GroupEditorView extends StatelessWidget {
     required this.onDeleteItem,
     required this.onSave,
     required this.onEditRepetitionSequence,
+    required this.onTypeChanged,
+    required this.onEditTimedExercise,
+    required this.hasFollowingGroup,
     this.nameError,
   });
 
   final GroupEditorController controller;
-  final bool isNewGroup;
+  final GroupEditorMode mode;
   final VoidCallback onOpenSettings;
   final VoidCallback onAddExercise;
   final VoidCallback onAddRest;
@@ -34,6 +39,9 @@ class GroupEditorView extends StatelessWidget {
   final ValueChanged<int> onDeleteItem;
   final VoidCallback onSave;
   final VoidCallback onEditRepetitionSequence;
+  final ValueChanged<GroupType> onTypeChanged;
+  final VoidCallback onEditTimedExercise;
+  final bool hasFollowingGroup;
   final String? nameError;
 
   @override
@@ -42,7 +50,7 @@ class GroupEditorView extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isNewGroup ? "Ajout de groupe" : "Édition du groupe"),
+        title: Text(mode.title),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -51,13 +59,27 @@ class GroupEditorView extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (mode.isQuick) ...[
+              Card(
+                color: Theme.of(context).colorScheme.secondaryContainer,
+                child: const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text(
+                    "Cette session ne sera pas enregistrée dans Mes entraînements",
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             TextField(
               controller: controller.nameController,
-              autofocus: isNewGroup,
+              autofocus: mode == GroupEditorMode.add,
               maxLength: BusinessLimits.maximumNameCharacters,
               maxLengthEnforcement: MaxLengthEnforcement.none,
               decoration: InputDecoration(
@@ -68,30 +90,37 @@ class GroupEditorView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            TypeSelector(value: group.type, onChanged: controller.setType),
+            TypeSelector(value: group.type, onChanged: onTypeChanged),
             const SizedBox(height: 16),
-            if (group.type == GroupType.free)
-              RoundsEditor(
-                rounds: group.rounds,
-                onChanged: controller.setRounds,
+            if (group.type.isTimed)
+              TimedGroupEditor(
+                controller: controller,
+                quick: mode.isQuick,
+                hasFollowingGroup: hasFollowingGroup,
+                onEditEffort: onEditTimedExercise,
               )
-            else
-              OutlinedButton.icon(
-                key: const Key('edit-repetition-sequence'),
-                onPressed: onEditRepetitionSequence,
-                icon: const Icon(Icons.format_list_numbered),
-                label: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    formatRepetitionSequenceSummary(group.repetitionSequence),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+            else ...[
+              if (group.type == GroupType.free)
+                RoundsEditor(
+                  rounds: group.rounds,
+                  onChanged: controller.setRounds,
+                )
+              else
+                OutlinedButton.icon(
+                  key: const Key('edit-repetition-sequence'),
+                  onPressed: onEditRepetitionSequence,
+                  icon: const Icon(Icons.format_list_numbered),
+                  label: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      formatRepetitionSequenceSummary(group.repetitionSequence),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
-              ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: GroupItemsList(
+              const SizedBox(height: 8),
+              GroupItemsList(
                 items: group.items,
                 repetitionsDefinedByGroup:
                     group.type == GroupType.variableRepetitions,
@@ -99,12 +128,14 @@ class GroupEditorView extends StatelessWidget {
                 onEdit: onEditItem,
                 onDelete: onDeleteItem,
               ),
-            ),
+            ],
             const SizedBox(height: 10),
             GroupEditorActions(
               onAddExercise: onAddExercise,
               onAddRest: onAddRest,
               onSave: onSave,
+              actionLabel: mode.actionLabel,
+              showItemActions: !group.type.isTimed,
             ),
           ],
         ),

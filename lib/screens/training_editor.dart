@@ -141,7 +141,10 @@ class _TrainingEditorState extends State<TrainingEditor> {
     final editedGroup = await Navigator.push<ExerciseGroup>(
       context,
       MaterialPageRoute(
-        builder: (_) => GroupEditor(group: _controller.groups[index]),
+        builder: (_) => GroupEditor(
+          group: _controller.groups[index],
+          hasFollowingGroup: index + 1 < _controller.groups.length,
+        ),
       ),
     );
     if (editedGroup != null && mounted) {

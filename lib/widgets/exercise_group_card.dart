@@ -5,6 +5,7 @@ import '../models/group_type.dart';
 import '../models/training_item.dart';
 import '../utils/exercise_icons.dart';
 import '../utils/formatters.dart';
+import '../utils/group_summary.dart';
 import '../utils/repetition_sequence_format.dart';
 
 class ExerciseGroupCard extends StatelessWidget {
@@ -14,6 +15,7 @@ class ExerciseGroupCard extends StatelessWidget {
   final ValueChanged<bool> onExpanded;
   final int index;
   final bool expanded;
+  final bool hasFollowingGroup;
 
   const ExerciseGroupCard({
     super.key,
@@ -23,6 +25,7 @@ class ExerciseGroupCard extends StatelessWidget {
     required this.onExpanded,
     required this.index,
     required this.expanded,
+    required this.hasFollowingGroup,
   });
 
   @override
@@ -44,17 +47,23 @@ class ExerciseGroupCard extends StatelessWidget {
           runSpacing: 4,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Text(
-              group.type.label,
-              style: TextStyle(
-                fontSize: 13,
-                color: Theme.of(context).colorScheme.outline,
+            if (!group.type.isTimed)
+              Text(
+                group.type.label,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
               ),
-            ),
             Text(
-              group.type == GroupType.variableRepetitions
+              group.type.isTimed
+                  ? formatGroupSummary(
+                      group,
+                      hasFollowingGroup: hasFollowingGroup,
+                    )
+                  : group.type == GroupType.variableRepetitions
                   ? formatRepetitionSequenceSummary(group.repetitionSequence)
-                  : "Répétitions : ${group.rounds}",
+                  : 'Répétitions : ${group.rounds}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: Theme.of(context).colorScheme.outline),

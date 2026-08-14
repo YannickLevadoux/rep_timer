@@ -15,11 +15,15 @@ const Duration defaultExerciseDuration = Duration(minutes: 1, seconds: 30);
 class DurationMinutesSecondsPicker extends StatelessWidget {
   final Duration value;
   final ValueChanged<Duration> onChanged;
+  final Duration minimum;
+  final Duration maximum;
 
   const DurationMinutesSecondsPicker({
     super.key,
     required this.value,
     required this.onChanged,
+    this.minimum = BusinessLimits.minimumDuration,
+    this.maximum = BusinessLimits.maximumDuration,
   });
 
   @override
@@ -29,7 +33,19 @@ class DurationMinutesSecondsPicker extends StatelessWidget {
       BusinessLimits.maximumDuration.inMinutes,
     );
     final seconds = value.inSeconds.remainder(60);
-    final issue = BusinessValidation.validateDuration(value);
+    final issue = value < minimum
+        ? BusinessValidationIssue(
+            field: BusinessField.duration,
+            code: BusinessValidationCode.belowMinimum,
+            minimum: minimum.inSeconds,
+          )
+        : value > maximum
+        ? BusinessValidationIssue(
+            field: BusinessField.duration,
+            code: BusinessValidationCode.aboveMaximum,
+            maximum: maximum.inSeconds,
+          )
+        : null;
 
     return Column(
       mainAxisSize: MainAxisSize.min,

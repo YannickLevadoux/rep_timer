@@ -1,216 +1,91 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/screens/quick_tabata_screen.dart';
 import 'package:rep_timer/screens/training_session.dart';
+import 'package:rep_timer/services/session_controller.dart';
 import 'package:rep_timer/services/session_notification_permission_service.dart';
-import 'package:rep_timer/widgets/duration_minutes_seconds_picker.dart';
-import 'package:rep_timer/widgets/number_wheel_field.dart';
-import 'package:rep_timer/widgets/rounds_editor.dart';
+import 'package:rep_timer/widgets/type_selector.dart';
 
 import '../support/fake_session_permission_platform.dart';
 
 void main() {
-  testWidgets('démarre à 1 avec le bouton moins désactivé', (tester) async {
-    await _pumpScreen(tester);
-
-    expect(_rounds(tester), 1);
-    expect(
-      _roundsButton(tester, Icons.remove_circle_outline).onPressed,
-      isNull,
-    );
-
-    tester.widget<RoundsEditor>(find.byType(RoundsEditor)).onChanged(0);
-    await tester.pump();
-    expect(_rounds(tester), 1);
-  });
-
-  testWidgets('le bouton plus incrémente les répétitions', (tester) async {
-    await _pumpScreen(tester);
-
-    await _tapRoundsButton(tester, Icons.add_circle_outline);
-
-    expect(_rounds(tester), 2);
-  });
-
-  testWidgets('le bouton moins décrémente sans passer sous 1', (tester) async {
-    await _pumpScreen(tester);
-
-    await _tapRoundsButton(tester, Icons.add_circle_outline);
-    await _tapRoundsButton(tester, Icons.remove_circle_outline);
-
-    expect(_rounds(tester), 1);
-    expect(
-      _roundsButton(tester, Icons.remove_circle_outline).onPressed,
-      isNull,
-    );
-  });
-
-  testWidgets('aucun champ textuel de répétitions ne subsiste', (tester) async {
-    await _pumpScreen(tester);
-
-    expect(find.byType(RoundsEditor), findsOneWidget);
-    expect(
-      find.widgetWithText(TextField, 'Nombre de répétitions'),
-      findsNothing,
-    );
-    expect(find.byType(TextField), findsOneWidget);
-  });
-
-  testWidgets('Work et Pause alignent libellé à gauche et saisie à droite', (
+  testWidgets('préremplit une Session rapide Tabata mono-exercice', (
     tester,
   ) async {
-    await _pumpScreen(tester, surfaceSize: const Size(360, 640));
+    await _pumpScreen(tester);
 
-    final pickers = find.byType(DurationMinutesSecondsPicker);
-    _expectCompactDurationRow(tester, find.text('Work'), pickers.at(0));
-    _expectCompactDurationRow(tester, find.text('Pause'), pickers.at(1));
-
-    final dividers = find.byType(Divider);
-    expect(dividers, findsNWidgets(2));
-    for (var index = 0; index < 2; index++) {
-      final divider = tester.widget<Divider>(dividers.at(index));
-      expect(divider.height, 10);
-      expect(divider.thickness, 1);
-    }
-
+    expect(find.text('Session rapide'), findsOneWidget);
     expect(
-      tester.getCenter(dividers.at(0)).dy,
-      allOf(
-        greaterThan(tester.getBottomLeft(pickers.at(0)).dy),
-        lessThan(tester.getTopLeft(pickers.at(1)).dy),
-      ),
-    );
-    expect(
-      tester.getCenter(dividers.at(1)).dy,
-      allOf(
-        greaterThan(tester.getBottomLeft(pickers.at(1)).dy),
-        lessThan(tester.getTopLeft(find.byType(RoundsEditor)).dy),
-      ),
-    );
-  });
-
-  testWidgets('conserve les dimensions des roues de durée partagées', (
-    tester,
-  ) async {
-    await _pumpScreen(tester, surfaceSize: const Size(360, 640));
-
-    final wheels = find.byType(NumberWheelField);
-    expect(wheels, findsNWidgets(4));
-    for (var index = 0; index < 4; index++) {
-      final wheel = find.descendant(
-        of: wheels.at(index),
-        matching: find.byType(ListWheelScrollView),
-      );
-      expect(tester.getSize(wheel), const Size(64, 120));
-    }
-  });
-
-  testWidgets('compacte la carte sans réduire la durée ni son aide', (
-    tester,
-  ) async {
-    await _pumpScreen(tester, surfaceSize: const Size(360, 640));
-
-    final card = find.ancestor(
-      of: find.text('Temps total estimé'),
-      matching: find.byType(Card),
-    );
-    expect(tester.getSize(card).height, lessThan(88));
-
-    final durationText = tester.widget<Text>(find.text('00:20'));
-    expect(durationText.style?.fontSize, 18);
-    expect(durationText.style?.fontWeight, FontWeight.bold);
-
-    final help = find.byTooltip('Informations sur la durée estimée');
-    final helpSize = tester.getSize(help);
-    expect(helpSize, const Size.square(40));
-  });
-
-  testWidgets('Commencer est visible et lance la séance sur 360 × 640', (
-    tester,
-  ) async {
-    await _pumpScreen(tester, surfaceSize: const Size(360, 640));
-
-    final start = find.widgetWithText(FilledButton, 'Commencer');
-    final scrollable = Scrollable.of(tester.element(start));
-    expect(scrollable.position.pixels, 0);
-
-    final buttonRect = tester.getRect(start);
-    expect(buttonRect.top, greaterThanOrEqualTo(0));
-    expect(buttonRect.bottom, lessThanOrEqualTo(640));
-    expect(start.hitTestable(), findsOneWidget);
-
-    await tester.tap(start);
-    await tester.pump(const Duration(milliseconds: 100));
-
-    expect(
-      find.byType(TrainingSessionScreen, skipOffstage: false),
+      find.text("Cette session ne sera pas enregistrée dans Mes entraînements"),
       findsOneWidget,
     );
+    expect(find.text('Tabata'), findsNWidgets(2));
+    expect(find.text('Nombre de cycles'), findsOneWidget);
+    expect(find.text('Effort'), findsNWidgets(2));
+    expect(find.text('Pause'), findsOneWidget);
+    expect(find.text('00:20'), findsNWidgets(2));
+    expect(find.text('Personnaliser la dernière pause'), findsNothing);
+    expect(find.text('Exercice'), findsNothing);
+    expect(find.text('Commencer'), findsOneWidget);
   });
 
-  testWidgets('répartit la hauteur disponible entre les sections', (
-    tester,
-  ) async {
-    await _pumpScreen(tester, surfaceSize: const Size(360, 640));
-    final compactGaps = _verticalSectionGaps(tester);
+  testWidgets('le sélecteur compact expose les cinq types', (tester) async {
+    await _pumpScreen(tester);
 
-    await tester.binding.setSurfaceSize(const Size(360, 800));
-    await tester.pump();
-
-    final expandedGaps = _verticalSectionGaps(tester);
-    for (var index = 0; index < compactGaps.length; index++) {
-      expect(expandedGaps[index], greaterThan(compactGaps[index]));
+    await tester.tap(find.byType(TypeSelector));
+    await tester.pumpAndSettle();
+    for (final type in GroupType.values) {
+      expect(find.text(type.shortLabel), findsWidgets);
     }
-
-    final start = find.widgetWithText(FilledButton, 'Commencer');
-    final scrollable = Scrollable.of(tester.element(start));
-    expect(scrollable.position.maxScrollExtent, 0);
-    expect(tester.getBottomLeft(start).dy, closeTo(792, 0.1));
   });
 
-  testWidgets('affiche 01:20 pour 20 s, 10 s et 3 répétitions', (tester) async {
-    await _pumpScreen(tester);
-
-    await _tapRoundsButton(tester, Icons.add_circle_outline);
-    await _tapRoundsButton(tester, Icons.add_circle_outline);
-
-    expect(find.text('01:20'), findsOneWidget);
-  });
-
-  testWidgets('actualise l’estimation avec les répétitions et les durées', (
+  testWidgets('AMRAP confirme le remplacement et masque la récupération', (
     tester,
   ) async {
     await _pumpScreen(tester);
+    await _chooseType(tester, GroupType.amrap);
 
-    expect(find.text('00:20'), findsOneWidget);
+    expect(find.text('Changer de type de groupe ?'), findsOneWidget);
+    expect(find.textContaining('AMRAP, Effort et 02:00'), findsOneWidget);
+    await tester.tap(find.text('Continuer'));
+    await tester.pumpAndSettle();
 
-    await _tapRoundsButton(tester, Icons.add_circle_outline);
-    expect(find.text('00:50'), findsOneWidget);
-
-    tester
-        .widget<DurationMinutesSecondsPicker>(
-          find.byType(DurationMinutesSecondsPicker).first,
-        )
-        .onChanged(const Duration(seconds: 30));
-    await tester.pump();
-    expect(find.text('01:10'), findsOneWidget);
-
-    tester
-        .widget<DurationMinutesSecondsPicker>(
-          find.byType(DurationMinutesSecondsPicker).last,
-        )
-        .onChanged(const Duration(seconds: 20));
-    await tester.pump();
-    expect(find.text('01:20'), findsOneWidget);
+    expect(find.text("Durée de l'AMRAP"), findsOneWidget);
+    expect(find.textContaining('chaque tour terminé'), findsOneWidget);
+    expect(find.text("Ajouter une récupération après l'AMRAP"), findsNothing);
+    expect(find.text('02:00'), findsNWidgets(2));
   });
 
-  testWidgets('la séance lancée utilise les répétitions sélectionnées', (
+  testWidgets('EMOM utilise dix minutes fixes sans récupération rapide', (
     tester,
   ) async {
     await _pumpScreen(tester);
-    await _tapRoundsButton(tester, Icons.add_circle_outline);
-    await _tapRoundsButton(tester, Icons.add_circle_outline);
+    await _chooseType(tester, GroupType.emom);
+    await tester.tap(find.text('Continuer'));
+    await tester.pumpAndSettle();
 
+    expect(find.text('Nombre de minutes'), findsOneWidget);
+    expect(find.text('10'), findsOneWidget);
+    expect(find.textContaining('début de chaque minute'), findsNWidgets(2));
+    expect(find.text("Ajouter une récupération après l'EMOM"), findsNothing);
+    expect(find.text('10:00'), findsOneWidget);
+  });
+
+  testWidgets('Libre réutilise les actions génériques', (tester) async {
+    await _pumpScreen(tester);
+    await _chooseType(tester, GroupType.free);
+    await tester.tap(find.text('Continuer'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Libre'), findsOneWidget);
+    expect(find.text('Répétitions'), findsOneWidget);
+    expect(find.text('Exercice'), findsOneWidget);
+    expect(find.text('Pause'), findsOneWidget);
+  });
+
+  testWidgets('Commencer lance une séance temporaire', (tester) async {
+    await _pumpScreen(tester);
     final start = find.text('Commencer');
     await tester.ensureVisible(start);
     await tester.tap(start);
@@ -219,91 +94,55 @@ void main() {
     final session = tester.widget<TrainingSessionScreen>(
       find.byType(TrainingSessionScreen, skipOffstage: false),
     );
-    expect(session.training.groups.single.rounds, 3);
-  });
-
-  testWidgets('l’aide explique l’estimation et peut être fermée', (
-    tester,
-  ) async {
-    await _pumpScreen(tester);
-
-    final help = find.byTooltip('Informations sur la durée estimée');
-    expect(help, findsOneWidget);
-
-    await tester.ensureVisible(help);
-    await tester.pumpAndSettle();
-    await tester.tap(help);
-    await tester.pumpAndSettle();
-
-    expect(find.text("À propos de l'estimation"), findsOneWidget);
-    expect(find.textContaining('durée programmée'), findsOneWidget);
-    expect(find.textContaining("dernière pause"), findsOneWidget);
-    expect(find.textContaining('pauses manuelles'), findsOneWidget);
-
-    await tester.tap(find.text('Fermer'));
-    await tester.pumpAndSettle();
-    expect(find.text("À propos de l'estimation"), findsNothing);
-  });
-
-  testWidgets('la carte ne déborde pas sur une largeur réduite', (
-    tester,
-  ) async {
-    await _pumpScreen(
-      tester,
-      surfaceSize: const Size(240, 640),
-      textScaler: const TextScaler.linear(1.5),
-    );
-
-    final work = find.text('Work');
-    final workPicker = find.byType(DurationMinutesSecondsPicker).first;
+    expect(session.training.groups.single.type, GroupType.tabata);
     expect(
-      tester.getBottomLeft(work).dy,
-      lessThanOrEqualTo(tester.getTopLeft(workPicker).dy),
+      session.trainingChangesPersistence,
+      TrainingChangesPersistence.memoryOnly,
     );
-
-    final start = find.widgetWithText(FilledButton, 'Commencer');
-    final scrollable = Scrollable.of(tester.element(start));
-    expect(scrollable.position.maxScrollExtent, greaterThan(0));
-
-    expect(tester.takeException(), isNull);
-    expect(find.text('Temps total estimé'), findsOneWidget);
-    expect(find.text('00:20'), findsOneWidget);
-
-    await tester.drag(
-      find.byType(SingleChildScrollView),
-      const Offset(0, -600),
-    );
-    await tester.pump();
-    expect(tester.takeException(), isNull);
-    expect(start.hitTestable(), findsOneWidget);
   });
 
-  testWidgets('le nom vide reste refusé', (tester) async {
-    await _pumpScreen(tester);
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'reste utilisable sur petit écran, texte agrandi, $brightness',
+      (tester) async {
+        await _pumpScreen(
+          tester,
+          size: const Size(240, 640),
+          textScaler: const TextScaler.linear(1.5),
+          brightness: brightness,
+        );
 
-    await tester.enterText(find.byType(TextField), '   ');
-    final start = find.widgetWithText(FilledButton, 'Commencer');
-    await tester.ensureVisible(start);
-    await tester.tap(start);
-    await tester.pump();
+        expect(tester.takeException(), isNull);
+        final start = find.text('Commencer');
+        await tester.ensureVisible(start);
+        await tester.pump();
+        expect(start.hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+}
 
-    expect(find.text('Ce champ est obligatoire.'), findsOneWidget);
-    expect(find.byType(TrainingSessionScreen), findsNothing);
-  });
+Future<void> _chooseType(WidgetTester tester, GroupType type) async {
+  await tester.tap(find.byType(TypeSelector));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(type.shortLabel).last);
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pumpScreen(
   WidgetTester tester, {
-  Size? surfaceSize,
+  Size? size,
   TextScaler textScaler = TextScaler.noScaling,
+  Brightness brightness = Brightness.light,
 }) async {
-  if (surfaceSize != null) {
-    await tester.binding.setSurfaceSize(surfaceSize);
+  if (size != null) {
+    await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
   }
-
-  return tester.pumpWidget(
+  await tester.pumpWidget(
     MaterialApp(
+      theme: ThemeData(brightness: brightness),
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(textScaler: textScaler),
         child: child!,
@@ -315,49 +154,4 @@ Future<void> _pumpScreen(
       ),
     ),
   );
-}
-
-void _expectCompactDurationRow(
-  WidgetTester tester,
-  Finder label,
-  Finder picker,
-) {
-  expect(tester.getCenter(label).dy, closeTo(tester.getCenter(picker).dy, 0.1));
-  expect(tester.getTopLeft(label).dx, closeTo(16, 0.1));
-  expect(tester.getTopRight(picker).dx, closeTo(344, 0.1));
-}
-
-List<double> _verticalSectionGaps(WidgetTester tester) {
-  final pickers = find.byType(DurationMinutesSecondsPicker);
-  final rounds = find.byType(RoundsEditor);
-  final card = find.ancestor(
-    of: find.text('Temps total estimé'),
-    matching: find.byType(Card),
-  );
-  final start = find.widgetWithText(FilledButton, 'Commencer');
-
-  return [
-    tester.getTopLeft(pickers.at(0)).dy -
-        tester.getBottomLeft(find.byType(TextField)).dy,
-    tester.getTopLeft(pickers.at(1)).dy -
-        tester.getBottomLeft(pickers.at(0)).dy,
-    tester.getTopLeft(rounds).dy - tester.getBottomLeft(pickers.at(1)).dy,
-    tester.getTopLeft(card).dy - tester.getBottomLeft(rounds).dy,
-    tester.getTopLeft(start).dy - tester.getBottomLeft(card).dy,
-  ];
-}
-
-int _rounds(WidgetTester tester) {
-  return tester.widget<RoundsEditor>(find.byType(RoundsEditor)).rounds;
-}
-
-IconButton _roundsButton(WidgetTester tester, IconData icon) {
-  return tester.widget<IconButton>(find.widgetWithIcon(IconButton, icon));
-}
-
-Future<void> _tapRoundsButton(WidgetTester tester, IconData icon) async {
-  final button = find.widgetWithIcon(IconButton, icon);
-  await tester.ensureVisible(button);
-  await tester.tap(button);
-  await tester.pump();
 }

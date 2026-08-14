@@ -85,7 +85,10 @@ class HomeScreenView extends StatelessWidget {
         onDestinationSelected: onDestinationSelected,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: "Accueil"),
-          NavigationDestination(icon: Icon(Icons.bolt), label: "Quick Tabata"),
+          NavigationDestination(
+            icon: Icon(Icons.bolt),
+            label: "Session rapide",
+          ),
           NavigationDestination(icon: Icon(Icons.history), label: "Historique"),
         ],
       ),

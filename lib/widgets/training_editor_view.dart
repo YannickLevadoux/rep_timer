@@ -126,6 +126,7 @@ class _GroupsList extends StatelessWidget {
           group: group,
           index: index,
           expanded: controller.isExpanded(group.id),
+          hasFollowingGroup: index + 1 < controller.groups.length,
           onExpanded: (expanded) {
             controller.setExpanded(group.id, expanded);
           },
