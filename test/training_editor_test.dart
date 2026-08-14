@@ -224,7 +224,7 @@ void main() {
     expect(find.text('Ajout de groupe'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, 'Nouveau');
-    await tester.tap(find.text('Enregistrer'));
+    await tester.tap(find.text('Ajouter à la séance'));
     await tester.pumpAndSettle();
 
     expect(find.text('Nouveau'), findsOneWidget);
@@ -322,7 +322,7 @@ void main() {
       await tester.tap(find.text('Ouvrir'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Groupe à répétitions variables'), findsOneWidget);
+      expect(find.text('Variables'), findsOneWidget);
       expect(find.text('3 tours · 10 → 12 → 15'), findsOneWidget);
       expect(find.text('Nombre défini par la suite du groupe'), findsOneWidget);
       expect(find.byTooltip('Plus de répétitions'), findsNothing);

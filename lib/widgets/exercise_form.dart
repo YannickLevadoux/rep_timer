@@ -33,28 +33,30 @@ class ExerciseForm extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            DropdownButton<ExerciseInputMode>(
-              value: controller.mode,
-              isExpanded: true,
-              items: const [
-                DropdownMenuItem(
-                  value: ExerciseInputMode.repetitions,
-                  child: Text('Répétitions'),
-                ),
-                DropdownMenuItem(
-                  value: ExerciseInputMode.duration,
-                  child: Text('Temps'),
-                ),
-                DropdownMenuItem(
-                  value: ExerciseInputMode.freeDuration,
-                  child: Text('Durée libre'),
-                ),
-              ],
-              onChanged: (value) => controller.setMode(value!),
-            ),
-            const SizedBox(height: 16),
-            _ModeInput(controller: controller),
-            const SizedBox(height: 16),
+            if (!controller.timedOnly) ...[
+              DropdownButton<ExerciseInputMode>(
+                value: controller.mode,
+                isExpanded: true,
+                items: const [
+                  DropdownMenuItem(
+                    value: ExerciseInputMode.repetitions,
+                    child: Text('Répétitions'),
+                  ),
+                  DropdownMenuItem(
+                    value: ExerciseInputMode.duration,
+                    child: Text('Temps'),
+                  ),
+                  DropdownMenuItem(
+                    value: ExerciseInputMode.freeDuration,
+                    child: Text('Durée libre'),
+                  ),
+                ],
+                onChanged: (value) => controller.setMode(value!),
+              ),
+              const SizedBox(height: 16),
+              _ModeInput(controller: controller),
+              const SizedBox(height: 16),
+            ],
             TextField(
               controller: controller.commentController,
               maxLines: 3,

@@ -12,6 +12,7 @@ Future<TrainingItem?> showExerciseDialog(
   String defaultName = '',
   bool repetitionsDefinedByGroup = false,
   int repetitionFallback = BusinessLimits.minimumCount,
+  bool timedOnly = false,
 }) => showDialog<TrainingItem>(
   context: context,
   builder: (context) => _ExerciseDialog(
@@ -19,6 +20,7 @@ Future<TrainingItem?> showExerciseDialog(
     defaultName: defaultName,
     repetitionsDefinedByGroup: repetitionsDefinedByGroup,
     repetitionFallback: repetitionFallback,
+    timedOnly: timedOnly,
   ),
 );
 
@@ -28,12 +30,14 @@ class _ExerciseDialog extends StatefulWidget {
     required this.defaultName,
     required this.repetitionsDefinedByGroup,
     required this.repetitionFallback,
+    required this.timedOnly,
   });
 
   final TrainingItem? initial;
   final String defaultName;
   final bool repetitionsDefinedByGroup;
   final int repetitionFallback;
+  final bool timedOnly;
 
   @override
   State<_ExerciseDialog> createState() => _ExerciseDialogState();
@@ -50,6 +54,7 @@ class _ExerciseDialogState extends State<_ExerciseDialog> {
       defaultName: widget.defaultName,
       repetitionsDefinedByGroup: widget.repetitionsDefinedByGroup,
       repetitionFallback: widget.repetitionFallback,
+      timedOnly: widget.timedOnly,
     );
   }
 

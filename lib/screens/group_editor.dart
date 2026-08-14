@@ -2,39 +2,50 @@ import 'package:flutter/material.dart';
 
 import '../controllers/group_editor_controller.dart';
 import '../models/exercise_group.dart';
-import '../models/training_item.dart';
+import '../models/group_editor_mode.dart';
 import '../models/group_type.dart';
-import '../services/app_settings_storage.dart';
 import '../utils/editor_back_handler.dart';
 import '../utils/snack.dart';
 import '../utils/validation_messages.dart';
 import '../validation/business_validation.dart';
-import '../widgets/dialogs/confirm_dialog.dart';
-import '../widgets/dialogs/exercise_dialog.dart';
 import '../widgets/dialogs/group_editor_settings_dialog.dart';
-import '../widgets/dialogs/rest_dialog.dart';
-import '../widgets/dialogs/repetition_sequence_dialog.dart';
 import '../widgets/group_editor_view.dart';
+import 'group_editor_dialogs.dart';
 
 class GroupEditor extends StatefulWidget {
-  const GroupEditor({super.key, required this.group, this.isNewGroup = false});
+  const GroupEditor({
+    super.key,
+    required this.group,
+    this.isNewGroup = false,
+    this.mode,
+    this.hasFollowingGroup = false,
+    this.onSubmit,
+  });
 
   final ExerciseGroup group;
   final bool isNewGroup;
+  final GroupEditorMode? mode;
+  final bool hasFollowingGroup;
+  final Future<void> Function(ExerciseGroup group)? onSubmit;
+
+  GroupEditorMode get effectiveMode =>
+      mode ?? (isNewGroup ? GroupEditorMode.add : GroupEditorMode.edit);
 
   @override
   State<GroupEditor> createState() => _GroupEditorState();
 }
 
 class _GroupEditorState extends State<GroupEditor> {
-  final AppSettingsStorage _settingsStorage = AppSettingsStorage();
   late final GroupEditorController _controller;
+  late final GroupEditorDialogs _dialogs;
   String? _nameError;
+  bool _showQuickWarning = true;
 
   @override
   void initState() {
     super.initState();
     _controller = GroupEditorController(widget.group);
+    _dialogs = GroupEditorDialogs(_controller);
   }
 
   @override
@@ -49,90 +60,12 @@ class _GroupEditorState extends State<GroupEditor> {
     onSave: _saveGroup,
   );
 
-  Future<void> _addItem(Future<TrainingItem?> Function() openDialog) async {
-    FocusScope.of(context).unfocus();
-    final result = await openDialog();
-    if (result != null) _controller.addItem(result);
+  Future<void> _changeType(GroupType type) async {
+    await _dialogs.changeType(context, type);
+    if (mounted) setState(() {});
   }
 
-  Future<void> _addExercise() async {
-    final prefill = await _settingsStorage.loadPrefillExerciseName();
-    if (!mounted) return;
-
-    await _addItem(
-      () => showExerciseDialog(
-        context,
-        defaultName: prefill ? _controller.name : '',
-        repetitionsDefinedByGroup:
-            _controller.group.type == GroupType.variableRepetitions,
-        repetitionFallback: _repetitionFallback,
-      ),
-    );
-  }
-
-  Future<void> _addRest() {
-    return _addItem(() async {
-      final duration = await showRestDialog(context);
-      if (duration == null) return null;
-      return TrainingItem(
-        type: ItemType.rest,
-        name: "Pause",
-        duration: duration,
-      );
-    });
-  }
-
-  Future<void> _editItem(int index) async {
-    FocusScope.of(context).unfocus();
-    final item = _controller.group.items[index];
-
-    if (item.type == ItemType.rest) {
-      final duration = await showRestDialog(
-        context,
-        initial: item.duration ?? Duration.zero,
-      );
-      if (duration != null) _controller.updateRest(index, duration);
-      return;
-    }
-
-    final result = await showExerciseDialog(
-      context,
-      initial: item,
-      repetitionsDefinedByGroup:
-          _controller.group.type == GroupType.variableRepetitions,
-      repetitionFallback: _repetitionFallback,
-    );
-    if (result != null) _controller.updateExercise(index, result);
-  }
-
-  int get _repetitionFallback =>
-      _controller.group.repetitionSequence.firstOrNull ??
-      BusinessLimits.minimumCount;
-
-  Future<void> _editRepetitionSequence() async {
-    FocusScope.of(context).unfocus();
-    final result = await showRepetitionSequenceDialog(
-      context,
-      initialValues: _controller.group.repetitionSequence,
-      fallbackValue: _repetitionFallback,
-    );
-    if (result != null) _controller.setRepetitionSequence(result);
-  }
-
-  Future<void> _deleteItem(int index) async {
-    final item = _controller.group.items[index];
-    final confirmed = await showConfirmDialog(
-      context,
-      title: item.type == ItemType.rest
-          ? "Supprimer la pause ?"
-          : "Supprimer l'exercice ?",
-      content: 'Supprimer "${item.name}" du groupe ?',
-      confirmLabel: "Supprimer",
-    );
-    if (confirmed && mounted) _controller.removeItem(index);
-  }
-
-  void _saveGroup() {
+  Future<void> _saveGroup() async {
     final group = _controller.save();
     final issues = BusinessValidation.validateGroup(group);
     final nameIssue = issues
@@ -149,7 +82,13 @@ class _GroupEditorState extends State<GroupEditor> {
       }
       return;
     }
-    Navigator.pop(context, group);
+    setState(() => _nameError = null);
+    if (widget.onSubmit != null) {
+      await widget.onSubmit!(group);
+      if (mounted) setState(() => _showQuickWarning = true);
+    } else if (mounted) {
+      Navigator.pop(context, group);
+    }
   }
 
   @override
@@ -163,14 +102,21 @@ class _GroupEditorState extends State<GroupEditor> {
         animation: _controller,
         builder: (context, _) => GroupEditorView(
           controller: _controller,
-          isNewGroup: widget.isNewGroup,
+          mode: widget.effectiveMode,
           onOpenSettings: () => showGroupEditorSettingsDialog(context),
-          onAddExercise: _addExercise,
-          onAddRest: _addRest,
-          onEditItem: _editItem,
-          onDeleteItem: _deleteItem,
+          onAddExercise: () => _dialogs.addExercise(context),
+          onAddRest: () => _dialogs.addRest(context),
+          onEditItem: (index) => _dialogs.editItem(context, index),
+          onDeleteItem: (index) => _dialogs.deleteItem(context, index),
           onSave: _saveGroup,
-          onEditRepetitionSequence: _editRepetitionSequence,
+          onEditRepetitionSequence: () =>
+              _dialogs.editRepetitionSequence(context),
+          onTypeChanged: _changeType,
+          onEditTimedExercise: () => _dialogs.editTimedExercise(context),
+          hasFollowingGroup: widget.hasFollowingGroup,
+          showQuickWarning: _showQuickWarning,
+          onDismissQuickWarning: () =>
+              setState(() => _showQuickWarning = false),
           nameError: _nameError,
         ),
       ),

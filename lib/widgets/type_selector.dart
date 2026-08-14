@@ -2,14 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../models/group_type.dart';
 
-/// Sélecteur du type de groupe, sous forme de liste déroulante. Isolé de
-/// [GroupEditor] : l'ajout d'un nouveau [GroupType] à l'avenir n'impacte
-/// que ce widget (la liste des items provient directement de
-/// La liste reste limitée aux éditeurs déjà disponibles. Les types temporisés
-/// sont activés par l'issue dédiée à l'éditeur partagé.
+/// Sélecteur compact partagé par les trois parcours d'édition.
 class TypeSelector extends StatelessWidget {
-  static const editableTypes = [GroupType.free, GroupType.variableRepetitions];
-
   final GroupType value;
   final ValueChanged<GroupType> onChanged;
 
@@ -17,16 +11,40 @@ class TypeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<GroupType>(
-      initialValue: value,
-      decoration: const InputDecoration(
-        border: OutlineInputBorder(),
-        labelText: "Type du groupe",
-      ),
-      items: editableTypes
-          .map((type) => DropdownMenuItem(value: type, child: Text(type.label)))
-          .toList(),
-      onChanged: (type) => onChanged(type!),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InputDecorator(
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: 'Type du groupe',
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<GroupType>(
+              value: value,
+              isExpanded: true,
+              isDense: true,
+              items: GroupType.values
+                  .map(
+                    (type) => DropdownMenuItem(
+                      value: type,
+                      child: Text(type.shortLabel),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (type) {
+                if (type != null) onChanged(type);
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value.description,
+          key: const Key('group-type-description'),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
     );
   }
 }

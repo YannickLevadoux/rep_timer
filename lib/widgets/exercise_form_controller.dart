@@ -14,6 +14,7 @@ class ExerciseFormController extends ChangeNotifier {
     TrainingItem? initial,
     String defaultName = '',
     this.repetitionsDefinedByGroup = false,
+    this.timedOnly = false,
     int repetitionFallback = BusinessLimits.minimumCount,
   }) : isEditing = initial != null,
        nameController = TextEditingController(
@@ -31,6 +32,7 @@ class ExerciseFormController extends ChangeNotifier {
 
   final bool isEditing;
   final bool repetitionsDefinedByGroup;
+  final bool timedOnly;
   final TextEditingController nameController;
   final TextEditingController repetitionsController;
   final TextEditingController commentController;
@@ -78,7 +80,7 @@ class ExerciseFormController extends ChangeNotifier {
             field: BusinessField.repetitions,
           )
         : null;
-    final durationIssue = mode == ExerciseInputMode.duration
+    final durationIssue = mode == ExerciseInputMode.duration && !timedOnly
         ? BusinessValidation.validateDuration(duration)
         : null;
     final currentCommentIssue = BusinessValidation.validateComment(
@@ -104,11 +106,13 @@ class ExerciseFormController extends ChangeNotifier {
     return TrainingItem(
       type: ItemType.exercise,
       name: BusinessValidation.normalizeName(nameController.text),
-      repetitions: mode == ExerciseInputMode.repetitions
+      repetitions: !timedOnly && mode == ExerciseInputMode.repetitions
           ? int.parse(repetitionsController.text.trim())
           : null,
-      duration: mode == ExerciseInputMode.duration ? duration : null,
-      isFreeDuration: mode == ExerciseInputMode.freeDuration,
+      duration: timedOnly || mode == ExerciseInputMode.duration
+          ? duration
+          : null,
+      isFreeDuration: !timedOnly && mode == ExerciseInputMode.freeDuration,
       comment: BusinessValidation.normalizeComment(commentController.text),
       iconName: iconName,
     );

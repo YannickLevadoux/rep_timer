@@ -16,6 +16,26 @@ enum GroupType {
     GroupType.emom => 'EMOM',
   };
 
+  String get shortLabel => switch (this) {
+    GroupType.free => 'Libre',
+    GroupType.variableRepetitions => 'Variables',
+    _ => label,
+  };
+
+  String get description => switch (this) {
+    GroupType.free => 'Enchaînez librement exercices et pauses.',
+    GroupType.variableRepetitions =>
+      'Définissez les répétitions de chaque tour.',
+    GroupType.tabata => 'Alternez un effort et une pause sur plusieurs cycles.',
+    GroupType.amrap => 'Réalisez un maximum de tours pendant la durée choisie.',
+    GroupType.emom => 'Redémarrez l’exercice au début de chaque minute.',
+  };
+
+  bool get isTimed =>
+      this == GroupType.tabata ||
+      this == GroupType.amrap ||
+      this == GroupType.emom;
+
   /// Résout une valeur persistée (nom d'enum) vers [GroupType], avec repli
   /// sur [GroupType.free] si absente ou inconnue (donnée corrompue,
   /// séance créée avant l'ajout de ce champ, ou export provenant d'une
