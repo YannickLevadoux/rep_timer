@@ -7,7 +7,7 @@ import '../models/training_history_entry.dart';
 import '../validation/business_validation.dart';
 import 'app_settings_storage.dart';
 import 'backup_import_exception.dart';
-import 'backup_v2_group_validator.dart';
+import 'backup_group_validator.dart';
 import 'training_import_service.dart';
 
 /// Détection commune des formats puis décodage intégral avant toute mutation.
@@ -42,7 +42,7 @@ class BackupImportParser {
 
     return switch (version) {
       1 => _v1Adapter.prepareV1(decoded),
-      2 => _parseV2(decoded),
+      2 || 3 => _parseFullBackup(decoded, version),
       _ => throw BackupImportException(
         BackupImportFailureKind.unsupportedVersion,
         version: version,
@@ -50,7 +50,10 @@ class BackupImportParser {
     };
   }
 
-  BackupV2RestorePlan _parseV2(Map<String, dynamic> decoded) {
+  BackupRestorePlan _parseFullBackup(
+    Map<String, dynamic> decoded,
+    int version,
+  ) {
     final exportedAtRaw = decoded['exportedAt'];
     final data = decoded['data'];
     if (exportedAtRaw is! String || data is! Map<String, dynamic>) {
@@ -65,15 +68,16 @@ class BackupImportParser {
       );
     }
 
-    return BackupV2RestorePlan(
+    return BackupRestorePlan(
       exportedAt: exportedAt,
-      trainings: List.unmodifiable(_parseTrainings(data['trainings'])),
+      trainings: List.unmodifiable(_parseTrainings(data['trainings'], version)),
       history: List.unmodifiable(_parseHistory(data['history'])),
-      settings: _parseSettings(data['preferences']),
+      settings: _parseSettings(data['preferences'], version),
+      formatVersion: version,
     );
   }
 
-  List<Training> _parseTrainings(Object? rawValue) {
+  List<Training> _parseTrainings(Object? rawValue, int version) {
     if (rawValue is! List<dynamic>) return _incomplete();
     final trainings = <Training>[];
     for (var index = 0; index < rawValue.length; index++) {
@@ -84,7 +88,7 @@ class BackupImportParser {
           entityIndex: index,
         );
       }
-      BackupV2GroupValidator.validate(raw, index);
+      BackupGroupValidator.validate(raw, index, version: version);
 
       final Training training;
       try {
@@ -126,7 +130,7 @@ class BackupImportParser {
     return history;
   }
 
-  ExportableAppSettings _parseSettings(Object? rawValue) {
+  ExportableAppSettings _parseSettings(Object? rawValue, int version) {
     if (rawValue is! Map<String, dynamic>) return _incomplete();
     final themeRaw = rawValue['themeMode'];
     final prefill = rawValue['prefillExerciseName'];
@@ -144,10 +148,22 @@ class BackupImportParser {
         BackupImportFailureKind.incompatibleData,
       );
     }
+    final countdownRaw = rawValue['preSessionCountdownSeconds'];
+    final countdown = version == 2
+        ? AppSettingsStorage.defaultPreSessionCountdownSeconds
+        : countdownRaw;
+    if (countdown is! int ||
+        countdown < 0 ||
+        countdown > BusinessLimits.maximumPreSessionCountdownSeconds) {
+      throw const BackupImportException(
+        BackupImportFailureKind.incompatibleData,
+      );
+    }
     return ExportableAppSettings(
       themeMode: theme,
       prefillExerciseName: prefill,
       notificationMode: notification,
+      preSessionCountdownSeconds: countdown,
     );
   }
 

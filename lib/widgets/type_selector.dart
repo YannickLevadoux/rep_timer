@@ -5,8 +5,11 @@ import '../models/group_type.dart';
 /// Sélecteur du type de groupe, sous forme de liste déroulante. Isolé de
 /// [GroupEditor] : l'ajout d'un nouveau [GroupType] à l'avenir n'impacte
 /// que ce widget (la liste des items provient directement de
-/// [GroupType.values]), pas le reste de l'écran d'édition.
+/// La liste reste limitée aux éditeurs déjà disponibles. Les types temporisés
+/// sont activés par l'issue dédiée à l'éditeur partagé.
 class TypeSelector extends StatelessWidget {
+  static const editableTypes = [GroupType.free, GroupType.variableRepetitions];
+
   final GroupType value;
   final ValueChanged<GroupType> onChanged;
 
@@ -20,7 +23,7 @@ class TypeSelector extends StatelessWidget {
         border: OutlineInputBorder(),
         labelText: "Type du groupe",
       ),
-      items: GroupType.values
+      items: editableTypes
           .map((type) => DropdownMenuItem(value: type, child: Text(type.label)))
           .toList(),
       onChanged: (type) => onChanged(type!),

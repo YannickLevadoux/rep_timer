@@ -37,7 +37,8 @@ List<SessionStep> buildSessionSteps(Training training) {
   }
   final steps = <SessionStep>[];
 
-  for (final group in training.groups) {
+  for (var groupIndex = 0; groupIndex < training.groups.length; groupIndex++) {
+    final group = training.groups[groupIndex];
     final rounds = group.executedRounds;
 
     for (var round = 1; round <= rounds; round++) {
@@ -58,6 +59,41 @@ List<SessionStep> buildSessionSteps(Training training) {
           ),
         );
       }
+    }
+
+    final hasFollowingGroup = groupIndex + 1 < training.groups.length;
+    if (hasFollowingGroup &&
+        group.type == GroupType.tabata &&
+        group.finalRestDuration != null &&
+        steps.isNotEmpty &&
+        steps.last.group == group &&
+        steps.last.item.type == ItemType.rest) {
+      final last = steps.removeLast();
+      final finalRest = last.item.copyWith(duration: group.finalRestDuration);
+      steps.add(
+        SessionStep(
+          group: group,
+          roundIndex: last.roundIndex,
+          totalRounds: last.totalRounds,
+          item: finalRest,
+          sourceItem: last.sourceItem,
+        ),
+      );
+    }
+    if (hasFollowingGroup && group.postGroupRestDuration != null) {
+      final rest = TrainingItem(
+        type: ItemType.rest,
+        name: 'Pause',
+        duration: group.postGroupRestDuration,
+      );
+      steps.add(
+        SessionStep(
+          group: group,
+          roundIndex: rounds,
+          totalRounds: rounds,
+          item: rest,
+        ),
+      );
     }
   }
 

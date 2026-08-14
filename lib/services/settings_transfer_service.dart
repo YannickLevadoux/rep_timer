@@ -1,13 +1,13 @@
 import '../models/backup_import_models.dart';
-import '../models/backup_v2_payload.dart';
+import '../models/backup_payload.dart';
 import 'backup_export_exception.dart';
 import 'backup_export_service.dart';
 import 'backup_file_writer.dart';
 import 'backup_import_service.dart';
-import 'backup_v2_encoder.dart';
+import 'backup_encoder.dart';
 import 'settings_transfer_platform.dart';
 
-typedef BackupEncoder = String Function(BackupV2Payload payload);
+typedef BackupEncoding = String Function(BackupPayload payload);
 
 /// Orchestre les interactions plateforme de l'import/export depuis Paramètres.
 ///
@@ -20,14 +20,14 @@ class SettingsTransferService {
     BackupImportService? importService,
     BackupFilePicker? pickBackup,
     BackupFileReader? readBackup,
-    BackupEncoder? encodeBackup,
+    BackupEncoding? encodeBackup,
     BackupWriter? writeBackup,
     BackupShare? shareBackup,
   }) : _backupService = backupService ?? BackupExportService(),
        _importService = importService ?? BackupImportService(),
        _pickBackup = pickBackup ?? SettingsTransferPlatform.pickBackup,
        _readBackup = readBackup ?? SettingsTransferPlatform.readBackup,
-       _encodeBackup = encodeBackup ?? BackupV2Encoder.encode,
+       _encodeBackup = encodeBackup ?? BackupEncoder.encode,
        _writeBackup = writeBackup ?? (fileWriter ?? BackupFileWriter()).write,
        _shareBackup = shareBackup ?? SettingsTransferPlatform.shareBackup;
 
@@ -35,7 +35,7 @@ class SettingsTransferService {
   final BackupImportService _importService;
   final BackupFilePicker _pickBackup;
   final BackupFileReader _readBackup;
-  final BackupEncoder _encodeBackup;
+  final BackupEncoding _encodeBackup;
   final BackupWriter _writeBackup;
   final BackupShare _shareBackup;
 
@@ -65,6 +65,9 @@ class SettingsTransferService {
     return _importService.importOrPrepare(content);
   }
 
-  Future<void> restoreV2(BackupV2RestorePlan plan) =>
-      _importService.restoreV2(plan);
+  Future<void> restoreBackup(BackupRestorePlan plan) => restoreV2(plan);
+
+  @Deprecated('Utiliser restoreBackup.')
+  Future<void> restoreV2(BackupRestorePlan plan) =>
+      _importService.restoreBackup(plan);
 }

@@ -20,5 +20,7 @@ String validationMessage(BusinessValidationIssue issue) {
       'Cette séance dépasse ${issue.maximum} étapes.',
     BusinessValidationCode.invalidExerciseMode =>
       "Choisis un seul mode valide pour l'exercice.",
+    BusinessValidationCode.invalidGroupStructure =>
+      'La structure de ce groupe ne correspond pas à son type.',
   };
 }

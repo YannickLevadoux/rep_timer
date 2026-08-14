@@ -1,3 +1,5 @@
+import 'amrap_checkpoint_state.dart';
+
 /// Photographie de l'état d'une séance en cours d'exécution, persistée
 /// régulièrement afin de pouvoir reprendre exactement où on en était même
 /// si le processus de l'application est tué par le système (et pas
@@ -15,17 +17,21 @@ class SessionCheckpoint {
   // l'historique détaillé) ; l'étape courante n'y figure pas encore tant
   // qu'on ne l'a pas quittée, voir stepElapsed pour son temps en cours.
   final List<Duration> stepActualDurations;
+  final AmrapCheckpointState? amrapState;
 
   SessionCheckpoint({
     required this.trainingId,
     required this.currentIndex,
-    required this.completed,
+    required List<bool> completed,
     required this.globalElapsed,
     required this.stepElapsed,
     required this.paused,
     required this.savedAt,
-    required this.stepActualDurations,
-  });
+    required List<Duration> stepActualDurations,
+    AmrapCheckpointState? amrapState,
+  }) : completed = List.unmodifiable(completed),
+       stepActualDurations = List.unmodifiable(stepActualDurations),
+       amrapState = amrapState?.copy();
 
   Map<String, dynamic> toJson() => {
     'trainingId': trainingId,
@@ -38,6 +44,7 @@ class SessionCheckpoint {
     'stepActualDurationsSeconds': stepActualDurations
         .map((d) => d.inSeconds)
         .toList(),
+    'amrapState': amrapState?.toJson(),
   };
 
   factory SessionCheckpoint.fromJson(Map<String, dynamic> json) {
@@ -58,6 +65,11 @@ class SessionCheckpoint {
               ?.map((s) => Duration(seconds: s as int))
               .toList() ??
           const [],
+      amrapState: json['amrapState'] == null
+          ? null
+          : AmrapCheckpointState.fromJson(
+              json['amrapState'] as Map<String, dynamic>,
+            ),
     );
   }
 }

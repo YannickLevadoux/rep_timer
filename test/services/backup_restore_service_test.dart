@@ -81,6 +81,7 @@ void main() {
       'theme_mode': 'light',
       'prefill_exercise_name': true,
       'notification_mode': 'none',
+      'pre_session_countdown_seconds': 9,
       'session_checkpoint': 'checkpoint',
       'internal_flag': 'unchanged',
     });
@@ -94,6 +95,7 @@ void main() {
     expect(store.values['theme_mode'], 'dark');
     expect(store.values['prefill_exercise_name'], isFalse);
     expect(store.values['notification_mode'], 'sound');
+    expect(store.values['pre_session_countdown_seconds'], 15);
     expect(store.values.containsKey('session_checkpoint'), isFalse);
     expect(store.values['internal_flag'], 'unchanged');
   });
@@ -107,6 +109,7 @@ BackupV2RestorePlan _plan() => BackupV2RestorePlan(
     themeMode: ThemeMode.dark,
     prefillExerciseName: false,
     notificationMode: NotificationMode.sound,
+    preSessionCountdownSeconds: 15,
   ),
 );
 

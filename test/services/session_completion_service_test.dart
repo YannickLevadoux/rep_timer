@@ -120,6 +120,42 @@ void main() {
       [10, 12, 15],
     );
   });
+
+  test('indexe les minutes EMOM mais pas leur récupération', () async {
+    final historyStorage = _FakeHistoryStorage();
+    final emom = ExerciseGroup.emom(id: 'emom')
+      ..rounds = 2
+      ..postGroupRestDuration = const Duration(seconds: 30);
+    final training = Training(
+      id: 'emom-training',
+      name: 'EMOM',
+      groups: [
+        emom,
+        ExerciseGroup.amrap(id: 'amrap'),
+      ],
+      createdAt: DateTime(2026),
+    );
+    final steps = buildSessionSteps(training);
+    final service = SessionCompletionService(
+      checkpointStorage: _FakeCheckpointStorage(),
+      historyStorage: historyStorage,
+      now: () => DateTime(2026),
+    );
+
+    await service.completeSession(
+      training: training,
+      steps: steps,
+      completed: List.filled(steps.length, true),
+      stepActualDurations: steps.map((step) => step.item.duration!).toList(),
+      totalDuration: const Duration(minutes: 4, seconds: 30),
+      status: TrainingSessionStatus.completed,
+    );
+
+    expect(
+      historyStorage.entries.single.steps.map((step) => step.emomMinuteIndex),
+      [1, 2, null, null],
+    );
+  });
 }
 
 Training _training() {

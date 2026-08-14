@@ -3,6 +3,7 @@ import '../models/group_type.dart';
 import '../models/training_item.dart';
 import 'numeric_validation.dart';
 import 'text_validation.dart';
+import 'timed_group_validation.dart';
 import 'validation_contract.dart';
 
 /// Validation métier des exercices et des groupes, sans orchestration de la
@@ -69,7 +70,7 @@ abstract final class ExerciseGroupValidation {
       field: BusinessField.groupName,
     );
     if (nameIssue != null) issues.add(_located(nameIssue, location));
-    issues.addAll(_validateRounds(group, location));
+    issues.addAll(_validateType(group, location));
 
     for (var index = 0; index < group.items.length; index++) {
       issues.addAll(
@@ -82,16 +83,56 @@ abstract final class ExerciseGroupValidation {
     return issues;
   }
 
-  static List<BusinessValidationIssue> _validateRounds(
+  static List<BusinessValidationIssue> _validateType(
     ExerciseGroup group,
     String? location,
   ) {
-    if (group.type == GroupType.free) {
-      final issue = NumericValidation.validateCount(
-        group.rounds,
-        field: BusinessField.groupRounds,
-      );
-      return issue == null ? const [] : [_located(issue, location)];
+    return switch (group.type) {
+      GroupType.free => _validateFree(group, location),
+      GroupType.variableRepetitions => _validateVariable(group, location),
+      GroupType.tabata || GroupType.amrap || GroupType.emom =>
+        TimedGroupValidation.validate(group, location: location),
+    };
+  }
+
+  static List<BusinessValidationIssue> _validateFree(
+    ExerciseGroup group,
+    String? location,
+  ) {
+    if (group.finalRestDuration != null ||
+        group.postGroupRestDuration != null) {
+      return [
+        _located(
+          const BusinessValidationIssue(
+            field: BusinessField.groupStructure,
+            code: BusinessValidationCode.invalidGroupStructure,
+          ),
+          location,
+        ),
+      ];
+    }
+    final issue = NumericValidation.validateCount(
+      group.rounds,
+      field: BusinessField.groupRounds,
+    );
+    return issue == null ? const [] : [_located(issue, location)];
+  }
+
+  static List<BusinessValidationIssue> _validateVariable(
+    ExerciseGroup group,
+    String? location,
+  ) {
+    if (group.finalRestDuration != null ||
+        group.postGroupRestDuration != null) {
+      return [
+        _located(
+          const BusinessValidationIssue(
+            field: BusinessField.groupStructure,
+            code: BusinessValidationCode.invalidGroupStructure,
+          ),
+          location,
+        ),
+      ];
     }
 
     if (group.repetitionSequence.isEmpty) {

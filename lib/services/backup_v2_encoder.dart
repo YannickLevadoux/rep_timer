@@ -1,9 +1,7 @@
-import 'dart:convert';
+import '../models/backup_payload.dart';
+import 'backup_encoder.dart';
 
-import '../models/backup_v2_payload.dart';
-
-/// Encodage JSON unique des nouvelles sauvegardes RepTimer.
+@Deprecated('Utiliser BackupEncoder.')
 abstract final class BackupV2Encoder {
-  static String encode(BackupV2Payload payload) =>
-      const JsonEncoder.withIndent('  ').convert(payload.toJson());
+  static String encode(BackupPayload payload) => BackupEncoder.encode(payload);
 }

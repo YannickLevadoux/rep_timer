@@ -4,7 +4,7 @@ import '../../models/backup_import_models.dart';
 
 Future<bool> showRestoreBackupDialog(
   BuildContext context, {
-  required BackupV2RestorePlan plan,
+  required BackupRestorePlan plan,
   required bool localDataWarning,
 }) async {
   return await showDialog<bool>(
@@ -24,7 +24,7 @@ class _RestoreBackupDialog extends StatelessWidget {
     required this.localDataWarning,
   });
 
-  final BackupV2RestorePlan plan;
+  final BackupRestorePlan plan;
   final bool localDataWarning;
 
   @override
@@ -52,6 +52,12 @@ class _RestoreBackupDialog extends StatelessWidget {
             _SummaryLine(
               label: 'Notifications',
               value: settings.notificationMode.label,
+            ),
+            _SummaryLine(
+              label: 'Compte à rebours',
+              value: settings.preSessionCountdownSeconds == 0
+                  ? 'Désactivé'
+                  : '${settings.preSessionCountdownSeconds} seconde(s)',
             ),
             const SizedBox(height: 16),
             const Text(

@@ -1,3 +1,4 @@
+import 'amrap_history_data.dart';
 import 'training_item.dart';
 
 /// Snapshot d'une étape (exercice ou pause) telle qu'elle a réellement été
@@ -13,6 +14,8 @@ class HistoryStepEntry {
   final String? comment;
   final Duration actualDuration;
   final bool completed;
+  final int? emomMinuteIndex;
+  final AmrapHistoryData? amrap;
 
   HistoryStepEntry({
     required this.groupId,
@@ -23,7 +26,16 @@ class HistoryStepEntry {
     required this.comment,
     required this.actualDuration,
     required this.completed,
-  });
+    this.emomMinuteIndex,
+    this.amrap,
+  }) {
+    if (emomMinuteIndex != null && emomMinuteIndex! < 1) {
+      throw const FormatException("L'index de minute EMOM doit être positif.");
+    }
+    if (amrap != null && amrap!.completed != completed) {
+      throw const FormatException('Les statuts AMRAP sont incohérents.');
+    }
+  }
 
   Map<String, dynamic> toJson() => {
     'groupId': groupId,
@@ -34,6 +46,8 @@ class HistoryStepEntry {
     'comment': comment,
     'actualDurationSeconds': actualDuration.inSeconds,
     'completed': completed,
+    'emomMinuteIndex': emomMinuteIndex,
+    'amrap': amrap?.toJson(),
   };
 
   factory HistoryStepEntry.fromJson(Map<String, dynamic> json) {
@@ -48,6 +62,10 @@ class HistoryStepEntry {
       comment: json['comment'] as String?,
       actualDuration: Duration(seconds: json['actualDurationSeconds'] as int),
       completed: json['completed'] as bool,
+      emomMinuteIndex: json['emomMinuteIndex'] as int?,
+      amrap: json['amrap'] == null
+          ? null
+          : AmrapHistoryData.fromJson(json['amrap'] as Map<String, dynamic>),
     );
   }
 }

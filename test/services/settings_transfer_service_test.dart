@@ -49,7 +49,7 @@ void main() {
 
       expect(exporter.buildCalls, 1);
       expect(events, ['construction', 'encodage', 'écriture', 'partage']);
-      expect(writtenContent, contains('"exportFormatVersion": 2'));
+      expect(writtenContent, contains('"exportFormatVersion": 3'));
       expect(writtenAt, payload.exportedAt);
       expect(sharedPath, '/cache/reptimer_backup.json');
     });

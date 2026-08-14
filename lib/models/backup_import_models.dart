@@ -18,28 +18,33 @@ final class V1ImportCompleted extends BackupImportOutcome {
   final int importedCount;
 }
 
-final class V2RestorePending extends BackupImportOutcome {
-  const V2RestorePending({required this.plan, required this.localDataWarning});
+final class RestorePending extends BackupImportOutcome {
+  const RestorePending({required this.plan, required this.localDataWarning});
 
-  final BackupV2RestorePlan plan;
+  final BackupRestorePlan plan;
   final bool localDataWarning;
 }
 
-/// Données v2 entièrement décodées et validées, prêtes à être restaurées.
+/// Données v2 ou v3 entièrement décodées et validées avant restauration.
 @immutable
-class BackupV2RestorePlan extends BackupImportPlan {
-  const BackupV2RestorePlan({
+class BackupRestorePlan extends BackupImportPlan {
+  const BackupRestorePlan({
     required this.exportedAt,
     required this.trainings,
     required this.history,
     required this.settings,
+    this.formatVersion = 2,
   });
 
   final DateTime exportedAt;
   final List<Training> trainings;
   final List<TrainingHistoryEntry> history;
   final ExportableAppSettings settings;
+  final int formatVersion;
 }
+
+typedef V2RestorePending = RestorePending;
+typedef BackupV2RestorePlan = BackupRestorePlan;
 
 @immutable
 class V1ImportPlan extends BackupImportPlan {

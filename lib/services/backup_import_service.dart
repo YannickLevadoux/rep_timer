@@ -9,7 +9,7 @@ import 'training_history_storage.dart';
 import 'training_import_service.dart';
 import 'training_storage.dart';
 
-/// Coordonne l'import additif v1 et la préparation/restauration complète v2.
+/// Coordonne l'import v1 et la restauration complète des sauvegardes v2/v3.
 class BackupImportService {
   BackupImportService({
     TrainingImportService? v1Adapter,
@@ -38,14 +38,17 @@ class BackupImportService {
     final plan = _parser.parse(content);
     return switch (plan) {
       V1ImportPlan() => V1ImportCompleted(await _v1Adapter.applyV1(plan)),
-      BackupV2RestorePlan() => V2RestorePending(
+      BackupRestorePlan() => RestorePending(
         plan: plan,
         localDataWarning: await _localDataNeedsWarning(),
       ),
     };
   }
 
-  Future<void> restoreV2(BackupV2RestorePlan plan) =>
+  Future<void> restoreBackup(BackupRestorePlan plan) => restoreV2(plan);
+
+  @Deprecated('Utiliser restoreBackup.')
+  Future<void> restoreV2(BackupRestorePlan plan) =>
       _restoreService.restore(plan);
 
   Future<bool> _localDataNeedsWarning() async {

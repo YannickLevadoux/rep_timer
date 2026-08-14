@@ -523,9 +523,9 @@ Le modèle de groupe transporte :
   optionnelle, par exemple `postGroupRestDuration` ;
 - EMOM : `rounds`, un Effort fixe de 60 s et la même récupération optionnelle.
 
-Les noms définitifs des champs Dart et JSON sont centralisés par #158, mais
-leur sémantique ne doit pas changer. Les brouillons des types visités ne sont
-jamais persistés.
+Les champs Dart sont `finalRestDuration` et `postGroupRestDuration`; leurs clés
+JSON sont `finalRestDurationSeconds` et `postGroupRestDurationSeconds`. Les
+brouillons des types visités ne sont jamais persistés.
 
 ### Format d'export
 
@@ -553,6 +553,12 @@ des nouveaux champs dans une ancienne entrée conserve le comportement existant.
 - AMRAP transporte les tours ordonnés, le partiel optionnel et le temps actif ;
 - le checkpoint AMRAP reste local et ajoute son état interne exact ;
 - les listes et objets ajoutés sont copiés profondément.
+
+L'état local `amrapState` transporte les durées configurée, active écoulée et
+restante, les tours terminés ordonnés, le tour courant, le délai actif restant
+du bouton et le statut. L'historique utilise `amrap` pour les tours, le partiel
+et le temps actif, et `emomMinuteIndex` pour l'index de minute. Ces champs sont
+optionnels afin de conserver la lecture des anciennes données.
 
 ## Validation par type
 
