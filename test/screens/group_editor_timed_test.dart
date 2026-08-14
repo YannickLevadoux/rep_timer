@@ -50,6 +50,115 @@ void main() {
     expect(find.byIcon(Icons.drag_handle), findsNothing);
   });
 
+  testWidgets('Tabata aligne exercice et pauses avec leur durée', (
+    tester,
+  ) async {
+    await _pumpEditor(tester, ExerciseGroup.tabata(id: 'tabata'));
+
+    final effortRow = find.byKey(const Key('tabata-effort-row'));
+    final effortIcon = find.descendant(
+      of: effortRow,
+      matching: find.byIcon(Icons.fitness_center),
+    );
+    final effortName = find.descendant(
+      of: effortRow,
+      matching: find.text('Effort'),
+    );
+    final edit = find.descendant(
+      of: effortRow,
+      matching: find.byTooltip("Modifier l'effort"),
+    );
+    final effortPicker = find.descendant(
+      of: effortRow,
+      matching: find.byType(DurationMinutesSecondsPicker),
+    );
+    expect(effortIcon, findsOneWidget);
+    expect(effortName, findsOneWidget);
+    expect(edit, findsOneWidget);
+    expect(effortPicker, findsOneWidget);
+    final effortNameText = tester.widget<Text>(effortName);
+    expect(effortNameText.maxLines, 1);
+    expect(effortNameText.overflow, TextOverflow.ellipsis);
+    expect(
+      tester.getTopLeft(effortIcon).dx,
+      lessThan(tester.getTopLeft(effortName).dx),
+    );
+    expect(
+      tester.getTopRight(effortName).dx,
+      lessThan(tester.getTopLeft(edit).dx),
+    );
+    expect(
+      tester.getTopRight(edit).dx,
+      lessThan(tester.getTopLeft(effortPicker).dx),
+    );
+    _expectSameVerticalCenter(tester, [
+      effortIcon,
+      effortName,
+      edit,
+      effortPicker,
+    ]);
+    expect(
+      tester.getTopRight(effortPicker).dx,
+      closeTo(tester.getTopRight(effortRow).dx, 0.1),
+    );
+
+    final restRow = find.byKey(const Key('tabata-rest-row'));
+    final restName = find.descendant(of: restRow, matching: find.text('Pause'));
+    final restPicker = find.descendant(
+      of: restRow,
+      matching: find.byType(DurationMinutesSecondsPicker),
+    );
+    _expectSameVerticalCenter(tester, [restName, restPicker]);
+    expect(
+      tester.getTopRight(restPicker).dx,
+      closeTo(tester.getTopRight(restRow).dx, 0.1),
+    );
+    expect(find.byType(Divider), findsNWidgets(2));
+
+    final addFinalRest = find.widgetWithText(
+      OutlinedButton,
+      'Personnaliser la dernière pause',
+    );
+    expect(
+      tester.getSize(addFinalRest).width,
+      closeTo(tester.getSize(effortRow).width, 0.1),
+    );
+    await tester.ensureVisible(addFinalRest);
+    await tester.tap(addFinalRest);
+    await tester.pump();
+
+    final finalRestRow = find.byKey(const Key('tabata-final-rest-row'));
+    final finalRestName = find.descendant(
+      of: finalRestRow,
+      matching: find.text('Dernière pause'),
+    );
+    final delete = find.descendant(
+      of: finalRestRow,
+      matching: find.byTooltip('Supprimer'),
+    );
+    final finalRestPicker = find.descendant(
+      of: finalRestRow,
+      matching: find.byType(DurationMinutesSecondsPicker),
+    );
+    expect(finalRestName, findsOneWidget);
+    expect(delete, findsOneWidget);
+    expect(finalRestPicker, findsOneWidget);
+    expect(
+      tester.getTopRight(finalRestName).dx,
+      lessThan(tester.getTopLeft(delete).dx),
+    );
+    expect(
+      tester.getTopRight(delete).dx,
+      lessThan(tester.getTopLeft(finalRestPicker).dx),
+    );
+    _expectSameVerticalCenter(tester, [finalRestName, delete, finalRestPicker]);
+    expect(
+      tester.getTopRight(finalRestPicker).dx,
+      closeTo(tester.getTopRight(finalRestRow).dx, 0.1),
+    );
+    expect(find.byType(Divider), findsNWidgets(2));
+  });
+
   testWidgets('Tabata masque les actions génériques et explique l’estimation', (
     tester,
   ) async {
@@ -183,6 +292,13 @@ Future<void> _chooseType(WidgetTester tester, GroupType type) async {
   await tester.pumpAndSettle();
   await tester.tap(find.text(type.shortLabel).last);
   await tester.pumpAndSettle();
+}
+
+void _expectSameVerticalCenter(WidgetTester tester, List<Finder> finders) {
+  final expected = tester.getCenter(finders.first).dy;
+  for (final finder in finders.skip(1)) {
+    expect(tester.getCenter(finder).dy, closeTo(expected, 0.1));
+  }
 }
 
 Future<void> _pumpEditor(
