@@ -88,6 +88,7 @@ void main() {
         repetitions: 12,
         isFreeDuration: true,
         comment: 'Régulier',
+        iconName: 'rowing',
       ),
     );
 
@@ -96,6 +97,8 @@ void main() {
     expect(effort.duration, const Duration(minutes: 1));
     expect(effort.repetitions, isNull);
     expect(effort.isFreeDuration, isFalse);
+    expect(effort.comment, 'Régulier');
+    expect(effort.iconName, 'rowing');
     controller.dispose();
   });
 

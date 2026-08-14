@@ -22,9 +22,9 @@ void main() {
     );
     expect(find.text('Tabata'), findsNWidgets(2));
     expect(find.text('Nombre de cycles'), findsOneWidget);
-    expect(find.text('Effort'), findsNWidgets(2));
+    expect(find.text('Effort'), findsOneWidget);
     expect(find.text('Pause'), findsOneWidget);
-    expect(find.text('00:20'), findsNWidgets(2));
+    expect(find.text('00:20'), findsOneWidget);
     expect(find.text('Personnaliser la dernière pause'), findsNothing);
     expect(find.text('Exercice'), findsNothing);
     expect(find.text('Commencer'), findsOneWidget);

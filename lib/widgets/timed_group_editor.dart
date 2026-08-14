@@ -7,6 +7,7 @@ import '../validation/business_validation.dart';
 import 'duration_minutes_seconds_picker.dart';
 import 'quick_tabata_sections.dart';
 import 'rounds_editor.dart';
+import 'timed_inline_duration_row.dart';
 import 'timed_item_section.dart';
 
 class TimedGroupEditor extends StatelessWidget {
@@ -48,17 +49,15 @@ class TimedGroupEditor extends StatelessWidget {
       label: 'Nombre de cycles',
       onChanged: controller.setRounds,
     ),
-    TimedDurationSection(
-      title: 'Effort',
-      value: controller.group.items.first.duration!,
-      onChanged: controller.setEffortDuration,
-    ),
-    TimedExerciseSection(
+    TimedExerciseDurationRow(
+      key: const Key('tabata-effort-row'),
       item: controller.group.items.first,
       onEdit: onEditEffort,
+      onChanged: controller.setEffortDuration,
     ),
     const Divider(),
-    TimedDurationSection(
+    TimedRestDurationRow(
+      key: const Key('tabata-rest-row'),
       title: 'Pause',
       value: controller.group.items[1].duration!,
       onChanged: controller.setRequiredRestDuration,
@@ -71,6 +70,7 @@ class TimedGroupEditor extends StatelessWidget {
         value: controller.group.finalRestDuration,
         onEnabled: controller.setFinalRestEnabled,
         onChanged: controller.setFinalRestDuration,
+        inline: true,
       ),
     ],
   ];
@@ -132,6 +132,7 @@ class _OptionalRest extends StatelessWidget {
     required this.value,
     required this.onEnabled,
     required this.onChanged,
+    this.inline = false,
   });
 
   final String title;
@@ -139,6 +140,7 @@ class _OptionalRest extends StatelessWidget {
   final Duration? value;
   final ValueChanged<bool> onEnabled;
   final ValueChanged<Duration> onChanged;
+  final bool inline;
 
   @override
   Widget build(BuildContext context) => value == null
@@ -146,6 +148,14 @@ class _OptionalRest extends StatelessWidget {
           onPressed: () => onEnabled(true),
           icon: const Icon(Icons.add),
           label: Text(addLabel),
+        )
+      : inline
+      ? TimedRestDurationRow(
+          key: const Key('tabata-final-rest-row'),
+          title: title,
+          value: value!,
+          onChanged: onChanged,
+          onDelete: () => onEnabled(false),
         )
       : TimedDurationSection(
           title: title,

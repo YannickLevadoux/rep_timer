@@ -4,6 +4,7 @@ import '../models/exercise_group.dart';
 import '../models/group_type.dart';
 import '../models/training_item.dart';
 import '../utils/exercise_icons.dart';
+import '../utils/group_summary.dart';
 import '../utils/repetition_sequence_format.dart';
 
 class TrainingSummaryGroupsList extends StatelessWidget {
@@ -52,12 +53,27 @@ class TrainingSummaryGroupsList extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Text(
-                      "× ${roundsOf(group)}",
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                    if (!group.type.isTimed)
+                      Text(
+                        "× ${roundsOf(group)}",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                   ],
                 ),
+                if (group.type.isTimed) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    formatGroupSummary(
+                      group,
+                      hasFollowingGroup: index + 1 < groups.length,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                ],
                 if (group.type == GroupType.variableRepetitions) ...[
                   const SizedBox(height: 4),
                   Text(
