@@ -39,6 +39,7 @@ class _GroupEditorState extends State<GroupEditor> {
   late final GroupEditorController _controller;
   late final GroupEditorDialogs _dialogs;
   String? _nameError;
+  bool _showQuickWarning = true;
 
   @override
   void initState() {
@@ -84,6 +85,7 @@ class _GroupEditorState extends State<GroupEditor> {
     setState(() => _nameError = null);
     if (widget.onSubmit != null) {
       await widget.onSubmit!(group);
+      if (mounted) setState(() => _showQuickWarning = true);
     } else if (mounted) {
       Navigator.pop(context, group);
     }
@@ -112,6 +114,9 @@ class _GroupEditorState extends State<GroupEditor> {
           onTypeChanged: _changeType,
           onEditTimedExercise: () => _dialogs.editTimedExercise(context),
           hasFollowingGroup: widget.hasFollowingGroup,
+          showQuickWarning: _showQuickWarning,
+          onDismissQuickWarning: () =>
+              setState(() => _showQuickWarning = false),
           nameError: _nameError,
         ),
       ),

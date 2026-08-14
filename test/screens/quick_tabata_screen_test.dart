@@ -40,6 +40,19 @@ void main() {
     }
   });
 
+  testWidgets('ferme l’avertissement et le réaffiche à la session suivante', (
+    tester,
+  ) async {
+    await _pumpScreen(tester, key: const ValueKey('première'));
+    await tester.tap(find.byTooltip("Fermer l'avertissement"));
+    await tester.pump();
+    expect(find.textContaining('ne sera pas enregistrée'), findsNothing);
+
+    await _pumpScreen(tester, key: const ValueKey('suivante'));
+    expect(find.textContaining('ne sera pas enregistrée'), findsOneWidget);
+    expect(find.byTooltip("Fermer l'avertissement"), findsOneWidget);
+  });
+
   testWidgets('AMRAP confirme le remplacement et masque la récupération', (
     tester,
   ) async {
@@ -86,6 +99,8 @@ void main() {
 
   testWidgets('Commencer lance une séance temporaire', (tester) async {
     await _pumpScreen(tester);
+    await tester.tap(find.byTooltip("Fermer l'avertissement"));
+    await tester.pump();
     final start = find.text('Commencer');
     await tester.ensureVisible(start);
     await tester.tap(start);
@@ -98,6 +113,10 @@ void main() {
     expect(
       session.trainingChangesPersistence,
       TrainingChangesPersistence.memoryOnly,
+    );
+    expect(
+      find.textContaining('ne sera pas enregistrée', skipOffstage: false),
+      findsOneWidget,
     );
   });
 
@@ -132,6 +151,7 @@ Future<void> _chooseType(WidgetTester tester, GroupType type) async {
 
 Future<void> _pumpScreen(
   WidgetTester tester, {
+  Key? key,
   Size? size,
   TextScaler textScaler = TextScaler.noScaling,
   Brightness brightness = Brightness.light,
@@ -148,6 +168,7 @@ Future<void> _pumpScreen(
         child: child!,
       ),
       home: QuickTabataScreen(
+        key: key,
         permissionService: SessionNotificationPermissionService(
           platform: GrantedSessionPermissionPlatform(),
         ),

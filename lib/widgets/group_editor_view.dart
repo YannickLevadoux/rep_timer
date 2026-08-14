@@ -27,6 +27,8 @@ class GroupEditorView extends StatelessWidget {
     required this.onTypeChanged,
     required this.onEditTimedExercise,
     required this.hasFollowingGroup,
+    required this.showQuickWarning,
+    required this.onDismissQuickWarning,
     this.nameError,
   });
 
@@ -42,6 +44,8 @@ class GroupEditorView extends StatelessWidget {
   final ValueChanged<GroupType> onTypeChanged;
   final VoidCallback onEditTimedExercise;
   final bool hasFollowingGroup;
+  final bool showQuickWarning;
+  final VoidCallback onDismissQuickWarning;
   final String? nameError;
 
   @override
@@ -65,13 +69,29 @@ class GroupEditorView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (mode.isQuick) ...[
+            if (mode.isQuick && showQuickWarning) ...[
               Card(
                 color: Theme.of(context).colorScheme.secondaryContainer,
-                child: const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text(
-                    "Cette session ne sera pas enregistrée dans Mes entraînements",
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          "Cette session ne sera pas enregistrée dans Mes entraînements",
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: onDismissQuickWarning,
+                        tooltip: "Fermer l'avertissement",
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 36,
+                          height: 36,
+                        ),
+                        icon: const Icon(Icons.close, size: 18),
+                      ),
+                    ],
                   ),
                 ),
               ),
