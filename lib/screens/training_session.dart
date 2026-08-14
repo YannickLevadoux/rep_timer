@@ -1,14 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/session_checkpoint.dart';
 import '../models/training.dart';
-import '../services/json_prefs_storage.dart';
 import '../services/session_controller.dart';
-import '../utils/snack.dart';
-import '../validation/business_validation.dart';
-import '../widgets/dialogs/comment_dialog.dart';
+import '../widgets/dialogs/amrap_restart_dialog.dart';
 import '../widgets/dialogs/exit_session_dialog.dart';
 import '../widgets/dialogs/incomplete_session_dialog.dart';
+import '../widgets/dialogs/session_comment_flow.dart';
 import '../widgets/session_blink_controller.dart';
 import '../widgets/training_session_view.dart';
 import 'session_progress.dart';
@@ -116,23 +116,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
   }
 
   Future<void> _editComment() async {
-    final result = await showCommentDialog(
-      context,
-      initialComment: _controller.currentStep.item.comment ?? '',
-    );
-    if (result == null) return;
-    try {
-      await _controller.updateComment(result);
-    } on BusinessValidationException {
-      return;
-    } on StorageMutationBlockedException {
-      if (!mounted) return;
-      showSnack(
-        context,
-        "Commentaire non enregistré : les séances stockées n'ont pas pu "
-        'être lues intégralement.',
-      );
-    }
+    await editCurrentSessionComment(context, _controller);
   }
 
   Future<void> _showExitMenu() async {
@@ -155,10 +139,22 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
           completed: _controller.completed,
           currentIndexProvider: () => _controller.currentIndex,
           blinkController: _blink.animationController!,
-          onSelectStep: _controller.jumpToStep,
+          onBeforeSelectStep: _confirmAmrapRestart,
+          onSelectStep: (index) =>
+              _controller.jumpToStep(index, restartAmrap: true),
         ),
       ),
     );
+  }
+
+  Future<bool> _confirmAmrapRestart(int index) async {
+    if (!_controller.requiresAmrapRestart(index)) return true;
+    return showAmrapRestartDialog(context);
+  }
+
+  Future<void> _jumpToStep(int index) async {
+    if (!await _confirmAmrapRestart(index)) return;
+    _controller.jumpToStep(index, restartAmrap: true);
   }
 
   void _backHome() => Navigator.popUntil(context, (route) => route.isFirst);
@@ -179,13 +175,16 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
       paused: _controller.paused,
       notificationMode: _controller.notificationMode,
       blinkOpacity: _blink.opacity,
-      onPrevious: _controller.goToPrevious,
-      onNext: _controller.goToNext,
+      onPrevious: () => unawaited(_jumpToStep(_controller.currentIndex - 1)),
+      onNext: () => unawaited(_jumpToStep(_controller.currentIndex + 1)),
       onComplete: _controller.completeCurrentStep,
       onTogglePause: _controller.togglePause,
       onEditComment: _editComment,
       onCycleNotificationMode: _controller.cycleNotificationMode,
       onOpenProgress: _openProgress,
+      amrap: _controller.amrap,
+      onRecordAmrapLap: _controller.recordAmrapLap,
+      onUndoAmrapLap: _controller.undoLastAmrapLap,
     );
     if (_controller.steps.isEmpty || _controller.finished) return view;
     return PopScope(

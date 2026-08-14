@@ -79,16 +79,15 @@ abstract final class TrainingValidation {
       final group = training.groups[index];
       final rounds = group.executedRounds;
       if (rounds <= 0 || group.items.isEmpty) continue;
-      final remaining = stopAfter - total;
-      if (rounds > remaining ~/ group.items.length) {
-        return stopAfter + 1;
-      }
-      total += group.items.length * rounds;
       final hasFollowingGroup = index + 1 < training.groups.length;
+      var contribution = group.items.length * rounds;
       if (hasFollowingGroup && group.postGroupRestDuration != null) {
-        total++;
-        if (total > stopAfter) return stopAfter + 1;
+        contribution++;
+      } else if (!hasFollowingGroup && group.items.last.type == ItemType.rest) {
+        contribution--;
       }
+      if (contribution > stopAfter - total) return stopAfter + 1;
+      total += contribution;
     }
     return total;
   }

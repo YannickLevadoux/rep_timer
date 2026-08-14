@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/session_step.dart';
+import '../models/group_type.dart';
 import '../models/training_item.dart';
 import '../utils/exercise_icons.dart';
 
@@ -55,7 +56,7 @@ class SessionProgressStepTile extends StatelessWidget {
           ? FadeTransition(opacity: blinkOpacity, child: title)
           : title,
       subtitle: Text(
-        '${step.group.name} · répétition ${step.roundIndex}/${step.totalRounds} · '
+        '${step.group.name} · ${_occurrenceLabel(step)} · '
         '${formatSessionStepDetail(step)}',
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
@@ -70,6 +71,13 @@ class SessionProgressStepTile extends StatelessWidget {
       onTap: onSelect,
     );
   }
+
+  String _occurrenceLabel(SessionStep step) => switch (step.group.type) {
+    GroupType.tabata => 'cycle ${step.roundIndex}/${step.totalRounds}',
+    GroupType.emom => 'minute ${step.roundIndex}/${step.totalRounds}',
+    GroupType.amrap => 'AMRAP',
+    _ => 'répétition ${step.roundIndex}/${step.totalRounds}',
+  };
 }
 
 class _StepTitle extends StatelessWidget {

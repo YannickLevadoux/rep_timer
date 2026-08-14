@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/notification_mode.dart';
 import '../models/session_step.dart';
 import '../models/training_item.dart';
+import '../services/amrap_execution_state.dart';
 import 'section_divider.dart';
 import 'session_command_row.dart';
 import 'session_current_step_section.dart';
@@ -28,6 +29,9 @@ class SessionRunningBody extends StatelessWidget {
   final VoidCallback onTogglePause;
   final VoidCallback onEditComment;
   final VoidCallback onCycleNotificationMode;
+  final AmrapExecutionSnapshot? amrap;
+  final VoidCallback onRecordAmrapLap;
+  final VoidCallback onUndoAmrapLap;
 
   const SessionRunningBody({
     super.key,
@@ -46,6 +50,9 @@ class SessionRunningBody extends StatelessWidget {
     required this.onTogglePause,
     required this.onEditComment,
     required this.onCycleNotificationMode,
+    this.amrap,
+    this.onRecordAmrapLap = _noop,
+    this.onUndoAmrapLap = _noop,
   });
 
   @override
@@ -87,6 +94,9 @@ class SessionRunningBody extends StatelessWidget {
             blinkOpacity: blinkOpacity,
             onComplete: onComplete,
             onEditComment: onEditComment,
+            amrap: amrap,
+            onRecordAmrapLap: onRecordAmrapLap,
+            onUndoAmrapLap: onUndoAmrapLap,
           ),
         ],
       ),
@@ -101,3 +111,5 @@ class SessionRunningBody extends StatelessWidget {
     return '${nextStep.group.name} — $itemLabel';
   }
 }
+
+void _noop() {}

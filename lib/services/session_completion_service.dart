@@ -1,4 +1,6 @@
 import '../models/history_step_entry.dart';
+import '../models/amrap_checkpoint_state.dart';
+import '../models/amrap_history_data.dart';
 import '../models/group_type.dart';
 import '../models/session_checkpoint.dart';
 import '../models/session_step.dart';
@@ -40,6 +42,7 @@ class SessionCompletionService {
     required Duration stepElapsed,
     required bool paused,
     required List<Duration> stepActualDurations,
+    AmrapCheckpointState? amrapState,
   }) {
     return _checkpointStorage.saveCheckpoint(
       SessionCheckpoint(
@@ -51,6 +54,7 @@ class SessionCompletionService {
         paused: paused,
         savedAt: _now(),
         stepActualDurations: List<Duration>.of(stepActualDurations),
+        amrapState: amrapState,
       ),
     );
   }
@@ -62,6 +66,7 @@ class SessionCompletionService {
     required List<Duration> stepActualDurations,
     required Duration totalDuration,
     required TrainingSessionStatus status,
+    Map<int, AmrapHistoryData> amrapHistory = const {},
   }) async {
     if (!_historySaved) {
       final now = _now();
@@ -88,6 +93,7 @@ class SessionCompletionService {
                       steps[i].item.type == ItemType.exercise
                   ? steps[i].roundIndex
                   : null,
+              amrap: amrapHistory[i],
             ),
         ],
       );

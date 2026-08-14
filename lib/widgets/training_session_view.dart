@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/notification_mode.dart';
 import '../models/session_step.dart';
+import '../services/amrap_execution_state.dart';
 import 'session_finished_view.dart';
 import 'session_running_body.dart';
 
@@ -29,6 +30,9 @@ class TrainingSessionView extends StatelessWidget {
     this.onEditComment = _noop,
     this.onCycleNotificationMode = _noop,
     this.onOpenProgress = _noop,
+    this.amrap,
+    this.onRecordAmrapLap = _noop,
+    this.onUndoAmrapLap = _noop,
   });
 
   final String trainingName;
@@ -51,6 +55,9 @@ class TrainingSessionView extends StatelessWidget {
   final VoidCallback onEditComment;
   final VoidCallback onCycleNotificationMode;
   final VoidCallback onOpenProgress;
+  final AmrapExecutionSnapshot? amrap;
+  final VoidCallback onRecordAmrapLap;
+  final VoidCallback onUndoAmrapLap;
 
   @override
   Widget build(BuildContext context) {
@@ -102,6 +109,9 @@ class TrainingSessionView extends StatelessWidget {
           onTogglePause: onTogglePause,
           onEditComment: onEditComment,
           onCycleNotificationMode: onCycleNotificationMode,
+          amrap: amrap,
+          onRecordAmrapLap: onRecordAmrapLap,
+          onUndoAmrapLap: onUndoAmrapLap,
         ),
       ),
     );
