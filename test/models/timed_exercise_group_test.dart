@@ -86,6 +86,33 @@ void main() {
     expect(BusinessValidation.validateGroup(emom), isNotEmpty);
   });
 
+  test('valide les trois durées Tabata aux bornes exactes', () {
+    final tabata = ExerciseGroup.tabata(id: 'tabata');
+    for (final duration in [
+      const Duration(seconds: 1),
+      const Duration(hours: 2, seconds: 59),
+    ]) {
+      tabata.items.first.duration = duration;
+      tabata.items.last.duration = duration;
+      tabata.finalRestDuration = duration;
+      expect(BusinessValidation.validateGroup(tabata), isEmpty);
+    }
+
+    for (final duration in [
+      Duration.zero,
+      const Duration(hours: 2, minutes: 1),
+    ]) {
+      tabata.items.first.duration = duration;
+      expect(BusinessValidation.validateGroup(tabata), isNotEmpty);
+      tabata.items.first.duration = ExerciseGroup.defaultTabataEffort;
+      tabata.items.last.duration = duration;
+      expect(BusinessValidation.validateGroup(tabata), isNotEmpty);
+      tabata.items.last.duration = ExerciseGroup.defaultTabataRest;
+      tabata.finalRestDuration = duration;
+      expect(BusinessValidation.validateGroup(tabata), isNotEmpty);
+    }
+  });
+
   test('refuse les structures, modes et transitions incompatibles', () {
     final tabata = ExerciseGroup.tabata(id: 'tabata');
     tabata.items = tabata.items.reversed.toList();

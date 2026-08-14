@@ -50,6 +50,27 @@ void main() {
     expect(find.byIcon(Icons.drag_handle), findsNothing);
   });
 
+  testWidgets('Tabata masque les actions génériques et explique l’estimation', (
+    tester,
+  ) async {
+    await _pumpEditor(tester, ExerciseGroup.tabata(id: 'tabata'));
+
+    expect(find.widgetWithText(OutlinedButton, 'Exercice'), findsNothing);
+    expect(find.widgetWithText(OutlinedButton, 'Pause'), findsNothing);
+    await tester.ensureVisible(
+      find.byTooltip('Informations sur la durée estimée'),
+    );
+    await tester.tap(find.byTooltip('Informations sur la durée estimée'));
+    await tester.pumpAndSettle();
+
+    expect(find.text("À propos de l'estimation"), findsOneWidget);
+    expect(
+      find.textContaining("incluse uniquement lorsqu'un autre groupe suit"),
+      findsOneWidget,
+    );
+    expect(find.textContaining('pauses manuelles'), findsOneWidget);
+  });
+
   testWidgets('AMRAP ajoute une récupération et adapte l’estimation', (
     tester,
   ) async {

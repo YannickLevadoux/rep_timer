@@ -211,6 +211,23 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('résume le Tabata selon sa position et son plan réel', (
+    tester,
+  ) async {
+    final tabata = ExerciseGroup.tabata(id: 'tabata')
+      ..rounds = 8
+      ..finalRestDuration = const Duration(seconds: 17);
+
+    await _pumpSummary(tester, _training(groups: [tabata]));
+
+    expect(find.text('Tabata · 8 cycles · 03:50'), findsOneWidget);
+    expect(find.text('× 8'), findsNothing);
+
+    await _pumpSummary(tester, _training(groups: [tabata, _group('Suite')]));
+
+    expect(find.text('Tabata · 8 cycles · 04:07'), findsOneWidget);
+  });
 }
 
 void _expectBadge(
