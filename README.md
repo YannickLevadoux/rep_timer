@@ -60,9 +60,9 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Détail d'une séance avec sa date et son heure, ses statistiques de réalisation, ses durées de travail et de pause, puis le temps passé sur chaque exercice ou pause, regroupé dans des groupes initialement repliés.
 
 ### Import / Export
-- Export d'une sauvegarde complète v2 via la fenêtre standard de partage : séances, historique, thème, préremplissage des noms et mode de notification.
+- Export d'une sauvegarde complète v3 via la fenêtre standard de partage : séances, historique, groupes temporisés et préférences exportables.
 - Compatibilité avec les anciens exports v1, importés de façon additive sans modifier l'historique ni les préférences.
-- Restauration v2 complète après présentation d'un résumé et confirmation explicite : elle remplace les séances, l'historique et les trois préférences exportables.
+- Restauration v2/v3 complète après présentation d'un résumé et confirmation explicite, avec repli du compte à rebours à 0 pour v2.
 - Lecture défensive du stockage local : les données récupérables restent consultables, les erreurs sont signalées sans exposer leur contenu et les mutations susceptibles d'écraser des données illisibles sont bloquées.
 
 ### Interface
@@ -125,7 +125,7 @@ releases](docs/release.md).
 
 - [Créer et exécuter des séances](docs/training-sessions.md) : groupes libres,
   groupes à répétitions variables, édition et exécution.
-- [Importer, exporter et restaurer](docs/import-export.md) : sauvegarde v2,
+- [Importer, exporter et restaurer](docs/import-export.md) : sauvegarde v3,
   compatibilité v1 et précautions avant une restauration.
 - [Contribuer au projet](CONTRIBUTING.md) : environnement de développement,
   structure du projet, branches, issues et mises à jour Renovate.

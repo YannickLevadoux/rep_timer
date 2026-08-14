@@ -5,9 +5,9 @@ import '../services/settings_transfer_service.dart';
 import '../utils/snack.dart';
 import 'dialogs/restore_backup_dialog.dart';
 
-/// Exécute le parcours UI après sélection du fichier et retourne le plan v2
-/// restauré, afin que l'écran applique immédiatement ses préférences.
-Future<BackupV2RestorePlan?> runBackupImportFlow(
+/// Exécute le parcours UI après sélection et retourne le plan restauré afin
+/// que l'écran applique immédiatement ses préférences.
+Future<BackupRestorePlan?> runBackupImportFlow(
   BuildContext context,
   SettingsTransferService transferService,
 ) async {
@@ -21,7 +21,7 @@ Future<BackupV2RestorePlan?> runBackupImportFlow(
         'Import terminé : $importedCount séance(s) importée(s).',
       );
       return null;
-    case V2RestorePending(:final plan, :final localDataWarning):
+    case RestorePending(:final plan, :final localDataWarning):
       final confirmed = await showRestoreBackupDialog(
         context,
         plan: plan,
@@ -29,7 +29,7 @@ Future<BackupV2RestorePlan?> runBackupImportFlow(
       );
       if (!confirmed) return null;
 
-      await transferService.restoreV2(plan);
+      await transferService.restoreBackup(plan);
       if (!context.mounted) return plan;
       showSnack(
         context,

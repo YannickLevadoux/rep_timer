@@ -1,13 +1,19 @@
 /// Type d'un groupe d'exercices.
 enum GroupType {
   free,
-  variableRepetitions;
+  variableRepetitions,
+  tabata,
+  amrap,
+  emom;
 
   /// Libellé affiché à l'utilisateur (liste déroulante de l'écran
   /// d'édition, étiquette de synthèse...).
   String get label => switch (this) {
     GroupType.free => "Groupe libre",
     GroupType.variableRepetitions => "Groupe à répétitions variables",
+    GroupType.tabata => 'Tabata',
+    GroupType.amrap => 'AMRAP',
+    GroupType.emom => 'EMOM',
   };
 
   /// Résout une valeur persistée (nom d'enum) vers [GroupType], avec repli

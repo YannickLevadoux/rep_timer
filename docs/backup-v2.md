@@ -1,6 +1,9 @@
 # Contrat de sauvegarde RepTimer v2
 
-Tout nouvel export utilise exclusivement l'enveloppe suivante :
+Ce format est conservé uniquement pour la restauration rétrocompatible.
+RepTimer 1.4.0 écrit exclusivement le [format v3](backup-v3.md).
+
+Les exports RepTimer 1.3.x utilisaient l'enveloppe suivante :
 
 ```json
 {

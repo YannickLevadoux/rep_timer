@@ -1,9 +1,13 @@
 import '../validation/business_validation.dart';
 import 'backup_import_exception.dart';
 
-/// Validation brute propre au format v2, avant le décodage tolérant du modèle.
-abstract final class BackupV2GroupValidator {
-  static void validate(Map<String, dynamic> training, int trainingIndex) {
+/// Validation brute des groupes v2/v3 avant le décodage tolérant du modèle.
+abstract final class BackupGroupValidator {
+  static void validate(
+    Map<String, dynamic> training,
+    int trainingIndex, {
+    required int version,
+  }) {
     final groups = training['groups'];
     if (groups is! List<dynamic>) {
       throw _invalidTraining(trainingIndex);
@@ -15,7 +19,10 @@ abstract final class BackupV2GroupValidator {
         throw _invalidTraining(trainingIndex);
       }
       final type = rawGroup['type'];
-      if (type != 'free' && type != 'variableRepetitions') {
+      final acceptedTypes = version == 2
+          ? const {'free', 'variableRepetitions'}
+          : const {'free', 'variableRepetitions', 'tabata', 'amrap', 'emom'};
+      if (!acceptedTypes.contains(type)) {
         throw const BackupImportException(
           BackupImportFailureKind.incompatibleData,
         );
@@ -23,9 +30,19 @@ abstract final class BackupV2GroupValidator {
 
       final rounds = rawGroup['rounds'];
       final rawSequence = rawGroup['repetitionSequence'];
+      final finalRest = rawGroup['finalRestDurationSeconds'];
+      final postGroupRest = rawGroup['postGroupRestDurationSeconds'];
+      final v3FieldsPresent =
+          rawGroup.containsKey('type') &&
+          rawGroup.containsKey('repetitionSequence') &&
+          rawGroup.containsKey('finalRestDurationSeconds') &&
+          rawGroup.containsKey('postGroupRestDurationSeconds');
       if (rounds is! int ||
           (rawSequence != null && rawSequence is! List<dynamic>) ||
-          (type == 'variableRepetitions' && rawSequence == null)) {
+          (type == 'variableRepetitions' && rawSequence == null) ||
+          (version == 3 && !v3FieldsPresent) ||
+          (finalRest != null && finalRest is! int) ||
+          (postGroupRest != null && postGroupRest is! int)) {
         throw const BackupImportException(
           BackupImportFailureKind.incompleteSchema,
         );
@@ -83,4 +100,14 @@ abstract final class BackupV2GroupValidator {
 
   static String _location(int groupIndex, int valueIndex) =>
       'groupe ${groupIndex + 1}, tour ${valueIndex + 1}';
+}
+
+@Deprecated('Utiliser BackupGroupValidator.')
+abstract final class BackupV2GroupValidator {
+  static void validate(
+    Map<String, dynamic> training,
+    int trainingIndex, {
+    required int version,
+  }) =>
+      BackupGroupValidator.validate(training, trainingIndex, version: version);
 }

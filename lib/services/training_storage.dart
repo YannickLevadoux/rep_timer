@@ -1,4 +1,5 @@
 import '../models/training.dart';
+import '../models/group_type.dart';
 import '../validation/business_validation.dart';
 import 'json_prefs_storage.dart';
 
@@ -19,7 +20,7 @@ class TrainingStorage implements TrainingStore {
 
   final JsonListStorage<Training> _storage = JsonListStorage<Training>(
     storageKey: storageKey,
-    fromJson: Training.fromJson,
+    fromJson: _trainingFromJson,
     toJson: (t) => t.toJson(),
   );
 
@@ -68,5 +69,18 @@ class TrainingStorage implements TrainingStore {
           readError: error,
         ),
     };
+  }
+
+  static Training _trainingFromJson(Map<String, dynamic> json) {
+    final training = Training.fromJson(json);
+    for (final group in training.groups) {
+      if (group.type == GroupType.free ||
+          group.type == GroupType.variableRepetitions) {
+        continue;
+      }
+      final issues = BusinessValidation.validateGroup(group);
+      if (issues.isNotEmpty) throw BusinessValidationException(issues);
+    }
+    return training;
   }
 }

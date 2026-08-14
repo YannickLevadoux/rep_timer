@@ -20,7 +20,7 @@ void main() {
 
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  test('construit l’enveloppe v2 complète avec une date injectée', () async {
+  test('construit l’enveloppe v3 complète avec une date injectée', () async {
     final training = _trainingWithFreeAndVariableGroups();
     final history = _legacyHistory();
     SharedPreferences.setMockInitialValues({
@@ -29,6 +29,7 @@ void main() {
       'theme_mode': 'dark',
       'prefill_exercise_name': false,
       'notification_mode': 'vibration',
+      'pre_session_countdown_seconds': 15,
       'session_checkpoint': '{"private":"checkpoint"}',
       'session_notification_explanation_presented': true,
       'android_permission': 'private-permission',
@@ -43,7 +44,7 @@ void main() {
     final preferences = data['preferences'] as Map<String, dynamic>;
 
     expect(json['app'], 'RepTimer');
-    expect(json['exportFormatVersion'], 2);
+    expect(json['exportFormatVersion'], 3);
     expect(json['exportedAt'], exportedAt.toIso8601String());
     expect(data.keys, unorderedEquals(['trainings', 'history', 'preferences']));
     expect((data['trainings'] as List), hasLength(1));
@@ -52,10 +53,11 @@ void main() {
       'themeMode': 'dark',
       'prefillExerciseName': false,
       'notificationMode': 'vibration',
+      'preSessionCountdownSeconds': 15,
     });
 
     final encoded = BackupV2Encoder.encode(payload);
-    expect(encoded, contains('"exportFormatVersion": 2'));
+    expect(encoded, contains('"exportFormatVersion": 3'));
     expect(encoded, isNot(contains('"exportFormatVersion": 1')));
     expect(encoded, isNot(contains('session_checkpoint')));
     expect(encoded, isNot(contains('session_notification_explanation')));
@@ -98,6 +100,7 @@ void main() {
       'themeMode': 'system',
       'prefillExerciseName': true,
       'notificationMode': 'none',
+      'preSessionCountdownSeconds': 0,
     });
   });
 
@@ -240,7 +243,7 @@ void main() {
   );
 
   test(
-    'écrit un fichier v2 au nom Android sûr puis le transmet au partage',
+    'écrit un fichier v3 au nom Android sûr puis le transmet au partage',
     () async {
       final directory = await Directory.systemTemp.createTemp(
         'reptimer_backup_test_',
@@ -259,14 +262,14 @@ void main() {
       expect(sharedPath, isNotNull);
       expect(
         sharedPath!.split(Platform.pathSeparator).last,
-        'reptimer_backup_v2_20260805T142305123Z.json',
+        'reptimer_backup_v3_20260805T142305123Z.json',
       );
       expect(
         sharedPath!.split(Platform.pathSeparator).last,
         matches(RegExp(r'^[A-Za-z0-9_.]+$')),
       );
       final decoded = jsonDecode(await File(sharedPath!).readAsString());
-      expect((decoded as Map<String, dynamic>)['exportFormatVersion'], 2);
+      expect((decoded as Map<String, dynamic>)['exportFormatVersion'], 3);
     },
   );
 

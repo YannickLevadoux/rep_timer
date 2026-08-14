@@ -5,6 +5,12 @@ abstract final class BusinessLimits {
   static const Duration minimumDuration = Duration(seconds: 1);
   static const Duration maximumDuration = Duration(hours: 2, seconds: 59);
   static const int maximumSessionSteps = 10000;
+  static const int maximumEmomMinutes = 60;
+  static const int maximumAmrapLaps = 999;
+  static const Duration minimumAmrapDuration = Duration(minutes: 1);
+  static const Duration maximumAmrapDuration = Duration(hours: 1);
+  static const Duration maximumAmrapButtonDelay = Duration(seconds: 2);
+  static const int maximumPreSessionCountdownSeconds = 15;
   static const int maximumNameCharacters = 50;
   static const int maximumCommentCharacters = 200;
   static const int maximumCommentLines = 3;
@@ -24,6 +30,11 @@ enum BusinessField {
   comment,
   sessionSteps,
   exerciseMode,
+  groupStructure,
+  finalRestDuration,
+  postGroupRestDuration,
+  amrapDuration,
+  emomMinutes,
 }
 
 enum BusinessValidationCode {
@@ -36,6 +47,7 @@ enum BusinessValidationCode {
   tooManyLines,
   tooManySteps,
   invalidExerciseMode,
+  invalidGroupStructure,
 }
 
 class BusinessValidationIssue {

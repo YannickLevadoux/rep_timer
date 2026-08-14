@@ -77,11 +77,12 @@ void main() {
     }
   });
 
-  test('regroupe les trois préférences exportables sans régression', () async {
+  test('regroupe les préférences exportables sans régression', () async {
     SharedPreferences.setMockInitialValues({
       'theme_mode': 'dark',
       'prefill_exercise_name': false,
       'notification_mode': 'sound',
+      'pre_session_countdown_seconds': 15,
     });
 
     final settings = await AppSettingsStorage().loadExportableSettings();
@@ -89,6 +90,7 @@ void main() {
     expect(settings.themeMode, ThemeMode.dark);
     expect(settings.prefillExerciseName, isFalse);
     expect(settings.notificationMode, NotificationMode.sound);
+    expect(settings.preSessionCountdownSeconds, 15);
   });
 
   test('le groupe exportable utilise tous les défauts documentés', () async {
@@ -99,6 +101,7 @@ void main() {
     expect(settings.themeMode, ThemeMode.system);
     expect(settings.prefillExerciseName, isTrue);
     expect(settings.notificationMode, NotificationMode.none);
+    expect(settings.preSessionCountdownSeconds, 0);
   });
 
   test('le groupe exportable refuse une valeur réelle inconnue', () async {
@@ -131,5 +134,53 @@ void main() {
       await AppSettingsStorage().loadSessionNotificationExplanationPresented(),
       isTrue,
     );
+  });
+
+  group('compte à rebours exportable', () {
+    test('lit absence, 0 et 15, puis replie les valeurs illisibles', () async {
+      for (final entry in <Object?, int>{
+        null: 0,
+        0: 0,
+        15: 15,
+        -1: 0,
+        16: 0,
+      }.entries) {
+        SharedPreferences.setMockInitialValues({
+          if (entry.key != null) 'pre_session_countdown_seconds': entry.key!,
+        });
+        expect(
+          await AppSettingsStorage().loadPreSessionCountdownSeconds(),
+          entry.value,
+        );
+      }
+      SharedPreferences.setMockInitialValues({
+        'pre_session_countdown_seconds': 'illisible',
+      });
+      expect(await AppSettingsStorage().loadPreSessionCountdownSeconds(), 0);
+    });
+
+    test('persiste les bornes et refuse toute valeur hors contrat', () async {
+      final storage = AppSettingsStorage();
+      for (final value in [0, 15]) {
+        await storage.savePreSessionCountdownSeconds(value);
+        expect(await storage.loadPreSessionCountdownSeconds(), value);
+      }
+      for (final value in [-1, 16]) {
+        await expectLater(
+          storage.savePreSessionCountdownSeconds(value),
+          throwsA(isA<AppSettingsWriteException>()),
+        );
+      }
+    });
+
+    test('bloque un export si la valeur locale est hors bornes', () async {
+      SharedPreferences.setMockInitialValues({
+        'pre_session_countdown_seconds': 16,
+      });
+      await expectLater(
+        AppSettingsStorage().loadExportableSettings(),
+        throwsA(isA<AppSettingsReadException>()),
+      );
+    });
   });
 }

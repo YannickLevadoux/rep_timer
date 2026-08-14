@@ -32,6 +32,6 @@ class BackupFileWriter {
         '${digits(date.day, 2)}T${digits(date.hour, 2)}'
         '${digits(date.minute, 2)}${digits(date.second, 2)}'
         '${digits(date.millisecond, 3)}Z';
-    return 'reptimer_backup_v2_$timestamp.json';
+    return 'reptimer_backup_v3_$timestamp.json';
   }
 }

@@ -47,6 +47,8 @@ abstract final class TrainingValidation {
             expanded: group.expanded,
             rounds: group.rounds,
             repetitionSequence: List<int>.of(group.repetitionSequence),
+            finalRestDuration: group.finalRestDuration,
+            postGroupRestDuration: group.postGroupRestDuration,
             items: group.items
                 .map(
                   (item) => TrainingItem(
@@ -73,7 +75,8 @@ abstract final class TrainingValidation {
     int stopAfter = BusinessLimits.maximumSessionSteps,
   }) {
     var total = 0;
-    for (final group in training.groups) {
+    for (var index = 0; index < training.groups.length; index++) {
+      final group = training.groups[index];
       final rounds = group.executedRounds;
       if (rounds <= 0 || group.items.isEmpty) continue;
       final remaining = stopAfter - total;
@@ -81,6 +84,11 @@ abstract final class TrainingValidation {
         return stopAfter + 1;
       }
       total += group.items.length * rounds;
+      final hasFollowingGroup = index + 1 < training.groups.length;
+      if (hasFollowingGroup && group.postGroupRestDuration != null) {
+        total++;
+        if (total > stopAfter) return stopAfter + 1;
+      }
     }
     return total;
   }

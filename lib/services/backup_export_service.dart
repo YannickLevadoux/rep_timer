@@ -1,14 +1,14 @@
-import '../models/backup_v2_payload.dart';
+import '../models/backup_payload.dart';
 import '../models/training.dart';
 import '../models/training_history_entry.dart';
 import 'app_settings_storage.dart';
 import 'backup_export_exception.dart';
-import 'backup_v2_builder.dart';
+import 'backup_builder.dart';
 import 'json_prefs_storage.dart';
 import 'training_history_storage.dart';
 import 'training_storage.dart';
 
-/// Lit toutes les données exportables avant de construire la sauvegarde v2.
+/// Lit toutes les données exportables avant de construire la sauvegarde v3.
 class BackupExportService {
   BackupExportService({
     TrainingStorage? trainingStorage,
@@ -25,7 +25,7 @@ class BackupExportService {
   final AppSettingsStorage _settingsStorage;
   final DateTime Function() _now;
 
-  Future<BackupV2Payload> buildPayload() async {
+  Future<BackupPayload> buildPayload() async {
     final trainings = _readTrainings(await _trainingStorage.loadTrainings());
     final history = _readHistory(await _historyStorage.loadHistory());
     final ExportableAppSettings settings;
@@ -37,7 +37,7 @@ class BackupExportService {
       );
     }
 
-    return BackupV2Builder.build(
+    return BackupBuilder.build(
       trainings: trainings,
       history: history,
       settings: settings,

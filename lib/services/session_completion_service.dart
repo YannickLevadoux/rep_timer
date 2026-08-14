@@ -1,8 +1,10 @@
 import '../models/history_step_entry.dart';
+import '../models/group_type.dart';
 import '../models/session_checkpoint.dart';
 import '../models/session_step.dart';
 import '../models/training.dart';
 import '../models/training_history_entry.dart';
+import '../models/training_item.dart';
 import 'session_checkpoint_storage.dart';
 import 'training_history_storage.dart';
 
@@ -81,6 +83,11 @@ class SessionCompletionService {
               comment: steps[i].item.comment,
               actualDuration: stepActualDurations[i],
               completed: completed[i],
+              emomMinuteIndex:
+                  steps[i].group.type == GroupType.emom &&
+                      steps[i].item.type == ItemType.exercise
+                  ? steps[i].roundIndex
+                  : null,
             ),
         ],
       );

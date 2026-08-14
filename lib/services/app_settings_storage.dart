@@ -4,9 +4,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/exportable_app_settings.dart';
 import '../models/notification_mode.dart';
 import 'app_settings_exceptions.dart';
+import 'pre_session_countdown_storage.dart';
+import 'session_permission_prompt_storage.dart';
+import 'settings_theme_codec.dart' as theme_codec;
 
 export '../models/exportable_app_settings.dart';
 export 'app_settings_exceptions.dart';
+export 'session_permission_prompt_storage.dart';
 
 /// Persistance des réglages globaux de l'application qui sont de simples
 /// booléens/valeurs scalaires (contrairement aux séances/historique/
@@ -16,15 +20,11 @@ export 'app_settings_exceptions.dart';
 /// JSON : on utilise ici directement SharedPreferences.getBool/setBool
 /// et getString/setString, qui restent le même mécanisme de stockage que
 /// le reste de l'application.
-abstract interface class SessionPermissionPromptStorage {
-  Future<bool> loadSessionNotificationExplanationPresented();
-  Future<void> saveSessionNotificationExplanationPresented(bool value);
-}
-
 class AppSettingsStorage implements SessionPermissionPromptStorage {
   static const themeModeKey = 'theme_mode';
   static const prefillExerciseNameKey = 'prefill_exercise_name';
   static const notificationModeKey = 'notification_mode';
+  static const preSessionCountdownSecondsKey = 'pre_session_countdown_seconds';
   static const _sessionNotificationExplanationPresentedKey =
       'session_notification_explanation_presented';
 
@@ -40,23 +40,15 @@ class AppSettingsStorage implements SessionPermissionPromptStorage {
   /// Valeur par défaut : suivre le système tant qu'aucun choix n'a été
   /// enregistré ou que la valeur stockée ne peut pas être interprétée.
   static const ThemeMode defaultThemeMode = ThemeMode.system;
+  static const int defaultPreSessionCountdownSeconds = defaultCountdownSeconds;
 
   /// Sérialisation stable, indépendante du nom interne des valeurs de l'enum.
-  /// Elle est publique pour être réutilisée par la sauvegarde v2.
-  static String serializeThemeMode(ThemeMode mode) => switch (mode) {
-    ThemeMode.system => 'system',
-    ThemeMode.light => 'light',
-    ThemeMode.dark => 'dark',
-  };
+  /// Elle est publique pour être réutilisée par les sauvegardes.
+  static String serializeThemeMode(ThemeMode mode) =>
+      theme_codec.serializeThemeMode(mode);
 
-  /// Désérialisation partagée avec la future restauration v2.
-  /// Retourne `null` pour distinguer une valeur inconnue d'un thème valide.
-  static ThemeMode? deserializeThemeMode(String value) => switch (value) {
-    'system' => ThemeMode.system,
-    'light' => ThemeMode.light,
-    'dark' => ThemeMode.dark,
-    _ => null,
-  };
+  static ThemeMode? deserializeThemeMode(String value) =>
+      theme_codec.deserializeThemeMode(value);
 
   /// Charge le thème sans jamais empêcher le démarrage de l'application.
   /// Une préférence absente, inconnue ou illisible suit le thème du système.
@@ -114,11 +106,19 @@ class AppSettingsStorage implements SessionPermissionPromptStorage {
           : _deserializeNotificationMode(storedNotification);
       if (notificationMode == null) throw const AppSettingsReadException();
 
+      final countdown =
+          prefs.getInt(preSessionCountdownSecondsKey) ??
+          defaultPreSessionCountdownSeconds;
+      if (!isValidCountdownSeconds(countdown)) {
+        throw const AppSettingsReadException();
+      }
+
       return ExportableAppSettings(
         themeMode: themeMode,
         prefillExerciseName:
             prefs.getBool(prefillExerciseNameKey) ?? defaultPrefillExerciseName,
         notificationMode: notificationMode,
+        preSessionCountdownSeconds: countdown,
       );
     } on AppSettingsReadException {
       rethrow;
@@ -144,7 +144,14 @@ class AppSettingsStorage implements SessionPermissionPromptStorage {
     await saveThemeMode(settings.themeMode);
     await savePrefillExerciseName(settings.prefillExerciseName);
     await saveNotificationMode(settings.notificationMode);
+    await savePreSessionCountdownSeconds(settings.preSessionCountdownSeconds);
   }
+
+  Future<int> loadPreSessionCountdownSeconds() =>
+      loadCountdownSeconds(preSessionCountdownSecondsKey);
+
+  Future<void> savePreSessionCountdownSeconds(int value) =>
+      saveCountdownSeconds(preSessionCountdownSecondsKey, value);
 
   /// Préremplissage du nom d'un nouvel exercice avec le nom du groupe
   /// parent. Lu à chaque ouverture d'écran/dialogue concerné (Paramètres,

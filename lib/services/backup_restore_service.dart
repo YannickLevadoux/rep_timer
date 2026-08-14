@@ -10,7 +10,7 @@ import 'training_storage.dart';
 
 typedef RestoreStoreFactory = Future<RestoreKeyValueStore> Function();
 
-/// Remplacement orchestré des seules données couvertes par une sauvegarde v2.
+/// Remplacement transactionnel des données couvertes par une sauvegarde.
 class BackupRestoreService {
   BackupRestoreService({RestoreStoreFactory? storeFactory})
     : _storeFactory = storeFactory ?? SharedPreferencesRestoreStore.create;
@@ -23,10 +23,11 @@ class BackupRestoreService {
     AppSettingsStorage.themeModeKey,
     AppSettingsStorage.prefillExerciseNameKey,
     AppSettingsStorage.notificationModeKey,
+    AppSettingsStorage.preSessionCountdownSecondsKey,
     SessionCheckpointStorage.storageKey,
   ];
 
-  Future<void> restore(BackupV2RestorePlan plan) async {
+  Future<void> restore(BackupRestorePlan plan) async {
     final Map<String, Object?> replacements;
     try {
       replacements = {
@@ -43,6 +44,8 @@ class BackupRestoreService {
             plan.settings.prefillExerciseName,
         AppSettingsStorage.notificationModeKey:
             plan.settings.notificationMode.name,
+        AppSettingsStorage.preSessionCountdownSecondsKey:
+            plan.settings.preSessionCountdownSeconds,
         SessionCheckpointStorage.storageKey: null,
       };
     } on Object {

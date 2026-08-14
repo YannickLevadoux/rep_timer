@@ -214,7 +214,7 @@ void main() {
         ),
         (
           name: 'version inconnue',
-          content: '{"app":"RepTimer","exportFormatVersion":3}',
+          content: '{"app":"RepTimer","exportFormatVersion":4}',
           kind: BackupImportFailureKind.unsupportedVersion,
         ),
         (
