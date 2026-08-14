@@ -39,23 +39,21 @@ class SessionClock {
       }
     }
 
-    _globalStopwatch.start();
-    _stepStopwatch.start();
+    _runningSince = _now();
   }
 
-  final Stopwatch _globalStopwatch = Stopwatch();
-  final Stopwatch _stepStopwatch = Stopwatch();
   final SessionNow _now;
   final bool _active;
 
   Duration _globalElapsedOffset;
   Duration _stepElapsedOffset;
   bool _paused;
+  DateTime? _runningSince;
   bool _isAppBackgrounded = false;
   DateTime? _backgroundedAt;
 
-  Duration get globalElapsed => _globalElapsedOffset + _globalStopwatch.elapsed;
-  Duration get stepElapsed => _stepElapsedOffset + _stepStopwatch.elapsed;
+  Duration get globalElapsed => _globalElapsedOffset + _runningElapsed;
+  Duration get stepElapsed => _stepElapsedOffset + _runningElapsed;
   bool get paused => _paused;
   bool get isAppBackgrounded => _isAppBackgrounded;
 
@@ -65,15 +63,7 @@ class SessionClock {
     _isAppBackgrounded = true;
     _backgroundedAt = _paused ? null : _now();
     if (_paused) return;
-
-    _globalElapsedOffset += _globalStopwatch.elapsed;
-    _stepElapsedOffset += _stepStopwatch.elapsed;
-    _globalStopwatch
-      ..stop()
-      ..reset();
-    _stepStopwatch
-      ..stop()
-      ..reset();
+    _captureRunningElapsed();
   }
 
   bool handleAppResumed() {
@@ -85,8 +75,7 @@ class SessionClock {
     if (_paused) return false;
 
     _addWallClockGap(backgroundedAt);
-    _globalStopwatch.start();
-    _stepStopwatch.start();
+    _runningSince = _now();
     return true;
   }
 
@@ -113,22 +102,16 @@ class SessionClock {
 
     _paused = paused;
     if (_paused) {
-      _globalStopwatch.stop();
-      _stepStopwatch.stop();
+      _captureRunningElapsed();
     } else if (!_isAppBackgrounded) {
-      _globalStopwatch.start();
-      _stepStopwatch.start();
+      _runningSince = _now();
     }
   }
 
   void resetStep() {
+    _captureRunningElapsed();
     _stepElapsedOffset = Duration.zero;
-    _stepStopwatch
-      ..stop()
-      ..reset();
-    if (_active && !_paused && !_isAppBackgrounded) {
-      _stepStopwatch.start();
-    }
+    if (_active && !_paused && !_isAppBackgrounded) _runningSince = _now();
   }
 
   void stop() {
@@ -136,9 +119,23 @@ class SessionClock {
     if (_isAppBackgrounded && !_paused) {
       _addWallClockGap(_backgroundedAt);
       _backgroundedAt = null;
+    } else {
+      _captureRunningElapsed();
     }
-    _globalStopwatch.stop();
-    _stepStopwatch.stop();
+  }
+
+  Duration get _runningElapsed {
+    final since = _runningSince;
+    if (since == null) return Duration.zero;
+    final elapsed = _now().difference(since);
+    return elapsed.isNegative ? Duration.zero : elapsed;
+  }
+
+  void _captureRunningElapsed() {
+    final elapsed = _runningElapsed;
+    _globalElapsedOffset += elapsed;
+    _stepElapsedOffset += elapsed;
+    _runningSince = null;
   }
 
   void _addWallClockGap(DateTime? from) {

@@ -5,6 +5,7 @@ import '../models/session_checkpoint.dart';
 import '../models/training.dart';
 import '../models/training_history_entry.dart';
 import 'app_settings_storage.dart';
+import 'amrap_execution_state.dart';
 import 'session_checkpoint_storage.dart';
 import 'session_clock.dart';
 import 'session_comment_updater.dart';
@@ -12,6 +13,7 @@ import 'session_completion_service.dart';
 import 'session_notification_bridge.dart';
 import 'session_notification_service.dart';
 import 'session_progress_state.dart';
+import 'session_timed_group_state.dart';
 import 'step_end_notification_service.dart';
 import 'training_history_storage.dart';
 import 'training_storage.dart';
@@ -44,27 +46,37 @@ class SessionControllerComposition {
     SessionNotificationService? foregroundNotificationService,
     Future<void> Function()? enableWakelock,
     Future<void> Function()? disableWakelock,
+    SessionNow? now,
   }) {
     final progress = SessionProgressState(
       training: training,
       checkpoint: initialCheckpoint,
     );
     final restored = progress.restoredFromCheckpoint ? initialCheckpoint : null;
+    final sessionNow = now ?? DateTime.now;
     final clock = SessionClock(
       initialGlobalElapsed: restored?.globalElapsed ?? Duration.zero,
       initialStepElapsed: restored?.stepElapsed ?? Duration.zero,
       initiallyPaused: restored?.paused ?? false,
       restoredAt: restored?.savedAt,
       active: !progress.finished,
+      now: sessionNow,
+    );
+    final timedGroups = SessionTimedGroupState(
+      steps: progress.steps,
+      currentIndex: progress.currentIndex,
+      checkpoint: restored,
     );
     final checkpoints = checkpointStorage ?? SessionCheckpointStorage();
     return SessionControllerComposition._(
       training: training,
       progress: progress,
       clock: clock,
+      timedGroups: timedGroups,
       completion: SessionCompletionService(
         checkpointStorage: checkpoints,
         historyStorage: historyStorage ?? TrainingHistoryStorage(),
+        now: sessionNow,
       ),
       comments: SessionCommentUpdater(
         trainingStorage: trainingStorage ?? TrainingStorage(),
@@ -83,6 +95,7 @@ class SessionControllerComposition {
     required this.training,
     required this.progress,
     required this.clock,
+    required this.timedGroups,
     required this.completion,
     required this.comments,
     required this._settingsStorage,
@@ -96,6 +109,7 @@ class SessionControllerComposition {
   final Training training;
   final SessionProgressState progress;
   final SessionClock clock;
+  final SessionTimedGroupState timedGroups;
   final SessionCompletionService completion;
   final SessionCommentUpdater comments;
   final AppSettingsStorage _settingsStorage;
@@ -106,6 +120,11 @@ class SessionControllerComposition {
   final Future<void> Function() disableWakelock;
 
   bool get pendingIncompleteReview => progress.pendingIncompleteReview;
+  AmrapExecutionSnapshot? get amrapSnapshot => timedGroups.snapshot(
+    index: progress.currentIndex,
+    stepElapsed: clock.stepElapsed,
+    paused: clock.paused,
+  );
 
   SessionNotificationBridge createNotificationBridge({
     required void Function() onPausePressed,
@@ -131,16 +150,28 @@ class SessionControllerComposition {
     stepElapsed: clock.stepElapsed,
     paused: clock.paused,
     stepActualDurations: progress.stepActualDurations,
+    amrapState: timedGroups.checkpointFor(
+      index: progress.currentIndex,
+      stepElapsed: clock.stepElapsed,
+    ),
   );
 
-  Future<void> completeSession() => completion.completeSession(
-    training: training,
-    steps: progress.steps,
-    completed: progress.completed,
-    stepActualDurations: progress.stepActualDurations,
-    totalDuration: clock.globalElapsed,
-    status: progress.allCompleted
-        ? TrainingSessionStatus.completed
-        : TrainingSessionStatus.incomplete,
-  );
+  Future<void> completeSession() {
+    timedGroups.snapshot(
+      index: progress.currentIndex,
+      stepElapsed: clock.stepElapsed,
+      paused: clock.paused,
+    );
+    return completion.completeSession(
+      training: training,
+      steps: progress.steps,
+      completed: progress.completed,
+      stepActualDurations: progress.stepActualDurations,
+      totalDuration: clock.globalElapsed,
+      status: progress.allCompleted
+          ? TrainingSessionStatus.completed
+          : TrainingSessionStatus.incomplete,
+      amrapHistory: timedGroups.historyData(progress.completed),
+    );
+  }
 }

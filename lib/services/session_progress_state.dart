@@ -1,6 +1,8 @@
 import '../models/session_checkpoint.dart';
 import '../models/session_step.dart';
 import '../models/training.dart';
+import '../models/group_type.dart';
+import '../models/training_item.dart';
 
 enum SessionStepCompletion { advanced, sessionCompleted, needsReview }
 
@@ -69,7 +71,9 @@ class SessionProgressState {
 
   bool jumpTo(int index) {
     if (!canJumpTo(index)) return false;
+    if (_isEmomMinute(currentIndex)) completed[currentIndex] = false;
     currentIndex = index;
+    if (_isEmomMinute(currentIndex)) completed[currentIndex] = false;
     stepOccurrence++;
     pendingIncompleteReview = false;
     return true;
@@ -79,6 +83,10 @@ class SessionProgressState {
     pendingIncompleteReview = false;
     finished = true;
   }
+
+  bool _isEmomMinute(int index) =>
+      steps[index].group.type == GroupType.emom &&
+      steps[index].item.type == ItemType.exercise;
 
   bool _canRestore(SessionCheckpoint? checkpoint) =>
       checkpoint != null &&

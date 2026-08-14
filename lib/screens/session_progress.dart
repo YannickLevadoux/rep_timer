@@ -21,6 +21,7 @@ class SessionProgressScreen extends StatefulWidget {
   // Demande à l'écran de séance de changer d'exercice courant. La
   // navigation manuelle ne modifie jamais le statut "terminé".
   final void Function(int index) onSelectStep;
+  final Future<bool> Function(int index)? onBeforeSelectStep;
 
   const SessionProgressScreen({
     super.key,
@@ -29,6 +30,7 @@ class SessionProgressScreen extends StatefulWidget {
     required this.currentIndexProvider,
     required this.blinkController,
     required this.onSelectStep,
+    this.onBeforeSelectStep,
   });
 
   @override
@@ -101,6 +103,9 @@ class _SessionProgressScreenState extends State<SessionProgressScreen> {
     );
 
     if (confirmed != true) return;
+
+    final beforeSelect = widget.onBeforeSelectStep;
+    if (beforeSelect != null && !await beforeSelect(index)) return;
 
     widget.onSelectStep(index);
 

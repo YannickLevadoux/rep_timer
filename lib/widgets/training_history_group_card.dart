@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/history_step_entry.dart';
 import '../models/training_item.dart';
 import '../utils/formatters.dart';
+import 'training_history_amrap_rows.dart';
 
 class TrainingHistoryGroupCard extends StatelessWidget {
   const TrainingHistoryGroupCard({
@@ -100,6 +101,10 @@ class _HistoryStepRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final amrap = step.amrap;
+    if (amrap != null) {
+      return TrainingHistoryAmrapRows(step: step);
+    }
     final firstCommentLine = step.comment?.trim().split('\n').first;
     final hasComment = firstCommentLine != null && firstCommentLine.isNotEmpty;
 
@@ -154,6 +159,8 @@ class _HistoryStepRow extends StatelessWidget {
   }
 
   String _itemLabel(HistoryStepEntry step) {
+    final minute = step.emomMinuteIndex;
+    if (minute != null) return 'Minute $minute · ${step.itemName}';
     final repetitions = step.repetitions;
     if (step.itemType != ItemType.exercise || repetitions == null) {
       return step.itemName;
