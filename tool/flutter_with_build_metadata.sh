@@ -21,28 +21,49 @@ print_large_dart_files() {
   shift
 
   printf '%s\n' "$section_title"
-  "$@" |
+  local report
+  report="$(
+    "$@" |
     while IFS= read -r -d '' dart_file; do
-      if [[ ! -f "$dart_file" ]]; then
+      if [[ ! -f "$dart_file" || "$dart_file" != *.dart ]]; then
         continue
       fi
 
       local line_count
-      line_count="$(wc -l < "$dart_file")"
+      line_count="$(awk 'END { print NR }' "$dart_file")"
       if ((line_count >= 200)); then
         printf '%d %s\n' "$line_count" "$dart_file"
       fi
     done |
     LC_ALL=C sort -k1,1nr -k2
+  )"
+
+  if [[ -z "$report" ]]; then
+    printf '%s\n' 'Aucun fichier.'
+    return 0
+  fi
+
+  printf '%s\n' "$report"
+  return 1
 }
 
 print_large_dart_file_reports() {
+  local has_oversized_file=0
+
   print_large_dart_files \
-    'Fichiers Dart suivis sous lib/ (au moins 200 lignes) :' \
-    git ls-files -z -- 'lib/*.dart'
+    'Fichiers Dart suivis sous lib/ dépassant la limite de 199 lignes :' \
+    git ls-files -z -- 'lib' || has_oversized_file=1
   print_large_dart_files \
-    'Fichiers Dart ajoutés dans le dernier commit (au moins 200 lignes) :' \
-    git diff --name-only --diff-filter=A -z HEAD^ HEAD -- 'lib/*.dart'
+    'Fichiers Dart ajoutés dans le dernier commit dépassant la limite :' \
+    git diff --name-only --diff-filter=A -z HEAD^ HEAD -- 'lib' ||
+    has_oversized_file=1
+
+  if ((has_oversized_file)); then
+    printf '%s\n' \
+      'Erreur : tous les fichiers Dart suivis sous lib/ doivent avoir au plus 199 lignes.' \
+      >&2
+    return 1
+  fi
 }
 
 prepare_flutter_command() {

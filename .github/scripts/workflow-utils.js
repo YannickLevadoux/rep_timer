@@ -53,9 +53,9 @@ module.exports = function(core) {
   }
 
   /**
-   * Write an informational report for large source files.
+   * Write the source file length report and fail above the limit.
    */
-  async function writeFileLengthSummary(files) {
+  async function writeFileLengthSummary(files, maximumLines = 199) {
     const ranges = [
       {
         title: "Plus de 300 lignes",
@@ -73,7 +73,10 @@ module.exports = function(core) {
 
     core.summary
       .addHeading("Longueur des fichiers — lib/")
-      .addRaw("Nombre de lignes physiques, commentaires et lignes vides compris.")
+      .addRaw(
+        `Limite bloquante : ${maximumLines} lignes physiques par fichier, ` +
+        "commentaires et lignes vides compris."
+      )
       .addEOL();
 
     for (const range of ranges) {
@@ -95,6 +98,19 @@ module.exports = function(core) {
     }
 
     await core.summary.write();
+
+    const oversizedFiles = files.filter(file => file.lines > maximumLines);
+    if (oversizedFiles.length === 0) {
+      core.notice(
+        `Tous les fichiers Dart suivis sous lib/ respectent la limite de ${maximumLines} lignes.`
+      );
+      return;
+    }
+
+    core.setFailed(
+      `${oversizedFiles.length} fichier(s) Dart suivi(s) sous lib/ dépassent ` +
+      `la limite de ${maximumLines} lignes.`
+    );
   }
 
   return {

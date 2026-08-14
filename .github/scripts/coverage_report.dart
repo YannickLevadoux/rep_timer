@@ -1,7 +1,7 @@
 import 'dart:io';
 
-const coverageThreshold = 90.0;
-const informativeBaseline = 90.38;
+const coverageThreshold = 91.78;
+const changedCoverageThreshold = 90.0;
 const domainNames = <String>[
   'models',
   'services',
@@ -61,7 +61,7 @@ class CoverageSummary {
   final List<FileCoverage> filesBelowEighty;
 
   double get percentage => covered * 100 / total;
-  bool get passesThreshold => percentage >= threshold;
+  bool get passesThreshold => reportedPercentage(percentage) >= threshold;
 }
 
 class ChangedLines {
@@ -86,6 +86,9 @@ class ChangedCoverage {
 
   bool get isAvailable => covered != null && total != null;
   double? get percentage => isAvailable ? covered! * 100 / total! : null;
+  bool get passesThreshold =>
+      !isAvailable ||
+      reportedPercentage(percentage!) >= changedCoverageThreshold;
 }
 
 class CoverageReportResult {
@@ -367,6 +370,10 @@ String formatPercentage(double? value) {
   return value == null ? 'N/A' : '${value.toStringAsFixed(2)} %';
 }
 
+double reportedPercentage(double value) {
+  return double.parse(value.toStringAsFixed(2));
+}
+
 String escapeTableCell(Object value) {
   return value.toString().replaceAll('|', r'\|').replaceAll('\n', ' ');
 }
@@ -384,14 +391,14 @@ String filesTable(List<FileCoverage> files) {
 }
 
 String renderMarkdown(CoverageSummary report, ChangedCoverage changedCoverage) {
-  final delta = report.percentage - informativeBaseline;
-  final deltaLabel =
-      '${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(2)} '
-      'point(s)';
   final changedLabel = changedCoverage.isAvailable
       ? '${changedCoverage.covered} / ${changedCoverage.total} — '
             '${formatPercentage(changedCoverage.percentage)}'
       : 'N/A — ${changedCoverage.reason}';
+  final changedThresholdLabel = changedCoverage.isAvailable
+      ? '${changedCoverageThreshold.toStringAsFixed(2)} % — '
+            '${changedCoverage.passesThreshold ? '✅ respecté' : '❌ non atteint'}'
+      : '${changedCoverageThreshold.toStringAsFixed(2)} % — ℹ️ non évalué';
 
   return [
     '# Couverture des tests',
@@ -402,9 +409,8 @@ String renderMarkdown(CoverageSummary report, ChangedCoverage changedCoverage) {
         '${formatPercentage(report.percentage)} |',
     '| Seuil bloquant | ${report.threshold.toStringAsFixed(2)} % — '
         '${report.passesThreshold ? '✅ respecté' : '❌ non atteint'} |',
-    '| Baseline informative | ${informativeBaseline.toStringAsFixed(2)} % '
-        '($deltaLabel) |',
     '| Lignes ajoutées ou modifiées | ${escapeTableCell(changedLabel)} |',
+    '| Seuil différentiel | $changedThresholdLabel |',
     '',
     '## Couverture par domaine',
     '',
@@ -422,8 +428,7 @@ String renderMarkdown(CoverageSummary report, ChangedCoverage changedCoverage) {
     '',
     filesTable(report.filesBelowEighty),
     '',
-    '> La couverture des changements est informative pour RepTimer 1.3.2 ; '
-        'seul le seuil global est bloquant.',
+    '> La couverture différentielle est bloquante lorsqu’elle est calculable.',
     '',
   ].join('\n');
 }
@@ -474,14 +479,22 @@ int runCli(List<String> arguments, Map<String, String> environment) {
       '${result.summary.total} '
       '(${formatPercentage(result.summary.percentage)}).',
     );
+    var hasFailure = false;
     if (!result.summary.passesThreshold) {
       stderr.writeln(
         'La couverture globale est inférieure au seuil de '
         '${result.summary.threshold.toStringAsFixed(2)} %.',
       );
-      return 1;
+      hasFailure = true;
     }
-    return 0;
+    if (!result.changedCoverage.passesThreshold) {
+      stderr.writeln(
+        'La couverture différentielle est inférieure au seuil de '
+        '${changedCoverageThreshold.toStringAsFixed(2)} %.',
+      );
+      hasFailure = true;
+    }
+    return hasFailure ? 1 : 0;
   } on CoverageInputException catch (error) {
     appendSummary(
       '# Couverture des tests\n\n❌ ${error.message}\n',
