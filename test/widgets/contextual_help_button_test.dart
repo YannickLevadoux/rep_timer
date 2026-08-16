@@ -21,7 +21,7 @@ void main() {
 
     expect(find.byTooltip('Aide générique'), findsOneWidget);
     expect(find.byIcon(Icons.help_outline), findsOneWidget);
-    expect(find.textContaining('Quick Tabata'), findsNothing);
+    expect(find.textContaining('Session rapide'), findsNothing);
 
     await tester.tap(find.byTooltip('Aide générique'));
     await tester.pumpAndSettle();

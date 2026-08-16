@@ -46,11 +46,11 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Notification Android persistante pendant qu'un chronomètre est actif (pause, exercice Temps ou Durée libre — jamais pour un exercice Répétitions) : icône Play/Pause dans la barre d'état, nom de l'exercice/de la pause et temps restant (ou écoulé en Durée libre), prochain élément de la séance et bouton **Pause** / **Reprendre**. Un appui sur la notification rouvre la séance. Repose sur un vrai Foreground Service Android (et non une simple notification), afin que la mise à jour du chronomètre ainsi que le son/la vibration de fin d'exercice restent fiables même lorsque l'application est en arrière-plan. Disparaît automatiquement à la fin, à l'abandon, ou à l'arrêt de la séance.
 - Exécution tour par tour des groupes à répétitions variables, avec la valeur résolue affichée et conservée dans l'historique. La reprise d'une séance interrompue restaure le bon tour et la bonne répétition.
 
-### Quick Tabata
-- Lancement rapide d'une séance travail/pause répétée, sans avoir à créer de séance au préalable (accessible depuis la barre de navigation de l'accueil).
-- Nom, durée de travail, durée de pause et nombre de répétitions personnalisables ; les répétitions utilisent le même sélecteur `−` / `+` que les groupes de séances.
-- Temps total estimé recalculé en direct, sans compter la dernière pause puisqu'elle n'est pas exécutée ; une aide contextuelle précise les éléments inclus dans ce calcul.
-- La séance est générée entièrement en mémoire et exécutée avec le même moteur qu'une séance classique (mêmes statistiques, même historique) — elle n'est jamais ajoutée à la liste des séances enregistrées.
+### Session rapide
+- Lancement d'un groupe Libre, à répétitions variables, Tabata, AMRAP ou EMOM sans créer d'entraînement enregistré (accessible via « Rapide » dans la barre de navigation).
+- Tabata est proposé par défaut avec un effort de 20 secondes, une pause de 10 secondes et un cycle ; les cinq types réutilisent l'éditeur et les validations des groupes enregistrés.
+- Temps total estimé recalculé en direct, sans récupération finale puisqu'un seul groupe est exécuté ; une aide contextuelle précise les éléments inclus dans ce calcul.
+- La séance est générée entièrement en mémoire et exécutée avec le même moteur qu'une séance classique (mêmes statistiques, même historique) — elle n'est jamais ajoutée à « Mes entraînements ».
 
 ### Historique
 - Historique local des séances effectuées : nom, date, durée totale, statut.
