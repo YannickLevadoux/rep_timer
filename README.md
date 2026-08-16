@@ -48,7 +48,7 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 
 ### Session rapide
 - Lancement d'un groupe Libre, à répétitions variables, Tabata, AMRAP ou EMOM sans créer d'entraînement enregistré (accessible via « Rapide » dans la barre de navigation).
-- Tabata est proposé par défaut avec un effort de 20 secondes, une pause de 10 secondes et un cycle ; les cinq types réutilisent l'éditeur et les validations des groupes enregistrés.
+- Aucun type n'est présélectionné ; après le choix, Tabata utilise un effort de 20 secondes, une pause de 10 secondes et un cycle, et les cinq types réutilisent l'éditeur et les validations des groupes enregistrés.
 - Temps total estimé recalculé en direct, sans récupération finale puisqu'un seul groupe est exécuté ; une aide contextuelle précise les éléments inclus dans ce calcul.
 - La séance est générée entièrement en mémoire et exécutée avec le même moteur qu'une séance classique (mêmes statistiques, même historique) — elle n'est jamais ajoutée à « Mes entraînements ».
 

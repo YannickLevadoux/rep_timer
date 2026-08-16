@@ -25,18 +25,37 @@ import '../support/fake_session_permission_platform.dart';
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('propose Tabata par défaut avec les valeurs historiques', (
+  testWidgets('demande le type avant de charger un modèle de groupe', (
     tester,
   ) async {
     await _pumpScreen(tester);
 
     expect(find.text('Session rapide'), findsOneWidget);
-    expect(find.textContaining('ne sera pas enregistrée'), findsOneWidget);
+    expect(find.textContaining('ne sera pas enregistrée'), findsNothing);
+    expect(
+      find.text('Sélectionnez un type de groupe pour commencer.'),
+      findsOneWidget,
+    );
+    expect(find.text('Sélectionner un type'), findsOneWidget);
     expect(
       tester.widget<TypeSelector>(find.byType(TypeSelector)).value,
-      GroupType.tabata,
+      isNull,
     );
-    expect(find.text('Sélectionner un type'), findsNothing);
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('Effort'), findsNothing);
+    expect(find.text('Pause'), findsNothing);
+    expect(find.text('Temps total estimé'), findsNothing);
+    expect(find.text('Commencer'), findsNothing);
+    expect(tester.testTextInput.isVisible, isFalse);
+  });
+
+  testWidgets('Tabata charge les valeurs historiques après sélection', (
+    tester,
+  ) async {
+    await _pumpScreen(tester);
+    await _selectType(tester, GroupType.tabata);
+
+    expect(find.textContaining('ne sera pas enregistrée'), findsOneWidget);
     expect(find.text('Tabata'), findsWidgets);
     expect(find.text('Effort'), findsOneWidget);
     expect(find.text('Pause'), findsOneWidget);
@@ -52,7 +71,6 @@ void main() {
     );
     expect(find.text('00:20'), findsOneWidget);
     expect(find.text('Commencer'), findsOneWidget);
-    expect(tester.testTextInput.isVisible, isFalse);
   });
 
   testWidgets('le sélecteur expose les cinq types', (tester) async {
@@ -69,6 +87,7 @@ void main() {
     tester,
   ) async {
     await _pumpScreen(tester);
+    await _selectType(tester, GroupType.tabata);
 
     for (var index = 1; index < 8; index++) {
       await tester.tap(find.byTooltip('Augmenter Nombre de cycles'));
@@ -84,11 +103,16 @@ void main() {
     tester,
   ) async {
     await _pumpScreen(tester, key: const ValueKey('première'));
+    expect(find.textContaining('ne sera pas enregistrée'), findsNothing);
+    await _selectType(tester, GroupType.tabata);
+    expect(find.textContaining('ne sera pas enregistrée'), findsOneWidget);
     await tester.tap(find.byTooltip("Fermer l'avertissement"));
     await tester.pump();
     expect(find.textContaining('ne sera pas enregistrée'), findsNothing);
 
     await _pumpScreen(tester, key: const ValueKey('suivante'));
+    expect(find.textContaining('ne sera pas enregistrée'), findsNothing);
+    await _selectType(tester, GroupType.free);
     expect(find.textContaining('ne sera pas enregistrée'), findsOneWidget);
     expect(find.byTooltip("Fermer l'avertissement"), findsOneWidget);
   });
@@ -112,7 +136,7 @@ void main() {
     await _pumpLauncher(tester);
     await tester.tap(find.text('Ouvrir la Session rapide'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).first, 'Tabata modifié');
+    await _selectType(tester, GroupType.free);
     await tester.pageBack();
     await tester.pumpAndSettle();
 
@@ -212,6 +236,7 @@ void main() {
     tester,
   ) async {
     await _pumpScreen(tester);
+    await _selectType(tester, GroupType.tabata);
     await tester.tap(find.byTooltip("Modifier l'effort"));
     await tester.pumpAndSettle();
 
@@ -237,6 +262,7 @@ void main() {
         platform: platform,
       ),
     );
+    await _selectType(tester, GroupType.tabata);
 
     final start = find.text('Commencer');
     await tester.ensureVisible(start);
@@ -262,6 +288,7 @@ void main() {
     tester,
   ) async {
     await _pumpScreen(tester);
+    await _selectType(tester, GroupType.tabata);
     await _start(tester);
 
     final prefs = await SharedPreferences.getInstance();
@@ -379,6 +406,10 @@ Future<void> _configureRepetitionExercise(
   GroupType type,
 ) async {
   await _selectType(tester, type);
+  await tester.enterText(
+    find.byType(TextField).first,
+    type == GroupType.free ? 'Groupe libre' : 'Répétitions variables',
+  );
   await tester.tap(find.text('Exercice'));
   await tester.pumpAndSettle();
   final fields = find.descendant(

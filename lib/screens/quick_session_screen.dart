@@ -33,8 +33,10 @@ class _QuickSessionScreenState extends State<QuickSessionScreen> {
   @override
   void initState() {
     super.initState();
-    _initialGroup = ExerciseGroup.tabata(
+    _initialGroup = ExerciseGroup(
       id: 'quick_group_${DateTime.now().microsecondsSinceEpoch}',
+      name: '',
+      items: [],
     );
   }
 

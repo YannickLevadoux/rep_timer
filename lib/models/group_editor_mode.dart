@@ -17,5 +17,6 @@ enum GroupEditorMode {
 
   bool get isQuick => this == GroupEditorMode.quick;
 
-  bool get requiresInitialTypeSelection => this == GroupEditorMode.add;
+  bool get requiresInitialTypeSelection =>
+      this == GroupEditorMode.add || this == GroupEditorMode.quick;
 }
