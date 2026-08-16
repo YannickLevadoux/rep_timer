@@ -19,6 +19,7 @@ class ContextualHelpButton extends StatelessWidget {
     return showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
         title: Text(title),
         content: content,
         actions: [

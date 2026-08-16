@@ -2,15 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../controllers/group_editor_controller.dart';
-import '../models/group_type.dart';
 import '../models/group_editor_mode.dart';
-import '../utils/repetition_sequence_format.dart';
+import '../models/group_type.dart';
 import '../validation/business_validation.dart';
-import 'group_editor_actions.dart';
-import 'group_items_list.dart';
-import 'rounds_editor.dart';
-import 'type_selector.dart';
-import 'timed_group_editor.dart';
+import 'group_editor_fields.dart';
+import 'group_type_selection.dart';
 
 class GroupEditorView extends StatelessWidget {
   const GroupEditorView({
@@ -50,7 +46,7 @@ class GroupEditorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final group = controller.group;
+    final hasSelectedType = controller.hasSelectedType;
 
     return Scaffold(
       appBar: AppBar(
@@ -69,7 +65,7 @@ class GroupEditorView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (mode.isQuick && showQuickWarning) ...[
+            if (mode.isQuick && hasSelectedType && showQuickWarning) ...[
               Card(
                 color: Theme.of(context).colorScheme.secondaryContainer,
                 child: Padding(
@@ -97,66 +93,43 @@ class GroupEditorView extends StatelessWidget {
               ),
               const SizedBox(height: 12),
             ],
-            TextField(
-              controller: controller.nameController,
-              autofocus: mode == GroupEditorMode.add,
-              maxLength: BusinessLimits.maximumNameCharacters,
-              maxLengthEnforcement: MaxLengthEnforcement.none,
-              decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                labelText: "Nom du groupe",
-                hintText: "Ex : Échauffement",
-                errorText: nameError,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TypeSelector(value: group.type, onChanged: onTypeChanged),
-            const SizedBox(height: 16),
-            if (group.type.isTimed)
-              TimedGroupEditor(
-                controller: controller,
-                quick: mode.isQuick,
-                hasFollowingGroup: hasFollowingGroup,
-                onEditEffort: onEditTimedExercise,
+            if (!hasSelectedType)
+              GroupTypeSelection(
+                value: null,
+                onChanged: onTypeChanged,
+                showInitialMessage: true,
               )
             else ...[
-              if (group.type == GroupType.free)
-                RoundsEditor(
-                  rounds: group.rounds,
-                  onChanged: controller.setRounds,
-                )
-              else
-                OutlinedButton.icon(
-                  key: const Key('edit-repetition-sequence'),
-                  onPressed: onEditRepetitionSequence,
-                  icon: const Icon(Icons.format_list_numbered),
-                  label: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      formatRepetitionSequenceSummary(group.repetitionSequence),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+              TextField(
+                controller: controller.nameController,
+                maxLength: BusinessLimits.maximumNameCharacters,
+                maxLengthEnforcement: MaxLengthEnforcement.none,
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  labelText: "Nom du groupe",
+                  hintText: "Ex : Échauffement",
+                  errorText: nameError,
                 ),
-              const SizedBox(height: 8),
-              GroupItemsList(
-                items: group.items,
-                repetitionsDefinedByGroup:
-                    group.type == GroupType.variableRepetitions,
-                onReorder: controller.reorderItems,
-                onEdit: onEditItem,
-                onDelete: onDeleteItem,
+              ),
+              const SizedBox(height: 16),
+              GroupTypeSelection(
+                value: controller.selectedType,
+                onChanged: onTypeChanged,
+              ),
+              const SizedBox(height: 16),
+              GroupEditorFields(
+                controller: controller,
+                mode: mode,
+                onAddExercise: onAddExercise,
+                onAddRest: onAddRest,
+                onEditItem: onEditItem,
+                onDeleteItem: onDeleteItem,
+                onSave: onSave,
+                onEditRepetitionSequence: onEditRepetitionSequence,
+                onEditTimedExercise: onEditTimedExercise,
+                hasFollowingGroup: hasFollowingGroup,
               ),
             ],
-            const SizedBox(height: 10),
-            GroupEditorActions(
-              onAddExercise: onAddExercise,
-              onAddRest: onAddRest,
-              onSave: onSave,
-              actionLabel: mode.actionLabel,
-              showItemActions: !group.type.isTimed,
-            ),
           ],
         ),
       ),

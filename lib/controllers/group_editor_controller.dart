@@ -5,104 +5,70 @@ import 'package:flutter/material.dart';
 import '../models/exercise_group.dart';
 import '../models/group_type.dart';
 import '../models/training_item.dart';
-import '../validation/business_validation.dart';
+import 'group_editor_draft_factory.dart';
 
 class GroupEditorController extends ChangeNotifier {
-  GroupEditorController(ExerciseGroup source) {
-    group = source.copyWith();
-    _drafts[group.type] = group;
-    nameController = TextEditingController(text: group.name);
+  GroupEditorController(
+    ExerciseGroup source, {
+    bool requiresInitialTypeSelection = false,
+  }) : _sourceId = source.id,
+       _group = requiresInitialTypeSelection ? null : source.copyWith() {
+    final initialGroup = _group;
+    if (initialGroup != null) _drafts[initialGroup.type] = initialGroup;
+    nameController = TextEditingController(text: initialGroup?.name ?? '');
     nameController.addListener(_onNameChanged);
     _initialSnapshot = _currentSnapshot();
   }
 
-  late ExerciseGroup group;
+  final String _sourceId;
+  ExerciseGroup? _group;
   late final TextEditingController nameController;
   late final String _initialSnapshot;
   final Map<GroupType, ExerciseGroup> _drafts = {};
+  ExerciseGroup get group =>
+      _group ?? (throw StateError('Type non sélectionné'));
+  GroupType? get selectedType => _group?.type;
+  bool get hasSelectedType => _group != null;
   String get name => nameController.text.trim();
   bool get hasUnsavedChanges => _currentSnapshot() != _initialSnapshot;
   String _currentSnapshot() => jsonEncode({
-    'selectedType': group.type.name,
+    'selectedType': selectedType?.name,
     'drafts': _drafts.map(
       (type, draft) => MapEntry(
         type.name,
-        draft == group ? {...draft.toJson(), 'name': name} : draft.toJson(),
+        draft == _group ? {...draft.toJson(), 'name': name} : draft.toJson(),
       ),
     ),
   });
   void _onNameChanged() => notifyListeners();
   bool requiresReplacementConfirmation(GroupType target) =>
-      target != group.type && (target.isTimed || group.type.isTimed);
+      _group != null &&
+      target != group.type &&
+      (target.isTimed || group.type.isTimed);
   void setType(GroupType type) => switchType(type);
 
   void switchType(GroupType type) {
+    if (_group == null) {
+      _group = GroupEditorDraftFactory.initial(type, id: _sourceId);
+      _drafts[type] = group;
+      nameController.text = group.name;
+      notifyListeners();
+      return;
+    }
     if (type == group.type) return;
     group.name = name;
     final current = group;
     if (!type.isTimed && !current.type.isTimed) {
-      group = _createDraft(type, current);
+      _group = GroupEditorDraftFactory.fromCurrent(type, current);
       _drafts[type] = group;
     } else {
-      group = _drafts.putIfAbsent(type, () => _createDraft(type, current));
+      _group = _drafts.putIfAbsent(
+        type,
+        () => GroupEditorDraftFactory.fromCurrent(type, current),
+      );
     }
     nameController.text = group.name;
     notifyListeners();
-  }
-
-  ExerciseGroup _createDraft(GroupType type, ExerciseGroup current) {
-    if (!type.isTimed && !current.type.isTimed) {
-      final draft = current.copyWith(type: type);
-      _initializeSequence(draft);
-      return draft;
-    }
-    return switch (type) {
-      GroupType.tabata => ExerciseGroup.tabata(id: current.id),
-      GroupType.amrap => ExerciseGroup.amrap(id: current.id),
-      GroupType.emom => ExerciseGroup.emom(id: current.id),
-      GroupType.free => ExerciseGroup(
-        id: current.id,
-        name: 'Groupe libre',
-        items: [],
-      ),
-      GroupType.variableRepetitions => ExerciseGroup(
-        id: current.id,
-        name: 'Répétitions variables',
-        type: type,
-        repetitionSequence: const [1],
-        items: [],
-      ),
-    };
-  }
-
-  void _initializeSequence(ExerciseGroup draft) {
-    if (draft.type == GroupType.variableRepetitions &&
-        draft.repetitionSequence.isEmpty) {
-      final firstRepetitions = group.items
-          .where(
-            (item) =>
-                item.repetitions != null &&
-                BusinessValidation.validateCount(
-                      item.repetitions,
-                      field: BusinessField.repetitions,
-                    ) ==
-                    null,
-          )
-          .map((item) => item.repetitions!)
-          .firstOrNull;
-      final validRounds =
-          BusinessValidation.validateCount(
-                group.rounds,
-                field: BusinessField.groupRounds,
-              ) ==
-              null
-          ? group.rounds
-          : BusinessLimits.minimumCount;
-      draft.repetitionSequence = List<int>.filled(
-        validRounds,
-        firstRepetitions ?? BusinessLimits.minimumCount,
-      );
-    }
   }
 
   void setRounds(int rounds) => _mutate(() => group.rounds = rounds);
@@ -188,6 +154,11 @@ class GroupEditorController extends ChangeNotifier {
   ExerciseGroup save() {
     group.name = name;
     return group;
+  }
+
+  ExerciseGroup? saveIfSelected() {
+    if (!hasSelectedType) return null;
+    return save();
   }
 
   @override

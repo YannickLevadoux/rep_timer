@@ -5,6 +5,66 @@ import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/training_item.dart';
 
 void main() {
+  test('un ajout attend un type et refuse une soumission sans sélection', () {
+    final controller = GroupEditorController(
+      ExerciseGroup(id: 'group', name: '', items: []),
+      requiresInitialTypeSelection: true,
+    );
+
+    expect(controller.selectedType, isNull);
+    expect(controller.hasSelectedType, isFalse);
+    expect(controller.hasUnsavedChanges, isFalse);
+    expect(controller.saveIfSelected(), isNull);
+    expect(() => controller.group, throwsStateError);
+    controller.dispose();
+  });
+
+  test('la première sélection crée les cinq modèles par défaut', () {
+    for (final type in GroupType.values) {
+      final controller = GroupEditorController(
+        ExerciseGroup(id: 'group', name: '', items: []),
+        requiresInitialTypeSelection: true,
+      );
+
+      expect(controller.requiresReplacementConfirmation(type), isFalse);
+      controller.switchType(type);
+
+      expect(controller.selectedType, type);
+      expect(controller.hasUnsavedChanges, isTrue);
+      switch (type) {
+        case GroupType.free:
+          expect(controller.group.name, isEmpty);
+          expect(controller.group.items, isEmpty);
+          expect(controller.group.rounds, 1);
+        case GroupType.variableRepetitions:
+          expect(controller.group.name, isEmpty);
+          expect(controller.group.items, isEmpty);
+          expect(controller.group.repetitionSequence, [1]);
+        case GroupType.tabata:
+          expect(controller.group.name, 'Tabata');
+          expect(controller.group.rounds, 1);
+          expect(controller.group.items.map((item) => item.duration), [
+            const Duration(seconds: 20),
+            const Duration(seconds: 10),
+          ]);
+        case GroupType.amrap:
+          expect(controller.group.name, 'AMRAP');
+          expect(
+            controller.group.items.single.duration,
+            const Duration(minutes: 2),
+          );
+        case GroupType.emom:
+          expect(controller.group.name, 'EMOM');
+          expect(controller.group.rounds, 10);
+          expect(
+            controller.group.items.single.duration,
+            const Duration(minutes: 1),
+          );
+      }
+      controller.dispose();
+    }
+  });
+
   test('un ajout classique démarre en Libre et reste transactionnel', () {
     final source = ExerciseGroup(id: 'group', name: '', items: []);
     final controller = GroupEditorController(source);

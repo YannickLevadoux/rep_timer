@@ -47,6 +47,7 @@ dependencies:
   package_info_plus: ^10.2.0
   audioplayers: ^6.1.0
   vibration: ^3.1.3
+  flutter_markdown_plus: ^1.0.12
 
   # flutter_foreground_task : Foreground Service Android pour la notification
   # persistante affichée pendant l'exécution d'une séance (chronomètre/
@@ -83,6 +84,7 @@ flutter:
   assets:
    - assets/icon/app_icon.png
    - assets/sounds/
+   - assets/help/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

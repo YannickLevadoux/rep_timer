@@ -12,7 +12,7 @@ import 'package:rep_timer/widgets/type_selector.dart';
 import '../support/fake_session_permission_platform.dart';
 
 void main() {
-  testWidgets('préremplit une Session rapide Tabata mono-exercice', (
+  testWidgets('démarre sans type, avertissement, formulaire ni action', (
     tester,
   ) async {
     await _pumpScreen(tester);
@@ -20,16 +20,23 @@ void main() {
     expect(find.text('Session rapide'), findsOneWidget);
     expect(
       find.text("Cette session ne sera pas enregistrée dans Mes entraînements"),
+      findsNothing,
+    );
+    expect(
+      find.text('Sélectionnez un type de groupe pour commencer.'),
       findsOneWidget,
     );
-    expect(find.text('Tabata'), findsNWidgets(2));
-    expect(find.text('Nombre de cycles'), findsOneWidget);
-    expect(find.text('Effort'), findsOneWidget);
-    expect(find.text('Pause'), findsOneWidget);
-    expect(find.text('00:20'), findsOneWidget);
-    expect(find.text('Personnaliser la dernière pause'), findsNothing);
+    expect(find.text('Sélectionner un type'), findsOneWidget);
+    expect(
+      tester.widget<TypeSelector>(find.byType(TypeSelector)).value,
+      isNull,
+    );
+    expect(find.byType(TextField), findsNothing);
     expect(find.text('Exercice'), findsNothing);
-    expect(find.text('Commencer'), findsOneWidget);
+    expect(find.text('Pause'), findsNothing);
+    expect(find.text('Temps total estimé'), findsNothing);
+    expect(find.text('Commencer'), findsNothing);
+    expect(tester.testTextInput.isVisible, isFalse);
   });
 
   testWidgets('le sélecteur compact expose les cinq types', (tester) async {
@@ -46,31 +53,100 @@ void main() {
     tester,
   ) async {
     await _pumpScreen(tester, key: const ValueKey('première'));
+    expect(find.textContaining('ne sera pas enregistrée'), findsNothing);
+    await _chooseType(tester, GroupType.tabata);
+    expect(find.textContaining('ne sera pas enregistrée'), findsOneWidget);
     await tester.tap(find.byTooltip("Fermer l'avertissement"));
     await tester.pump();
     expect(find.textContaining('ne sera pas enregistrée'), findsNothing);
 
     await _pumpScreen(tester, key: const ValueKey('suivante'));
+    expect(find.textContaining('ne sera pas enregistrée'), findsNothing);
+    await _chooseType(tester, GroupType.free);
     expect(find.textContaining('ne sera pas enregistrée'), findsOneWidget);
     expect(find.byTooltip("Fermer l'avertissement"), findsOneWidget);
   });
 
-  testWidgets('AMRAP confirme le remplacement et masque la récupération', (
+  testWidgets('Retour avant sélection revient à l’accueil sans message', (
+    tester,
+  ) async {
+    await _pumpLauncher(tester);
+    await tester.tap(find.text('Ouvrir la Session rapide'));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Accueil'), findsOneWidget);
+    expect(find.text('Quitter la Session rapide ?'), findsNothing);
+  });
+
+  testWidgets('Retour après sélection confirme la perte des modifications', (
+    tester,
+  ) async {
+    await _pumpLauncher(tester);
+    await tester.tap(find.text('Ouvrir la Session rapide'));
+    await tester.pumpAndSettle();
+    await _chooseType(tester, GroupType.free);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quitter la Session rapide ?'), findsOneWidget);
+    expect(
+      find.text(
+        'Cette session a été modifiée, mais elle n’a pas été lancée. '
+        'Voulez-vous vraiment quitter ?',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Rester'), findsOneWidget);
+    final leave = find.widgetWithText(FilledButton, 'Retour à l’accueil');
+    expect(leave, findsOneWidget);
+    final leaveButton = tester.widget<FilledButton>(leave);
+    expect(
+      leaveButton.style?.backgroundColor?.resolve({}),
+      Theme.of(tester.element(leave)).colorScheme.error,
+    );
+
+    await tester.tap(find.text('Rester'));
+    await tester.pumpAndSettle();
+    expect(find.text('Session rapide'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Retour à l’accueil'));
+    await tester.pumpAndSettle();
+    expect(find.text('Accueil'), findsOneWidget);
+  });
+
+  testWidgets(
+    'AMRAP est appliqué sans confirmation et masque la récupération',
+    (tester) async {
+      await _pumpScreen(tester);
+      await _chooseType(tester, GroupType.amrap);
+
+      expect(find.text('Changer de type de groupe ?'), findsNothing);
+      expect(find.text("Durée de l'AMRAP"), findsNothing);
+      expect(find.byKey(const Key('amrap-effort-row')), findsOneWidget);
+      expect(find.textContaining('chaque tour terminé'), findsOneWidget);
+      expect(find.text("Ajouter une récupération après l'AMRAP"), findsNothing);
+      expect(find.text('02:00'), findsOneWidget);
+    },
+  );
+
+  testWidgets('un changement après la première sélection reste confirmé', (
     tester,
   ) async {
     await _pumpScreen(tester);
+    await _chooseType(tester, GroupType.tabata);
     await _chooseType(tester, GroupType.amrap);
 
     expect(find.text('Changer de type de groupe ?'), findsOneWidget);
-    expect(find.textContaining('AMRAP, Effort et 02:00'), findsOneWidget);
-    await tester.tap(find.text('Continuer'));
+    await tester.tap(find.text('Annuler'));
     await tester.pumpAndSettle();
-
-    expect(find.text("Durée de l'AMRAP"), findsNothing);
-    expect(find.byKey(const Key('amrap-effort-row')), findsOneWidget);
-    expect(find.textContaining('chaque tour terminé'), findsOneWidget);
-    expect(find.text("Ajouter une récupération après l'AMRAP"), findsNothing);
-    expect(find.text('02:00'), findsOneWidget);
+    expect(
+      tester.widget<TypeSelector>(find.byType(TypeSelector)).value,
+      GroupType.tabata,
+    );
   });
 
   testWidgets('AMRAP rapide lance le moteur partagé sans récupération', (
@@ -78,8 +154,6 @@ void main() {
   ) async {
     await _pumpScreen(tester);
     await _chooseType(tester, GroupType.amrap);
-    await tester.tap(find.text('Continuer'));
-    await tester.pumpAndSettle();
 
     final start = find.text('Commencer');
     await tester.ensureVisible(start);
@@ -102,8 +176,6 @@ void main() {
   ) async {
     await _pumpScreen(tester);
     await _chooseType(tester, GroupType.emom);
-    await tester.tap(find.text('Continuer'));
-    await tester.pumpAndSettle();
 
     final effortRow = find.byKey(const Key('emom-effort-row'));
     final minutesPicker = find.descendant(
@@ -142,8 +214,6 @@ void main() {
           brightness: brightness,
         );
         await _chooseType(tester, GroupType.emom);
-        await tester.tap(find.text('Continuer'));
-        await tester.pumpAndSettle();
 
         expect(tester.takeException(), isNull);
         final start = find.text('Commencer');
@@ -158,8 +228,6 @@ void main() {
   testWidgets('Libre réutilise les actions génériques', (tester) async {
     await _pumpScreen(tester);
     await _chooseType(tester, GroupType.free);
-    await tester.tap(find.text('Continuer'));
-    await tester.pumpAndSettle();
 
     expect(find.text('Libre'), findsOneWidget);
     expect(find.text('Répétitions'), findsOneWidget);
@@ -169,6 +237,7 @@ void main() {
 
   testWidgets('Commencer lance une séance temporaire', (tester) async {
     await _pumpScreen(tester);
+    await _chooseType(tester, GroupType.tabata);
     await tester.tap(find.byTooltip("Fermer l'avertissement"));
     await tester.pump();
     final start = find.text('Commencer');
@@ -202,8 +271,6 @@ void main() {
         );
 
         await _chooseType(tester, GroupType.amrap);
-        await tester.tap(find.text('Continuer'));
-        await tester.pumpAndSettle();
 
         expect(tester.takeException(), isNull);
         final start = find.text('Commencer');
@@ -252,3 +319,26 @@ Future<void> _pumpScreen(
     ),
   );
 }
+
+Future<void> _pumpLauncher(WidgetTester tester) => tester.pumpWidget(
+  MaterialApp(
+    home: Builder(
+      builder: (context) => Scaffold(
+        appBar: AppBar(title: const Text('Accueil')),
+        body: TextButton(
+          onPressed: () => Navigator.push<void>(
+            context,
+            MaterialPageRoute(
+              builder: (_) => QuickTabataScreen(
+                permissionService: SessionNotificationPermissionService(
+                  platform: GrantedSessionPermissionPlatform(),
+                ),
+              ),
+            ),
+          ),
+          child: const Text('Ouvrir la Session rapide'),
+        ),
+      ),
+    ),
+  ),
+);

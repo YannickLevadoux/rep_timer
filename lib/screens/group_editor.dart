@@ -9,6 +9,7 @@ import '../utils/snack.dart';
 import '../utils/validation_messages.dart';
 import '../validation/business_validation.dart';
 import '../widgets/dialogs/group_editor_settings_dialog.dart';
+import '../widgets/dialogs/quick_session_exit_dialog.dart';
 import '../widgets/group_editor_view.dart';
 import 'group_editor_dialogs.dart';
 
@@ -44,7 +45,11 @@ class _GroupEditorState extends State<GroupEditor> {
   @override
   void initState() {
     super.initState();
-    _controller = GroupEditorController(widget.group);
+    _controller = GroupEditorController(
+      widget.group,
+      requiresInitialTypeSelection:
+          widget.effectiveMode.requiresInitialTypeSelection,
+    );
     _dialogs = GroupEditorDialogs(_controller);
   }
 
@@ -54,11 +59,22 @@ class _GroupEditorState extends State<GroupEditor> {
     super.dispose();
   }
 
-  Future<void> _handleBackPressed() => handleEditorBack(
-    context,
-    hasUnsavedChanges: _controller.hasUnsavedChanges,
-    onSave: _saveGroup,
-  );
+  Future<void> _handleBackPressed() async {
+    if (!widget.effectiveMode.isQuick) {
+      return handleEditorBack(
+        context,
+        hasUnsavedChanges: _controller.hasUnsavedChanges,
+        onSave: _saveGroup,
+      );
+    }
+    if (!_controller.hasUnsavedChanges) {
+      Navigator.pop(context);
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    final shouldLeave = await showQuickSessionExitDialog(context);
+    if (shouldLeave && mounted) Navigator.pop(context);
+  }
 
   Future<void> _changeType(GroupType type) async {
     await _dialogs.changeType(context, type);
@@ -66,7 +82,11 @@ class _GroupEditorState extends State<GroupEditor> {
   }
 
   Future<void> _saveGroup() async {
-    final group = _controller.save();
+    final group = _controller.saveIfSelected();
+    if (group == null) {
+      showSnack(context, 'Sélectionnez un type de groupe.');
+      return;
+    }
     final issues = BusinessValidation.validateGroup(group);
     final nameIssue = issues
         .where((issue) => issue.field == BusinessField.groupName)

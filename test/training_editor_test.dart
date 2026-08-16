@@ -9,6 +9,7 @@ import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/screens/group_editor.dart';
 import 'package:rep_timer/screens/training_editor.dart';
 import 'package:rep_timer/widgets/editable_item_tile.dart';
+import 'package:rep_timer/widgets/type_selector.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -223,6 +224,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Ajout de groupe'), findsOneWidget);
 
+    await tester.tap(find.byType(TypeSelector));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(GroupType.free.shortLabel).last);
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, 'Nouveau');
     await tester.tap(find.text('Ajouter à la séance'));
     await tester.pumpAndSettle();
