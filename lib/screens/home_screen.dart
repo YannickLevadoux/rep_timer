@@ -10,7 +10,7 @@ import '../utils/snack.dart';
 import '../utils/validation_messages.dart';
 import '../widgets/dialogs/duplicate_training_dialog.dart';
 import '../widgets/home_screen_view.dart';
-import 'quick_tabata_screen.dart';
+import 'quick_session_screen.dart';
 import 'settings_screen.dart';
 import 'training_editor.dart';
 import 'training_history.dart';
@@ -136,7 +136,7 @@ class _HomePageState extends State<HomePage> {
 
   void _openDestination(int index) {
     final Widget? destination = switch (index) {
-      1 => const QuickTabataScreen(),
+      1 => const QuickSessionScreen(),
       2 => TrainingHistoryScreen(
         controller: TrainingHistoryController(storage: widget.historyStorage),
       ),

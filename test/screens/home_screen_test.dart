@@ -4,6 +4,7 @@ import 'package:rep_timer/controllers/home_controller.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_history_entry.dart';
 import 'package:rep_timer/screens/home_screen.dart';
+import 'package:rep_timer/screens/quick_session_screen.dart';
 import 'package:rep_timer/screens/training_history.dart';
 import 'package:rep_timer/services/json_prefs_storage.dart';
 import 'package:rep_timer/services/pending_session_recovery_service.dart';
@@ -11,6 +12,28 @@ import 'package:rep_timer/services/training_history_storage.dart';
 import 'package:rep_timer/services/training_storage.dart';
 
 void main() {
+  testWidgets('la destination Rapide ouvre la Session rapide', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomePage(
+          themeMode: ThemeMode.system,
+          onToggleTheme: () async => ThemeMode.light,
+          controller: HomeController(storage: _FakeTrainingStore()),
+          recoveryService: const _NoPendingSessionResolver(),
+          historyStorage: _FakeHistoryStore(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Rapide'), findsOneWidget);
+    await tester.tap(find.text('Rapide'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(QuickSessionScreen), findsOneWidget);
+    expect(find.text('Session rapide'), findsOneWidget);
+  });
+
   testWidgets('navigue vers l’historique avec ses dépendances injectées', (
     tester,
   ) async {

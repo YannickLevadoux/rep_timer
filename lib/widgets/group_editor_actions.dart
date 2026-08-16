@@ -8,6 +8,7 @@ class GroupEditorActions extends StatelessWidget {
   final VoidCallback onSave;
   final String actionLabel;
   final bool showItemActions;
+  final bool enabled;
 
   const GroupEditorActions({
     super.key,
@@ -16,6 +17,7 @@ class GroupEditorActions extends StatelessWidget {
     required this.onSave,
     this.actionLabel = 'Enregistrer',
     this.showItemActions = true,
+    this.enabled = true,
   });
 
   @override
@@ -43,7 +45,10 @@ class GroupEditorActions extends StatelessWidget {
         ],
         SizedBox(
           width: double.infinity,
-          child: FilledButton(onPressed: onSave, child: Text(actionLabel)),
+          child: FilledButton(
+            onPressed: enabled ? onSave : null,
+            child: Text(actionLabel),
+          ),
         ),
       ],
     );

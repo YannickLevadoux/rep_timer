@@ -56,10 +56,10 @@ void main() {
           TrainingSessionStatus.incomplete,
         ),
         _entry(
-          'quick-tabata',
+          'session-rapide',
           DateTime(2026, 8, 7, 9),
           TrainingSessionStatus.completed,
-          name: 'Quick Tabata',
+          name: 'Session rapide',
         ),
         _entry(
           'plus-recente',
@@ -80,7 +80,7 @@ void main() {
       expect(summary.incompleteCount, 1);
       expect(summary.entries.map((entry) => entry.id), [
         'plus-recente',
-        'quick-tabata',
+        'session-rapide',
         'traverse-minuit',
       ]);
     });
@@ -142,7 +142,7 @@ void main() {
       expect(summary.totalDuration, const Duration(minutes: 37, seconds: 35));
     });
 
-    test('répartit les séances entre les jours et inclut Quick Tabata', () {
+    test('répartit les séances entre les jours et inclut Session rapide', () {
       final week = LocalWeek.containing(DateTime(2026, 8, 5));
 
       final summary = aggregateHistoryWeek([
@@ -157,7 +157,7 @@ void main() {
           DateTime(2026, 8, 7, 10),
           TrainingSessionStatus.completed,
           duration: const Duration(minutes: 4),
-          name: 'Quick Tabata',
+          name: 'Session rapide',
         ),
       ], week);
 

@@ -25,6 +25,7 @@ class GroupEditorView extends StatelessWidget {
     required this.hasFollowingGroup,
     required this.showQuickWarning,
     required this.onDismissQuickWarning,
+    required this.isSubmitting,
     this.nameError,
   });
 
@@ -42,6 +43,7 @@ class GroupEditorView extends StatelessWidget {
   final bool hasFollowingGroup;
   final bool showQuickWarning;
   final VoidCallback onDismissQuickWarning;
+  final bool isSubmitting;
   final String? nameError;
 
   @override
@@ -128,6 +130,7 @@ class GroupEditorView extends StatelessWidget {
                 onEditRepetitionSequence: onEditRepetitionSequence,
                 onEditTimedExercise: onEditTimedExercise,
                 hasFollowingGroup: hasFollowingGroup,
+                isSubmitting: isSubmitting,
               ),
             ],
           ],

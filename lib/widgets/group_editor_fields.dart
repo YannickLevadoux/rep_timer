@@ -22,6 +22,7 @@ class GroupEditorFields extends StatelessWidget {
     required this.onEditRepetitionSequence,
     required this.onEditTimedExercise,
     required this.hasFollowingGroup,
+    required this.isSubmitting,
   });
 
   final GroupEditorController controller;
@@ -34,6 +35,7 @@ class GroupEditorFields extends StatelessWidget {
   final VoidCallback onEditRepetitionSequence;
   final VoidCallback onEditTimedExercise;
   final bool hasFollowingGroup;
+  final bool isSubmitting;
 
   @override
   Widget build(BuildContext context) {
@@ -80,8 +82,11 @@ class GroupEditorFields extends StatelessWidget {
           onAddExercise: onAddExercise,
           onAddRest: onAddRest,
           onSave: onSave,
-          actionLabel: mode.actionLabel,
+          actionLabel: mode.isQuick && isSubmitting
+              ? 'Préparation…'
+              : mode.actionLabel,
           showItemActions: !group.type.isTimed,
+          enabled: !isSubmitting,
         ),
       ],
     );

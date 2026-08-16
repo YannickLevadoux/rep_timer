@@ -41,6 +41,7 @@ class _GroupEditorState extends State<GroupEditor> {
   late final GroupEditorDialogs _dialogs;
   String? _nameError;
   bool _showQuickWarning = true;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -82,6 +83,7 @@ class _GroupEditorState extends State<GroupEditor> {
   }
 
   Future<void> _saveGroup() async {
+    if (_isSubmitting) return;
     final group = _controller.saveIfSelected();
     if (group == null) {
       showSnack(context, 'Sélectionnez un type de groupe.');
@@ -104,8 +106,17 @@ class _GroupEditorState extends State<GroupEditor> {
     }
     setState(() => _nameError = null);
     if (widget.onSubmit != null) {
-      await widget.onSubmit!(group);
-      if (mounted) setState(() => _showQuickWarning = true);
+      setState(() => _isSubmitting = true);
+      try {
+        await widget.onSubmit!(group);
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isSubmitting = false;
+            _showQuickWarning = true;
+          });
+        }
+      }
     } else if (mounted) {
       Navigator.pop(context, group);
     }
@@ -137,6 +148,7 @@ class _GroupEditorState extends State<GroupEditor> {
           showQuickWarning: _showQuickWarning,
           onDismissQuickWarning: () =>
               setState(() => _showQuickWarning = false),
+          isSubmitting: _isSubmitting,
           nameError: _nameError,
         ),
       ),

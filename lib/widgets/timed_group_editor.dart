@@ -4,7 +4,7 @@ import '../controllers/group_editor_controller.dart';
 import '../models/group_type.dart';
 import '../services/group_duration_estimator.dart';
 import '../validation/business_validation.dart';
-import 'quick_tabata_sections.dart';
+import 'estimated_duration_card.dart';
 import 'rounds_editor.dart';
 import 'timed_exercise_minutes_row.dart';
 import 'timed_inline_duration_row.dart';
@@ -33,7 +33,7 @@ class TimedGroupEditor extends StatelessWidget {
         if (group.type == GroupType.tabata) ..._tabata(context),
         if (group.type == GroupType.amrap) ..._amrap(context),
         if (group.type == GroupType.emom) ..._emom(context),
-        QuickTabataEstimatedDurationCard(
+        EstimatedDurationCard(
           duration: estimateGroupDuration(
             group,
             hasFollowingGroup: hasFollowingGroup,

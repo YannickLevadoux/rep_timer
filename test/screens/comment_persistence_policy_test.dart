@@ -4,7 +4,7 @@ import 'package:rep_timer/models/exercise_group.dart';
 import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_item.dart';
-import 'package:rep_timer/screens/quick_tabata_screen.dart';
+import 'package:rep_timer/screens/quick_session_screen.dart';
 import 'package:rep_timer/screens/training_session.dart';
 import 'package:rep_timer/services/session_controller.dart';
 import 'package:rep_timer/services/session_notification_permission_service.dart';
@@ -55,7 +55,7 @@ void main() {
   testWidgets('la Session rapide lance une séance temporaire', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: QuickTabataScreen(
+        home: QuickSessionScreen(
           permissionService: SessionNotificationPermissionService(
             platform: GrantedSessionPermissionPlatform(),
           ),
