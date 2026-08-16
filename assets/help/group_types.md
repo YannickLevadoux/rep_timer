@@ -1,11 +1,25 @@
-## Choisir un type
+## Libre 
 
-- **Libre** — Enchaîner librement exercices et pauses pendant un nombre de cycles défini.
+Enchaîner librement exercices et pauses pendant un nombre de cycles défini.
 
-- **Répétitions variables** — Définir une séquence de répétitions appliquée aux exercices de chaque tour.
+## Variable 
 
-- **Tabata** — Alterner un effort chronométré et une pause pendant un nombre de cycles défini.
+**Répétitions variables**
 
-- **AMRAP** — Enregistrer autant de tours terminés que possible pendant la durée choisie.
+Ajuster le nombre de répétitions des exercices de type Répétitions à chaque tour.
 
-- **EMOM** — Recommencer l’exercice au début de chaque minute, le temps restant dans la minute servant de récupération.
+## Tabata
+
+Alterner une période d'effort chronométrée et une période de récupération pendant un nombre de cycles défini.
+
+## AMRAP
+
+*As Many Rep As Possible*
+
+Effectuer et enregistrer autant de tours que possible pendant la durée définie.
+
+## EMOM
+
+*Every Minute On the Minute*
+
+Commencer un nouvel exercice au début de chaque minute. Le temps restant dans la minute sert de récupération.
