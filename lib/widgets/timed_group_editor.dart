@@ -82,6 +82,7 @@ class TimedGroupEditor extends StatelessWidget {
       onChanged: controller.setEffortDuration,
       minimum: BusinessLimits.minimumAmrapDuration,
       maximum: BusinessLimits.maximumAmrapDuration,
+      constrainPickerToBounds: true,
     ),
     const Text('Enregistrez chaque tour terminé pendant le temps imparti.'),
     const Divider(),

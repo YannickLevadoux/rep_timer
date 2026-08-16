@@ -17,6 +17,7 @@ class DurationMinutesSecondsPicker extends StatelessWidget {
   final ValueChanged<Duration> onChanged;
   final Duration minimum;
   final Duration maximum;
+  final bool constrainPickerToBounds;
 
   const DurationMinutesSecondsPicker({
     super.key,
@@ -24,15 +25,24 @@ class DurationMinutesSecondsPicker extends StatelessWidget {
     required this.onChanged,
     this.minimum = BusinessLimits.minimumDuration,
     this.maximum = BusinessLimits.maximumDuration,
+    this.constrainPickerToBounds = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final minutes = value.inMinutes.clamp(
-      0,
-      BusinessLimits.maximumDuration.inMinutes,
-    );
+    final minimumMinutes = constrainPickerToBounds ? minimum.inMinutes : 0;
+    final maximumMinutes = constrainPickerToBounds
+        ? maximum.inMinutes
+        : BusinessLimits.maximumDuration.inMinutes;
+    final minutes = value.inMinutes.clamp(minimumMinutes, maximumMinutes);
     final seconds = value.inSeconds.remainder(60);
+    final minimumSeconds = constrainPickerToBounds && minutes == minimumMinutes
+        ? minimum.inSeconds.remainder(60)
+        : 0;
+    final maximumSeconds = constrainPickerToBounds && minutes == maximumMinutes
+        ? maximum.inSeconds.remainder(60)
+        : 59;
+    final displayedSeconds = seconds.clamp(minimumSeconds, maximumSeconds);
     final issue = value < minimum
         ? BusinessValidationIssue(
             field: BusinessField.duration,
@@ -54,12 +64,29 @@ class DurationMinutesSecondsPicker extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             NumberWheelField(
-              min: 0,
-              max: BusinessLimits.maximumDuration.inMinutes,
+              min: minimumMinutes,
+              max: maximumMinutes,
               value: minutes,
               label: "min",
-              onChanged: (m) =>
-                  onChanged(Duration(minutes: m, seconds: seconds)),
+              onChanged: (m) {
+                final selectedMinimumSeconds =
+                    constrainPickerToBounds && m == minimumMinutes
+                    ? minimum.inSeconds.remainder(60)
+                    : 0;
+                final selectedMaximumSeconds =
+                    constrainPickerToBounds && m == maximumMinutes
+                    ? maximum.inSeconds.remainder(60)
+                    : 59;
+                onChanged(
+                  Duration(
+                    minutes: m,
+                    seconds: seconds.clamp(
+                      selectedMinimumSeconds,
+                      selectedMaximumSeconds,
+                    ),
+                  ),
+                );
+              },
             ),
             const SizedBox(width: 12),
             Padding(
@@ -71,9 +98,9 @@ class DurationMinutesSecondsPicker extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             NumberWheelField(
-              min: 0,
-              max: 59,
-              value: seconds,
+              min: minimumSeconds,
+              max: maximumSeconds,
+              value: displayedSeconds,
               label: "s",
               onChanged: (s) =>
                   onChanged(Duration(minutes: minutes, seconds: s)),

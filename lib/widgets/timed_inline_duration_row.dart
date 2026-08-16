@@ -12,6 +12,7 @@ class TimedExerciseDurationRow extends StatelessWidget {
     required this.onChanged,
     this.minimum = const Duration(seconds: 1),
     this.maximum = const Duration(hours: 2, seconds: 59),
+    this.constrainPickerToBounds = false,
   });
 
   final TrainingItem item;
@@ -19,6 +20,7 @@ class TimedExerciseDurationRow extends StatelessWidget {
   final ValueChanged<Duration> onChanged;
   final Duration minimum;
   final Duration maximum;
+  final bool constrainPickerToBounds;
 
   @override
   Widget build(BuildContext context) => _InlineTimedDurationRow(
@@ -33,6 +35,7 @@ class TimedExerciseDurationRow extends StatelessWidget {
     onChanged: onChanged,
     minimum: minimum,
     maximum: maximum,
+    constrainPickerToBounds: constrainPickerToBounds,
   );
 }
 
@@ -74,6 +77,7 @@ class _InlineTimedDurationRow extends StatelessWidget {
     this.action,
     this.minimum = const Duration(seconds: 1),
     this.maximum = const Duration(hours: 2, seconds: 59),
+    this.constrainPickerToBounds = false,
   });
 
   static const double _basePickerWidth = 176;
@@ -86,6 +90,7 @@ class _InlineTimedDurationRow extends StatelessWidget {
   final Widget? action;
   final Duration minimum;
   final Duration maximum;
+  final bool constrainPickerToBounds;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -126,6 +131,7 @@ class _InlineTimedDurationRow extends StatelessWidget {
                   onChanged: onChanged,
                   minimum: minimum,
                   maximum: maximum,
+                  constrainPickerToBounds: constrainPickerToBounds,
                 ),
               ),
             ),
