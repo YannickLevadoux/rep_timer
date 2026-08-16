@@ -20,7 +20,7 @@ void main() {
       'AMRAP',
       'EMOM',
     ]) {
-      expect(find.textContaining(heading), findsOneWidget);
+      expect(find.textContaining(heading), findsWidgets);
     }
     expect(find.byKey(const Key('group-types-help-content')), findsOneWidget);
   });

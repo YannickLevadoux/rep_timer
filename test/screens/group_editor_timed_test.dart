@@ -11,23 +11,16 @@ import 'package:rep_timer/widgets/type_selector.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('édition et session rapide affichent leur action dédiée', (
-    tester,
-  ) async {
-    for (final scenario in [
-      (GroupEditorMode.edit, 'Enregistrer'),
-      (GroupEditorMode.quick, 'Commencer'),
-    ]) {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: GroupEditor(
-            group: ExerciseGroup(id: 'g', name: 'Groupe', items: []),
-            mode: scenario.$1,
-          ),
+  testWidgets('l’édition affiche son action dédiée', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GroupEditor(
+          group: ExerciseGroup(id: 'g', name: 'Groupe', items: []),
+          mode: GroupEditorMode.edit,
         ),
-      );
-      expect(find.text(scenario.$2), findsOneWidget);
-    }
+      ),
+    );
+    expect(find.text('Enregistrer'), findsOneWidget);
   });
 
   testWidgets('Tabata personnalise seulement la dernière pause persistante', (

@@ -65,7 +65,7 @@ class GroupEditorView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (mode.isQuick && showQuickWarning) ...[
+            if (mode.isQuick && hasSelectedType && showQuickWarning) ...[
               Card(
                 color: Theme.of(context).colorScheme.secondaryContainer,
                 child: Padding(

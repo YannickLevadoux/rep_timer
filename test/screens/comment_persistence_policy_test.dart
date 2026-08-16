@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
+import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/screens/quick_tabata_screen.dart';
 import 'package:rep_timer/screens/training_session.dart';
 import 'package:rep_timer/services/session_controller.dart';
 import 'package:rep_timer/services/session_notification_permission_service.dart';
+import 'package:rep_timer/widgets/type_selector.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_session_permission_platform.dart';
@@ -50,7 +52,7 @@ void main() {
     );
   });
 
-  testWidgets('Quick Tabata lance une séance temporaire', (tester) async {
+  testWidgets('la Session rapide lance une séance temporaire', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: QuickTabataScreen(
@@ -61,6 +63,10 @@ void main() {
       ),
     );
 
+    await tester.tap(find.byType(TypeSelector));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(GroupType.tabata.shortLabel).last);
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Commencer'));
     await tester.tap(find.text('Commencer'));
     await tester.pump(const Duration(milliseconds: 100));
