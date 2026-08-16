@@ -49,7 +49,7 @@ class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
     }
     setState(() => _starting = true);
 
-    await SessionStartPermissionGate(
+    final countdownSeconds = await SessionStartPermissionGate(
       permissionService: widget.permissionService,
       settingsStorage: widget.settingsStorage,
     ).prepare(context, widget.training);
@@ -59,7 +59,10 @@ class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TrainingSessionScreen(training: widget.training),
+        builder: (context) => TrainingSessionScreen(
+          training: widget.training,
+          preSessionCountdownSeconds: countdownSeconds,
+        ),
       ),
     );
   }

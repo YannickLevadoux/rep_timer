@@ -48,7 +48,7 @@ class _QuickSessionScreenState extends State<QuickSessionScreen> {
       groups: [group.copyWith()],
       createdAt: timestamp,
     );
-    await SessionStartPermissionGate(
+    final countdownSeconds = await SessionStartPermissionGate(
       permissionService: widget.permissionService,
       settingsStorage: widget.settingsStorage,
     ).prepare(context, training);
@@ -60,6 +60,7 @@ class _QuickSessionScreenState extends State<QuickSessionScreen> {
           training: training,
           trainingChangesPersistence: TrainingChangesPersistence.memoryOnly,
           controllerFactory: widget.controllerFactory,
+          preSessionCountdownSeconds: countdownSeconds,
         ),
       ),
     );

@@ -5,6 +5,7 @@ import 'package:vibration/vibration.dart';
 abstract interface class StepEndAudioPlayer {
   Future<void> setSource(String assetPath);
   Future<void> play(String assetPath);
+  Future<void> playFrom(String assetPath, Duration position);
   Future<void> stop();
   Future<void> dispose();
 }
@@ -21,6 +22,10 @@ class AudioplayersStepEndAudioPlayer implements StepEndAudioPlayer {
 
   @override
   Future<void> play(String assetPath) => _player.play(AssetSource(assetPath));
+
+  @override
+  Future<void> playFrom(String assetPath, Duration position) =>
+      _player.play(AssetSource(assetPath), position: position);
 
   @override
   Future<void> stop() => _player.stop();

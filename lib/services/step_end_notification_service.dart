@@ -20,8 +20,17 @@ abstract interface class StepEndNotifier {
   void dispose();
 }
 
-class StepEndNotificationService implements StepEndNotifier {
+abstract interface class PreSessionSoundNotifier {
+  Future<void> playPreparationSignal(
+    NotificationSound sound,
+    int secondsRemaining,
+  );
+}
+
+class StepEndNotificationService
+    implements StepEndNotifier, PreSessionSoundNotifier {
   static const _vibrationDurationMs = 300;
+  static const _preparationSignalDuration = Duration(milliseconds: 650);
 
   // Lecteur dédié à la séquence "3-2-1-GO" pendant une séance. Un seul
   // fichier composite par déclenchement ne nécessite plus le pool de
@@ -36,6 +45,7 @@ class StepEndNotificationService implements StepEndNotifier {
   final StepEndVibrationPlatform _vibrationPlatform;
 
   bool _disposed = false;
+  Timer? _preparationStopTimer;
 
   StepEndNotificationService({
     AudioPlayer? countdownPlayer,
@@ -87,8 +97,30 @@ class StepEndNotificationService implements StepEndNotifier {
   @override
   Future<void> stopCountdown() async {
     if (_disposed) return;
+    _preparationStopTimer?.cancel();
+    _preparationStopTimer = null;
     try {
       await _countdownPlayer.stop();
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> playPreparationSignal(
+    NotificationSound sound,
+    int secondsRemaining,
+  ) async {
+    if (_disposed || secondsRemaining < 0 || secondsRemaining > 3) return;
+    _preparationStopTimer?.cancel();
+    final position = Duration(
+      microseconds: sound.goOffset.inMicroseconds * (3 - secondsRemaining) ~/ 3,
+    );
+    try {
+      await _countdownPlayer.stop();
+      await _countdownPlayer.playFrom(sound.sequenceAsset, position);
+      _preparationStopTimer = Timer(
+        _preparationSignalDuration,
+        () => unawaited(stopCountdown()),
+      );
     } catch (_) {}
   }
 
@@ -126,6 +158,7 @@ class StepEndNotificationService implements StepEndNotifier {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    _preparationStopTimer?.cancel();
     unawaited(_disposePlayer(_countdownPlayer));
     unawaited(_disposePlayer(_previewPlayer));
   }

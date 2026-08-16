@@ -6,19 +6,12 @@ import '../models/session_checkpoint.dart';
 import '../models/training.dart';
 import '../services/session_controller.dart';
 import '../widgets/dialogs/amrap_restart_dialog.dart';
-import '../widgets/dialogs/exit_session_dialog.dart';
 import '../widgets/dialogs/incomplete_session_dialog.dart';
 import '../widgets/dialogs/session_comment_flow.dart';
 import '../widgets/session_blink_controller.dart';
 import '../widgets/training_session_view.dart';
 import 'session_progress.dart';
-
-typedef SessionControllerFactory =
-    SessionController Function({
-      required Training training,
-      required SessionCheckpoint? initialCheckpoint,
-      required TrainingChangesPersistence trainingChangesPersistence,
-    });
+import 'session_exit_flow.dart';
 
 class TrainingSessionScreen extends StatefulWidget {
   const TrainingSessionScreen({
@@ -27,11 +20,13 @@ class TrainingSessionScreen extends StatefulWidget {
     this.initialCheckpoint,
     this.trainingChangesPersistence = TrainingChangesPersistence.persistent,
     this.controllerFactory,
+    this.preSessionCountdownSeconds = 0,
   });
 
   final Training training;
   final SessionCheckpoint? initialCheckpoint;
   final TrainingChangesPersistence trainingChangesPersistence;
+  final int preSessionCountdownSeconds;
   @visibleForTesting
   final SessionControllerFactory? controllerFactory;
   @override
@@ -43,6 +38,8 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
   late final SessionController _controller;
   late final SessionBlinkController _blink;
   bool _showingIncompleteDialog = false;
+  late bool _wasPreparing;
+  bool _announceSessionStart = false;
   @override
   void initState() {
     super.initState();
@@ -57,6 +54,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
       enabled: _controller.steps.isNotEmpty,
       initiallyPaused: _controller.paused,
     );
+    _wasPreparing = _controller.preparing;
   }
 
   SessionController _createController({
@@ -67,6 +65,7 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     training: training,
     initialCheckpoint: initialCheckpoint,
     trainingChangesPersistence: trainingChangesPersistence,
+    preSessionCountdownSeconds: widget.preSessionCountdownSeconds,
   );
 
   @override
@@ -83,7 +82,13 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     _blink.synchronize(
       paused: _controller.paused,
       finished: _controller.finished,
+      animationsDisabled:
+          MediaQuery.maybeOf(context)?.disableAnimations ?? false,
     );
+    if (_wasPreparing && !_controller.preparing) {
+      _announceSessionStart = true;
+    }
+    _wasPreparing = _controller.preparing;
     if (_controller.pendingIncompleteReview && !_showingIncompleteDialog) {
       _showingIncompleteDialog = true;
       WidgetsBinding.instance.addPostFrameCallback(
@@ -115,20 +120,8 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
     }
   }
 
-  Future<void> _editComment() async {
-    await editCurrentSessionComment(context, _controller);
-  }
-
-  Future<void> _showExitMenu() async {
-    final choice = await showExitSessionDialog(context);
-    if (!mounted) return;
-    if (choice == ExitSessionChoice.finish) {
-      await _controller.finishSession(earlyExit: true);
-    } else if (choice == ExitSessionChoice.abandon) {
-      await _controller.abandon();
-      if (mounted) Navigator.pop(context);
-    }
-  }
+  Future<void> _editComment() =>
+      editCurrentSessionComment(context, _controller);
 
   void _openProgress() {
     Navigator.push(
@@ -185,12 +178,16 @@ class _TrainingSessionScreenState extends State<TrainingSessionScreen>
       amrap: _controller.amrap,
       onRecordAmrapLap: _controller.recordAmrapLap,
       onUndoAmrapLap: _controller.undoLastAmrapLap,
+      preparing: _controller.preparing,
+      preparationSeconds: _controller.preparationSeconds,
+      onSkipPreparation: _controller.skipPreparation,
+      announceSessionStart: _announceSessionStart,
     );
     if (_controller.steps.isEmpty || _controller.finished) return view;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
-        if (!didPop) await _showExitMenu();
+        if (!didPop) await handleSessionExit(context, _controller);
       },
       child: view,
     );

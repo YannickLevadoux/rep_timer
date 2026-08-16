@@ -20,14 +20,34 @@ class SessionStartPermissionGate {
   SessionStartPermissionGate({
     SessionNotificationPermissionService? permissionService,
     SessionPermissionPromptStorage? settingsStorage,
+    AppSettingsStorage? countdownStorage,
   }) : _permissionService =
-           permissionService ?? SessionNotificationPermissionService(),
-       _settingsStorage = settingsStorage ?? AppSettingsStorage();
+           permissionService ?? SessionNotificationPermissionService() {
+    final defaultStorage = AppSettingsStorage();
+    _settingsStorage = settingsStorage ?? defaultStorage;
+    _countdownStorage =
+        countdownStorage ??
+        (settingsStorage is AppSettingsStorage
+            ? settingsStorage
+            : settingsStorage == null
+            ? defaultStorage
+            : null);
+  }
 
   final SessionNotificationPermissionService _permissionService;
-  final SessionPermissionPromptStorage _settingsStorage;
+  late final SessionPermissionPromptStorage _settingsStorage;
+  late final AppSettingsStorage? _countdownStorage;
 
-  Future<void> prepare(BuildContext context, Training training) async {
+  Future<int> prepare(BuildContext context, Training training) async {
+    await _preparePermission(context, training);
+    return _countdownStorage?.loadPreSessionCountdownSeconds() ??
+        AppSettingsStorage.defaultPreSessionCountdownSeconds;
+  }
+
+  Future<void> _preparePermission(
+    BuildContext context,
+    Training training,
+  ) async {
     if (!sessionNeedsBackgroundTracking(training)) return;
 
     final permission = await _permissionService.notificationPermissionStatus();

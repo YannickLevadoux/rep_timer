@@ -7,6 +7,15 @@ import 'session_controller_composition.dart';
 
 export 'training_changes_persistence.dart';
 
+enum SessionExecutionPhase { preparing, running, finished }
+
+typedef SessionControllerFactory =
+    SessionController Function({
+      required Training training,
+      required SessionCheckpoint? initialCheckpoint,
+      required TrainingChangesPersistence trainingChangesPersistence,
+    });
+
 /// Façade observable consommée par l'écran de séance.
 class SessionController extends SessionControllerBase {
   SessionController({
@@ -23,6 +32,7 @@ class SessionController extends SessionControllerBase {
     Future<void> Function()? enableWakelock,
     Future<void> Function()? disableWakelock,
     SessionNow? now,
+    int preSessionCountdownSeconds = 0,
     super.tickSchedule,
   }) : super(
          composition: SessionControllerComposition(
@@ -38,13 +48,21 @@ class SessionController extends SessionControllerBase {
            enableWakelock: enableWakelock,
            disableWakelock: disableWakelock,
            now: now,
+           preSessionCountdownSeconds: preSessionCountdownSeconds,
          ),
        );
 
   List<SessionStep> get steps => composition.progress.steps;
   List<bool> get completed => composition.progress.completed;
   int get currentIndex => composition.progress.currentIndex;
-  bool get paused => composition.clock.paused;
+  SessionExecutionPhase get phase => preparation.preparing
+      ? SessionExecutionPhase.preparing
+      : composition.progress.finished
+      ? SessionExecutionPhase.finished
+      : SessionExecutionPhase.running;
+  bool get preparing => phase == SessionExecutionPhase.preparing;
+  int get preparationSeconds => preparation.remainingSeconds;
+  bool get paused => preparing ? preparation.paused : composition.clock.paused;
   bool get finished => composition.progress.finished;
   NotificationMode get notificationMode => notifications.mode;
   bool get pendingIncompleteReview => composition.pendingIncompleteReview;
@@ -55,6 +73,7 @@ class SessionController extends SessionControllerBase {
   AmrapExecutionSnapshot? get amrap => composition.amrapSnapshot;
 
   void cycleNotificationMode() => notifications.cycleMode();
+  void skipPreparation() => preparation.skip();
   bool requiresAmrapRestart(int index) =>
       composition.timedGroups.requiresRestart(index);
 

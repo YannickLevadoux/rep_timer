@@ -20,7 +20,10 @@ enum ExitSessionChoice {
 ///
 /// Retourne `null` si le dialogue est fermé sans choix explicite — à
 /// traiter comme [ExitSessionChoice.continueSession] par l'appelant.
-Future<ExitSessionChoice?> showExitSessionDialog(BuildContext context) {
+Future<ExitSessionChoice?> showExitSessionDialog(
+  BuildContext context, {
+  bool preparing = false,
+}) {
   return showDialog<ExitSessionChoice>(
     context: context,
     builder: (context) {
@@ -33,10 +36,11 @@ Future<ExitSessionChoice?> showExitSessionDialog(BuildContext context) {
                 Navigator.pop(context, ExitSessionChoice.continueSession),
             child: const Text("Continuer la séance"),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, ExitSessionChoice.finish),
-            child: const Text("Terminer la session"),
-          ),
+          if (!preparing)
+            TextButton(
+              onPressed: () => Navigator.pop(context, ExitSessionChoice.finish),
+              child: const Text("Terminer la session"),
+            ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,

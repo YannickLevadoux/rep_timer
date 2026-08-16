@@ -46,6 +46,36 @@ void main() {
     ]);
   });
 
+  test('joue séparément les signaux 3, 2, 1 et départ', () async {
+    final countdown = _FakeAudioPlayer();
+    final service = StepEndNotificationService(
+      countdownAudio: countdown,
+      previewAudio: _FakeAudioPlayer(),
+      vibrationPlatform: _FakeVibrationPlatform(),
+    );
+
+    for (final seconds in [3, 2, 1, 0]) {
+      await service.playPreparationSignal(_sound, seconds);
+      await service.stopCountdown();
+    }
+
+    expect(countdown.calls, <String>[
+      'stop',
+      'play:sounds/test.ogg@0',
+      'stop',
+      'stop',
+      'play:sounds/test.ogg@800',
+      'stop',
+      'stop',
+      'play:sounds/test.ogg@1600',
+      'stop',
+      'stop',
+      'play:sounds/test.ogg@2400',
+      'stop',
+    ]);
+    service.dispose();
+  });
+
   test('vibre uniquement lorsqu’un vibrateur est disponible', () async {
     final available = _FakeVibrationPlatform(available: true);
     final unavailable = _FakeVibrationPlatform(available: false);
@@ -135,6 +165,10 @@ class _FakeAudioPlayer implements StepEndAudioPlayer {
 
   @override
   Future<void> play(String assetPath) async => _record('play:$assetPath');
+
+  @override
+  Future<void> playFrom(String assetPath, Duration position) async =>
+      _record('play:$assetPath@${position.inMilliseconds}');
 
   @override
   Future<void> stop() async => _record('stop');

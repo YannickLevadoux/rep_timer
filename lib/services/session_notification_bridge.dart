@@ -45,6 +45,10 @@ class SessionNotificationBridge {
   NotificationMode get mode => _coordinator.mode;
 
   void start() => _coordinator.start();
+  void prepare() => _coordinator.prepare();
+  void signalPreparation(int secondsRemaining) =>
+      _coordinator.signalPreparation(secondsRemaining);
+  void stopPreparationSignal() => _coordinator.stopPreparationSignal();
   void cycleMode() => _coordinator.cycleMode();
   void handleAppBackgrounded() => _coordinator.handleAppBackgrounded();
   void handleAppResumed() => _coordinator.handleAppResumed();

@@ -10,6 +10,7 @@ import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/screens/quick_session_screen.dart';
 import 'package:rep_timer/screens/training_session.dart';
 import 'package:rep_timer/services/session_controller.dart';
+import 'package:rep_timer/services/app_settings_storage.dart';
 import 'package:rep_timer/services/session_notification_permission_service.dart';
 import 'package:rep_timer/services/session_notification_service.dart';
 import 'package:rep_timer/services/training_history_storage.dart';
@@ -214,6 +215,17 @@ void main() {
       }
     });
   }
+
+  testWidgets('charge le compte à rebours au lancement rapide', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      AppSettingsStorage.preSessionCountdownSecondsKey: 7,
+    });
+    await _pumpScreen(tester);
+    await _selectType(tester, GroupType.tabata);
+    await _start(tester);
+
+    expect(_session(tester).preSessionCountdownSeconds, 7);
+  });
 
   for (final type in [GroupType.free, GroupType.variableRepetitions]) {
     testWidgets('${type.name} peut être configuré et lancé', (tester) async {
