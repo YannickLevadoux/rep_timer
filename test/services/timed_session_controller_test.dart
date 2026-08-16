@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
+import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/notification_mode.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_history_entry.dart';
@@ -215,6 +216,106 @@ void main() {
     },
   );
 
+  test('navigation EMOM remet chaque minute de destination à 60 secondes', () {
+    final harness = TimedSessionHarness(_emomTraining());
+    final controller = harness.build();
+    addTearDown(controller.dispose);
+
+    harness.advance(const Duration(seconds: 12));
+    expect(controller.goToNext(), isTrue);
+    expect(controller.currentIndex, 1);
+    expect(controller.completed, [false, false]);
+    expect(controller.stepElapsed, Duration.zero);
+
+    harness.advance(const Duration(seconds: 7));
+    expect(controller.goToPrevious(), isTrue);
+    expect(controller.currentIndex, 0);
+    expect(controller.completed, [false, false]);
+    expect(controller.stepElapsed, Duration.zero);
+  });
+
+  test(
+    'interdit précédente à la première minute EMOM après un autre groupe',
+    () {
+      final harness = TimedSessionHarness(
+        Training(
+          id: 'emom-previous',
+          name: 'EMOM',
+          groups: [
+            _followingGroup(),
+            ExerciseGroup.emom(id: 'emom')..rounds = 2,
+          ],
+          createdAt: DateTime(2026),
+        ),
+      );
+      final controller = harness.build();
+      addTearDown(controller.dispose);
+
+      expect(controller.goToNext(), isTrue);
+      expect(controller.currentStep.group.type, GroupType.emom);
+      expect(controller.currentStep.roundIndex, 1);
+      expect(controller.goToPrevious(), isFalse);
+      expect(controller.currentStep.roundIndex, 1);
+    },
+  );
+
+  test('pause, arrière-plan et checkpoint conservent la minute EMOM', () async {
+    final harness = TimedSessionHarness(_emomTraining());
+    final controller = harness.build();
+    await _flush();
+
+    harness.advance(const Duration(seconds: 20));
+    controller.togglePause();
+    harness.advance(const Duration(seconds: 30));
+    expect(controller.stepElapsed, const Duration(seconds: 20));
+    controller.togglePause();
+    harness.advance(const Duration(seconds: 5));
+    controller.handleAppBackgrounded();
+    harness.advance(const Duration(seconds: 10));
+    controller.handleAppResumed();
+    await _flush();
+    expect(controller.currentIndex, 0);
+    expect(controller.stepElapsed, const Duration(seconds: 35));
+
+    final checkpoint = harness.checkpoints.saved.last;
+    controller.dispose();
+    final restored = harness.build(checkpoint: checkpoint);
+    addTearDown(restored.dispose);
+    expect(restored.currentStep.roundIndex, 1);
+    expect(restored.stepElapsed, const Duration(seconds: 35));
+  });
+
+  test(
+    'exécute la récupération EMOM seulement avant le groupe suivant',
+    () async {
+      final emom = ExerciseGroup.emom(id: 'emom')
+        ..rounds = 1
+        ..postGroupRestDuration = const Duration(seconds: 30);
+      final harness = TimedSessionHarness(
+        Training(
+          id: 'emom-rest',
+          name: 'EMOM',
+          groups: [emom, _followingGroup()],
+          createdAt: DateTime(2026),
+        ),
+      );
+      final controller = harness.build();
+      addTearDown(controller.dispose);
+
+      harness.advance(const Duration(minutes: 1));
+      expect(controller.currentStep.item.type, ItemType.rest);
+      harness.advance(const Duration(seconds: 30));
+      expect(controller.currentStep.group.id, 'next');
+      await controller.finishSession(earlyExit: true);
+
+      final recovery = harness.history.entries.single.steps.singleWhere(
+        (step) => step.itemType == ItemType.rest,
+      );
+      expect(recovery.actualDuration, const Duration(seconds: 30));
+      expect(recovery.emomMinuteIndex, isNull);
+    },
+  );
+
   test(
     'Tabata notifie chaque phase, suspend les chronos et écrit l’historique',
     () async {
@@ -339,6 +440,14 @@ Training _emomTraining() => Training(
   name: 'EMOM',
   groups: [ExerciseGroup.emom(id: 'emom')..rounds = 2],
   createdAt: DateTime(2026),
+);
+
+ExerciseGroup _followingGroup() => ExerciseGroup(
+  id: 'next',
+  name: 'Suite',
+  items: [
+    TrainingItem(type: ItemType.exercise, name: 'Squats', repetitions: 10),
+  ],
 );
 
 Training _tabataTraining({bool followed = false, int? finalRestSeconds}) {

@@ -28,7 +28,9 @@ String formatGroupSummary(
       'Tabata · ${group.rounds} '
           '${group.rounds == 1 ? 'cycle' : 'cycles'} · $durationLabel',
     GroupType.amrap => 'AMRAP · Effort · $durationLabel',
-    GroupType.emom => 'EMOM · Effort · $durationLabel',
+    GroupType.emom =>
+      'EMOM · ${group.items.isEmpty ? 'Effort' : group.items.first.name} · '
+          '$durationLabel',
     _ => throw StateError('Type déjà traité'),
   };
 }

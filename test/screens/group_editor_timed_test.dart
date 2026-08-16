@@ -287,6 +287,32 @@ void main() {
     );
     expect(plus.onPressed, isNotNull);
     expect(find.text('01:00'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Exercice'), findsNothing);
+    expect(find.widgetWithText(OutlinedButton, 'Pause'), findsNothing);
+  });
+
+  testWidgets('EMOM ajoute et supprime sa récupération de transition', (
+    tester,
+  ) async {
+    await _pumpEditor(
+      tester,
+      ExerciseGroup.emom(id: 'emom'),
+      hasFollowingGroup: true,
+    );
+
+    final add = find.text("Ajouter une récupération après l'EMOM");
+    await tester.ensureVisible(add);
+    await tester.tap(add);
+    await tester.pump();
+
+    expect(find.text('Récupération'), findsOneWidget);
+    expect(find.text('11:00'), findsOneWidget);
+    expect(find.byIcon(Icons.drag_handle), findsNothing);
+    final delete = find.byTooltip('Supprimer');
+    await tester.ensureVisible(delete);
+    await tester.tap(delete);
+    await tester.pump();
+    expect(find.text('11:00'), findsNothing);
   });
 
   testWidgets('annuler une conversion conserve tous les éléments', (

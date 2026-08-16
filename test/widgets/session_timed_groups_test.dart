@@ -102,6 +102,8 @@ Future<void> _pump(
         paused: false,
         notificationMode: NotificationMode.none,
         blinkOpacity: const AlwaysStoppedAnimation(1),
+        previousEnabled: false,
+        nextEnabled: false,
         nextStep: null,
         onPrevious: () {},
         onNext: () {},

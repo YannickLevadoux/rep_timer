@@ -158,6 +158,47 @@ void main() {
     );
   });
 
+  test('omet une récupération EMOM qui n’a pas été exécutée', () async {
+    final historyStorage = _FakeHistoryStorage();
+    final emom = ExerciseGroup.emom(id: 'emom')
+      ..rounds = 2
+      ..postGroupRestDuration = const Duration(seconds: 30);
+    final training = Training(
+      id: 'emom-incomplete',
+      name: 'EMOM incomplet',
+      groups: [emom, _training().groups.single],
+      createdAt: DateTime(2026),
+    );
+    final steps = buildSessionSteps(training);
+    final service = SessionCompletionService(
+      checkpointStorage: _FakeCheckpointStorage(),
+      historyStorage: historyStorage,
+      now: () => DateTime(2026),
+    );
+
+    await service.completeSession(
+      training: training,
+      steps: steps,
+      completed: const [true, false, false, false],
+      stepActualDurations: const [
+        Duration(minutes: 1),
+        Duration(seconds: 12),
+        Duration.zero,
+        Duration.zero,
+      ],
+      totalDuration: const Duration(minutes: 1, seconds: 12),
+      status: TrainingSessionStatus.incomplete,
+    );
+
+    final history = historyStorage.entries.single;
+    expect(history.steps, hasLength(3));
+    expect(
+      history.steps.where((step) => step.itemType == ItemType.rest),
+      isEmpty,
+    );
+    expect(history.steps.take(2).map((step) => step.emomMinuteIndex), [1, 2]);
+  });
+
   test(
     'omet une récupération AMRAP jamais exécutée et borne sa durée',
     () async {

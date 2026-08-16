@@ -110,6 +110,30 @@ void main() {
     expect(find.text('10:00'), findsOneWidget);
   });
 
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'EMOM reste utilisable en 360 × 640, texte agrandi, $brightness',
+      (tester) async {
+        await _pumpScreen(
+          tester,
+          size: const Size(360, 640),
+          textScaler: const TextScaler.linear(1.5),
+          brightness: brightness,
+        );
+        await _chooseType(tester, GroupType.emom);
+        await tester.tap(find.text('Continuer'));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        final start = find.text('Commencer');
+        await tester.ensureVisible(start);
+        await tester.pump();
+        expect(start.hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('Libre réutilise les actions génériques', (tester) async {
     await _pumpScreen(tester);
     await _chooseType(tester, GroupType.free);

@@ -4,6 +4,7 @@ import '../models/history_step_entry.dart';
 import '../models/training_item.dart';
 import '../utils/formatters.dart';
 import 'training_history_amrap_rows.dart';
+import 'training_history_emom_row.dart';
 
 class TrainingHistoryGroupCard extends StatelessWidget {
   const TrainingHistoryGroupCard({
@@ -27,6 +28,10 @@ class TrainingHistoryGroupCard extends StatelessWidget {
     );
     final formattedTotal = formatDuration(groupTotal);
     final expansionState = expanded ? "développé" : "replié";
+    final emomMinuteTotal = steps.fold<int>(0, (total, step) {
+      final minute = step.emomMinuteIndex;
+      return minute != null && minute > total ? minute : total;
+    });
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -84,7 +89,11 @@ class TrainingHistoryGroupCard extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 8),
               child: Column(
                 children: [
-                  for (final step in steps) _HistoryStepRow(step: step),
+                  for (final step in steps)
+                    _HistoryStepRow(
+                      step: step,
+                      emomMinuteTotal: emomMinuteTotal,
+                    ),
                 ],
               ),
             ),
@@ -95,15 +104,19 @@ class TrainingHistoryGroupCard extends StatelessWidget {
 }
 
 class _HistoryStepRow extends StatelessWidget {
-  const _HistoryStepRow({required this.step});
+  const _HistoryStepRow({required this.step, required this.emomMinuteTotal});
 
   final HistoryStepEntry step;
+  final int emomMinuteTotal;
 
   @override
   Widget build(BuildContext context) {
     final amrap = step.amrap;
     if (amrap != null) {
       return TrainingHistoryAmrapRows(step: step);
+    }
+    if (step.emomMinuteIndex != null) {
+      return TrainingHistoryEmomRow(step: step, totalMinutes: emomMinuteTotal);
     }
     final firstCommentLine = step.comment?.trim().split('\n').first;
     final hasComment = firstCommentLine != null && firstCommentLine.isNotEmpty;
@@ -159,8 +172,6 @@ class _HistoryStepRow extends StatelessWidget {
   }
 
   String _itemLabel(HistoryStepEntry step) {
-    final minute = step.emomMinuteIndex;
-    if (minute != null) return 'Minute $minute · ${step.itemName}';
     final repetitions = step.repetitions;
     if (step.itemType != ItemType.exercise || repetitions == null) {
       return step.itemName;
