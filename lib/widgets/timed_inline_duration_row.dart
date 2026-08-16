@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/training_item.dart';
 import '../utils/exercise_icons.dart';
 import 'duration_minutes_seconds_picker.dart';
+import 'timed_inline_picker_row.dart';
 
 class TimedExerciseDurationRow extends StatelessWidget {
   const TimedExerciseDurationRow({
@@ -80,9 +81,6 @@ class _InlineTimedDurationRow extends StatelessWidget {
     this.constrainPickerToBounds = false,
   });
 
-  static const double _basePickerWidth = 176;
-  static const double _minimumLeadingWidth = 80;
-
   final String title;
   final Duration value;
   final ValueChanged<Duration> onChanged;
@@ -93,51 +91,17 @@ class _InlineTimedDurationRow extends StatelessWidget {
   final bool constrainPickerToBounds;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final textScale = MediaQuery.textScalerOf(context).scale(16) / 16;
-      final naturalPickerWidth =
-          _basePickerWidth + (textScale - 1).clamp(0, 2) * 24;
-      final pickerWidth = (constraints.maxWidth - _minimumLeadingWidth).clamp(
-        0.0,
-        naturalPickerWidth,
-      );
-      return Row(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                if (leading != null) ...[leading!, const SizedBox(width: 8)],
-                Flexible(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                ?action,
-              ],
-            ),
-          ),
-          SizedBox(
-            width: pickerWidth,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: SizedBox(
-                width: naturalPickerWidth,
-                child: DurationMinutesSecondsPicker(
-                  value: value,
-                  onChanged: onChanged,
-                  minimum: minimum,
-                  maximum: maximum,
-                  constrainPickerToBounds: constrainPickerToBounds,
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    },
+  Widget build(BuildContext context) => TimedInlinePickerRow(
+    title: title,
+    leading: leading,
+    action: action,
+    picker: DurationMinutesSecondsPicker(
+      value: value,
+      onChanged: onChanged,
+      minimum: minimum,
+      maximum: maximum,
+      constrainPickerToBounds: constrainPickerToBounds,
+    ),
+    basePickerWidth: 176,
   );
 }

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
 import 'package:rep_timer/screens/group_editor.dart';
 import 'package:rep_timer/widgets/duration_minutes_seconds_picker.dart';
+import 'package:rep_timer/widgets/number_wheel_field.dart';
 import 'package:rep_timer/widgets/rounds_editor.dart';
 
 void main() {
@@ -59,8 +60,14 @@ void main() {
         ),
       ),
     );
-    rounds = tester.widget<RoundsEditor>(find.byType(RoundsEditor));
-    expect(rounds.minimum, 1);
-    expect(rounds.maximum, 60);
+    expect(find.byType(RoundsEditor), findsNothing);
+    final minutes = tester.widget<NumberWheelField>(
+      find.descendant(
+        of: find.byKey(const Key('emom-effort-row')),
+        matching: find.byType(NumberWheelField),
+      ),
+    );
+    expect(minutes.min, 1);
+    expect(minutes.max, 60);
   });
 }
