@@ -6,6 +6,7 @@ import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/screens/group_editor.dart';
 import 'package:rep_timer/widgets/duration_minutes_seconds_picker.dart';
 import 'package:rep_timer/widgets/exercise_form_controller.dart';
+import 'package:rep_timer/widgets/number_wheel_field.dart';
 import 'package:rep_timer/widgets/type_selector.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -280,13 +281,127 @@ void main() {
   ) async {
     await _pumpEditor(tester, ExerciseGroup.emom(id: 'emom'));
 
-    expect(find.text('Nombre de minutes'), findsOneWidget);
-    expect(find.text('10:00'), findsOneWidget);
-    final plus = tester.widget<IconButton>(
-      find.widgetWithIcon(IconButton, Icons.add_circle_outline),
+    final effortRow = find.byKey(const Key('emom-effort-row'));
+    final effortIcon = find.descendant(
+      of: effortRow,
+      matching: find.byIcon(Icons.fitness_center),
     );
-    expect(plus.onPressed, isNotNull);
-    expect(find.text('01:00'), findsOneWidget);
+    final effortName = find.descendant(
+      of: effortRow,
+      matching: find.text('Effort'),
+    );
+    final edit = find.descendant(
+      of: effortRow,
+      matching: find.byTooltip("Modifier l'effort"),
+    );
+    final minutesPicker = find.descendant(
+      of: effortRow,
+      matching: find.byType(NumberWheelField),
+    );
+    final wheel = tester.widget<NumberWheelField>(minutesPicker);
+    expect(wheel.value, 10);
+    expect(wheel.min, 1);
+    expect(wheel.max, 60);
+    expect(wheel.label, 'min');
+    expect(find.text('Nombre de minutes'), findsNothing);
+    expect(effortIcon, findsOneWidget);
+    expect(effortName, findsOneWidget);
+    expect(edit, findsOneWidget);
+    expect(minutesPicker, findsOneWidget);
+    expect(
+      find.descendant(
+        of: effortRow,
+        matching: find.byType(DurationMinutesSecondsPicker),
+      ),
+      findsNothing,
+    );
+    expect(
+      tester.getTopLeft(effortIcon).dx,
+      lessThan(tester.getTopLeft(effortName).dx),
+    );
+    expect(
+      tester.getTopRight(effortName).dx,
+      lessThan(tester.getTopLeft(edit).dx),
+    );
+    expect(
+      tester.getTopRight(edit).dx,
+      lessThan(tester.getTopLeft(minutesPicker).dx),
+    );
+    _expectSameVerticalCenter(tester, [
+      effortIcon,
+      effortName,
+      edit,
+      minutesPicker,
+    ]);
+    expect(
+      tester.getTopRight(minutesPicker).dx,
+      closeTo(tester.getTopRight(effortRow).dx, 0.1),
+    );
+    expect(find.text('10:00'), findsOneWidget);
+    expect(find.text('01:00'), findsNothing);
+    expect(
+      find.text(
+        "L'exercice redémarre automatiquement au début de chaque minute.",
+      ),
+      findsOneWidget,
+    );
+    expect(find.widgetWithText(OutlinedButton, 'Exercice'), findsNothing);
+    expect(find.widgetWithText(OutlinedButton, 'Pause'), findsNothing);
+
+    wheel.onChanged(60);
+    await tester.pump();
+    expect(tester.widget<NumberWheelField>(minutesPicker).value, 60);
+  });
+
+  testWidgets('EMOM ajoute et supprime sa récupération de transition', (
+    tester,
+  ) async {
+    await _pumpEditor(
+      tester,
+      ExerciseGroup.emom(id: 'emom'),
+      hasFollowingGroup: true,
+    );
+
+    final add = find.text("Ajouter une récupération après l'EMOM");
+    await tester.ensureVisible(add);
+    await tester.tap(add);
+    await tester.pump();
+
+    final recoveryRow = find.byKey(const Key('emom-recovery-row'));
+    final recoveryName = find.descendant(
+      of: recoveryRow,
+      matching: find.text('Récupération'),
+    );
+    final delete = find.descendant(
+      of: recoveryRow,
+      matching: find.byTooltip('Supprimer'),
+    );
+    final recoveryPicker = find.descendant(
+      of: recoveryRow,
+      matching: find.byType(DurationMinutesSecondsPicker),
+    );
+    expect(recoveryName, findsOneWidget);
+    expect(delete, findsOneWidget);
+    expect(recoveryPicker, findsOneWidget);
+    expect(
+      tester.getTopRight(recoveryName).dx,
+      lessThan(tester.getTopLeft(delete).dx),
+    );
+    expect(
+      tester.getTopRight(delete).dx,
+      lessThan(tester.getTopLeft(recoveryPicker).dx),
+    );
+    _expectSameVerticalCenter(tester, [recoveryName, delete, recoveryPicker]);
+    expect(
+      tester.getTopRight(recoveryPicker).dx,
+      closeTo(tester.getTopRight(recoveryRow).dx, 0.1),
+    );
+    expect(find.text('11:00'), findsOneWidget);
+    expect(find.byIcon(Icons.drag_handle), findsNothing);
+    await tester.ensureVisible(delete);
+    await tester.tap(delete);
+    await tester.pump();
+    expect(find.text('11:00'), findsNothing);
   });
 
   testWidgets('annuler une conversion conserve tous les éléments', (

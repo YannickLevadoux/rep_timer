@@ -110,8 +110,11 @@ class SessionCompletionService {
 
   Future<void> clearCheckpoint() => _checkpointStorage.clearCheckpoint();
 
-  bool _includeStep(SessionStep step, Duration actualDuration) =>
-      step.group.type != GroupType.amrap ||
-      step.item.type != ItemType.rest ||
-      actualDuration > Duration.zero;
+  bool _includeStep(SessionStep step, Duration actualDuration) {
+    final isPostGroupRecovery =
+        (step.group.type == GroupType.amrap ||
+            step.group.type == GroupType.emom) &&
+        step.item.type == ItemType.rest;
+    return !isPostGroupRecovery || actualDuration > Duration.zero;
+  }
 }

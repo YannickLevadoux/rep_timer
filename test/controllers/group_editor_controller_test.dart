@@ -60,6 +60,34 @@ void main() {
     controller.dispose();
   });
 
+  test('restaure le brouillon EMOM sans muter le groupe original', () {
+    final source = ExerciseGroup.emom(id: 'g');
+    final controller = GroupEditorController(source);
+    controller.setRounds(24);
+    controller.nameController.text = 'Cardio minute';
+    controller.updateTimedExercise(
+      TrainingItem(
+        type: ItemType.exercise,
+        name: 'Burpees',
+        repetitions: 12,
+        comment: 'Rester fluide',
+        iconName: 'rowing',
+      ),
+    );
+
+    controller.switchType(GroupType.free);
+    controller.switchType(GroupType.emom);
+
+    expect(controller.group.rounds, 24);
+    expect(controller.nameController.text, 'Cardio minute');
+    expect(controller.group.items.single.name, 'Burpees');
+    expect(controller.group.items.single.duration, const Duration(minutes: 1));
+    expect(source.rounds, 10);
+    expect(source.name, 'EMOM');
+    expect(source.items.single.name, 'Effort');
+    controller.dispose();
+  });
+
   test('les récupérations optionnelles sont ajoutées et supprimées', () {
     final controller = GroupEditorController(ExerciseGroup.tabata(id: 'g'));
     controller.setFinalRestEnabled(true);

@@ -31,7 +31,8 @@ void main() {
       final amrap = ExerciseGroup.amrap(id: 'amrap')
         ..postGroupRestDuration = const Duration(minutes: 1);
       final emom = ExerciseGroup.emom(id: 'emom')
-        ..postGroupRestDuration = const Duration(seconds: 30);
+        ..postGroupRestDuration = const Duration(seconds: 30)
+        ..items.single.name = 'Burpees';
 
       expect(
         estimateGroupDuration(amrap, hasFollowingGroup: false),
@@ -55,7 +56,7 @@ void main() {
       );
       expect(
         formatGroupSummary(emom, hasFollowingGroup: false),
-        'EMOM · Effort · 10:00',
+        'EMOM · Burpees · 10:00',
       );
     },
   );

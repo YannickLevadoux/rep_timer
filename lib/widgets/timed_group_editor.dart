@@ -6,6 +6,7 @@ import '../services/group_duration_estimator.dart';
 import '../validation/business_validation.dart';
 import 'quick_tabata_sections.dart';
 import 'rounds_editor.dart';
+import 'timed_exercise_minutes_row.dart';
 import 'timed_inline_duration_row.dart';
 import 'timed_item_section.dart';
 
@@ -99,18 +100,17 @@ class TimedGroupEditor extends StatelessWidget {
   ];
 
   List<Widget> _emom(BuildContext context) => [
-    RoundsEditor(
-      rounds: controller.group.rounds,
-      label: 'Nombre de minutes',
+    TimedExerciseMinutesRow(
+      key: const Key('emom-effort-row'),
+      item: controller.group.items.first,
+      minutes: controller.group.rounds,
+      minimum: BusinessLimits.minimumCount,
       maximum: BusinessLimits.maximumEmomMinutes,
+      onEdit: onEditEffort,
       onChanged: controller.setRounds,
     ),
     const Text(
       "L'exercice redémarre automatiquement au début de chaque minute.",
-    ),
-    TimedExerciseSection(
-      item: controller.group.items.first,
-      onEdit: onEditEffort,
     ),
     const Divider(),
     if (!quick)
@@ -120,6 +120,8 @@ class TimedGroupEditor extends StatelessWidget {
         value: controller.group.postGroupRestDuration,
         onEnabled: controller.setPostGroupRestEnabled,
         onChanged: controller.setPostGroupRestDuration,
+        inline: true,
+        inlineKey: const Key('emom-recovery-row'),
       ),
   ];
 }

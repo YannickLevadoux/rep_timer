@@ -62,32 +62,46 @@ void main() {
     expect(find.text('Effort · 0 tours'), findsOneWidget);
   });
 
-  testWidgets('identifie chaque minute EMOM', (tester) async {
-    await _pump(
-      tester,
-      HistoryStepEntry(
-        groupId: 'emom',
-        groupName: 'EMOM',
-        itemType: ItemType.exercise,
-        itemName: 'Effort',
-        comment: null,
-        actualDuration: const Duration(minutes: 1),
-        completed: true,
-        emomMinuteIndex: 4,
-      ),
-    );
+  testWidgets('détaille durée et statut de chaque minute EMOM', (tester) async {
+    await _pumpSteps(tester, [
+      _emomMinute(index: 1, duration: const Duration(minutes: 1), done: true),
+      _emomMinute(index: 2, duration: const Duration(seconds: 12), done: false),
+    ]);
 
-    expect(find.text('Minute 4 · Effort'), findsOneWidget);
+    expect(find.text('Minute 1/2 · Effort'), findsOneWidget);
+    expect(find.text('Minute 2/2 · Effort'), findsOneWidget);
+    expect(find.text('Statut · Terminé'), findsOneWidget);
+    expect(find.text('Statut · Incomplet'), findsOneWidget);
+    expect(find.text('01:00'), findsOneWidget);
+    expect(find.text('00:12'), findsOneWidget);
   });
 }
 
+HistoryStepEntry _emomMinute({
+  required int index,
+  required Duration duration,
+  required bool done,
+}) => HistoryStepEntry(
+  groupId: 'emom',
+  groupName: 'EMOM',
+  itemType: ItemType.exercise,
+  itemName: 'Effort',
+  comment: null,
+  actualDuration: duration,
+  completed: done,
+  emomMinuteIndex: index,
+);
+
 Future<void> _pump(WidgetTester tester, HistoryStepEntry step) =>
+    _pumpSteps(tester, [step]);
+
+Future<void> _pumpSteps(WidgetTester tester, List<HistoryStepEntry> steps) =>
     tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: TrainingHistoryGroupCard(
-            groupName: step.groupName,
-            steps: [step],
+            groupName: steps.first.groupName,
+            steps: steps,
             expanded: true,
             onToggle: () {},
           ),

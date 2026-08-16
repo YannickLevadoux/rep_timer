@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/notification_mode.dart';
 import '../models/session_step.dart';
 import '../services/amrap_execution_state.dart';
+import '../services/session_navigation_coordinator.dart';
 import 'session_finished_view.dart';
 import 'session_running_body.dart';
 
@@ -103,6 +104,8 @@ class TrainingSessionView extends StatelessWidget {
           paused: paused,
           notificationMode: notificationMode,
           blinkOpacity: blinkOpacity,
+          previousEnabled: canNavigateToPrevious(step!, currentIndex),
+          nextEnabled: canNavigateToNext(currentIndex, totalSteps),
           onPrevious: onPrevious,
           onNext: onNext,
           onComplete: onComplete,

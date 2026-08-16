@@ -23,6 +23,8 @@ class SessionRunningBody extends StatelessWidget {
   final bool paused;
   final NotificationMode notificationMode;
   final Animation<double> blinkOpacity;
+  final bool previousEnabled;
+  final bool nextEnabled;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final VoidCallback onComplete;
@@ -44,6 +46,8 @@ class SessionRunningBody extends StatelessWidget {
     required this.paused,
     required this.notificationMode,
     required this.blinkOpacity,
+    required this.previousEnabled,
+    required this.nextEnabled,
     required this.onPrevious,
     required this.onNext,
     required this.onComplete,
@@ -65,8 +69,8 @@ class SessionRunningBody extends StatelessWidget {
             globalElapsed: globalElapsed,
             paused: paused,
             notificationMode: notificationMode,
-            previousEnabled: currentIndex > 0,
-            nextEnabled: currentIndex < totalSteps - 1,
+            previousEnabled: previousEnabled,
+            nextEnabled: nextEnabled,
             onPrevious: onPrevious,
             onNext: onNext,
             onTogglePause: onTogglePause,

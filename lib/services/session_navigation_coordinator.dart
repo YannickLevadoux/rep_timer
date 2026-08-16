@@ -1,9 +1,24 @@
 import 'dart:async';
 
+import '../models/group_type.dart';
+import '../models/session_step.dart';
+import '../models/training_item.dart';
 import 'session_clock.dart';
 import 'session_notification_bridge.dart';
 import 'session_progress_state.dart';
 import 'session_timed_group_state.dart';
+
+bool canNavigateToPrevious(SessionStep step, int currentIndex) {
+  if (currentIndex <= 0) return false;
+  final isFirstEmomMinute =
+      step.group.type == GroupType.emom &&
+      step.item.type == ItemType.exercise &&
+      step.roundIndex == 1;
+  return !isFirstEmomMinute;
+}
+
+bool canNavigateToNext(int currentIndex, int totalSteps) =>
+    currentIndex + 1 < totalSteps;
 
 /// Applique les conséquences métier d'un changement manuel d'étape.
 class SessionNavigationCoordinator {
@@ -27,6 +42,11 @@ class SessionNavigationCoordinator {
 
   bool jumpTo(int index, {required bool restartAmrap}) {
     if (!progress.canJumpTo(index) ||
+        (index == progress.currentIndex - 1 &&
+            !canNavigateToPrevious(
+              progress.currentStep,
+              progress.currentIndex,
+            )) ||
         (timedGroups.requiresRestart(index) && !restartAmrap)) {
       return false;
     }

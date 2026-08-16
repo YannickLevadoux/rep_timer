@@ -5,6 +5,8 @@ import 'package:rep_timer/screens/quick_tabata_screen.dart';
 import 'package:rep_timer/screens/training_session.dart';
 import 'package:rep_timer/services/session_controller.dart';
 import 'package:rep_timer/services/session_notification_permission_service.dart';
+import 'package:rep_timer/widgets/duration_minutes_seconds_picker.dart';
+import 'package:rep_timer/widgets/number_wheel_field.dart';
 import 'package:rep_timer/widgets/type_selector.dart';
 
 import '../support/fake_session_permission_platform.dart';
@@ -103,12 +105,55 @@ void main() {
     await tester.tap(find.text('Continuer'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Nombre de minutes'), findsOneWidget);
+    final effortRow = find.byKey(const Key('emom-effort-row'));
+    final minutesPicker = find.descendant(
+      of: effortRow,
+      matching: find.byType(NumberWheelField),
+    );
+    final wheel = tester.widget<NumberWheelField>(minutesPicker);
+    expect(find.text('Nombre de minutes'), findsNothing);
+    expect(find.byIcon(Icons.fitness_center), findsOneWidget);
+    expect(find.text('Effort'), findsOneWidget);
+    expect(find.byTooltip("Modifier l'effort"), findsOneWidget);
+    expect(wheel.value, 10);
+    expect(wheel.min, 1);
+    expect(wheel.max, 60);
+    expect(
+      find.descendant(
+        of: effortRow,
+        matching: find.byType(DurationMinutesSecondsPicker),
+      ),
+      findsNothing,
+    );
     expect(find.text('10'), findsOneWidget);
     expect(find.textContaining('début de chaque minute'), findsNWidgets(2));
     expect(find.text("Ajouter une récupération après l'EMOM"), findsNothing);
     expect(find.text('10:00'), findsOneWidget);
   });
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'EMOM reste utilisable en 360 × 640, texte agrandi, $brightness',
+      (tester) async {
+        await _pumpScreen(
+          tester,
+          size: const Size(360, 640),
+          textScaler: const TextScaler.linear(1.5),
+          brightness: brightness,
+        );
+        await _chooseType(tester, GroupType.emom);
+        await tester.tap(find.text('Continuer'));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        final start = find.text('Commencer');
+        await tester.ensureVisible(start);
+        await tester.pump();
+        expect(start.hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   testWidgets('Libre réutilise les actions génériques', (tester) async {
     await _pumpScreen(tester);

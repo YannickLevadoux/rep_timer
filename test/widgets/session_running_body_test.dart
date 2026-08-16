@@ -350,6 +350,8 @@ class _SessionBodyHarnessState extends State<_SessionBodyHarness> {
       paused: paused,
       notificationMode: NotificationMode.sound,
       blinkOpacity: const AlwaysStoppedAnimation(1),
+      previousEnabled: widget.currentIndex > 0,
+      nextEnabled: widget.currentIndex + 1 < widget.totalSteps,
       onPrevious: () {},
       onNext: () {},
       onComplete: () {},
