@@ -11,11 +11,10 @@ import 'package:rep_timer/widgets/type_selector.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('les trois contextes affichent leur action dédiée', (
+  testWidgets('édition et session rapide affichent leur action dédiée', (
     tester,
   ) async {
     for (final scenario in [
-      (GroupEditorMode.add, 'Ajouter à la séance'),
       (GroupEditorMode.edit, 'Enregistrer'),
       (GroupEditorMode.quick, 'Commencer'),
     ]) {

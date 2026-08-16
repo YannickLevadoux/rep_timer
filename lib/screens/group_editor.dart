@@ -44,7 +44,10 @@ class _GroupEditorState extends State<GroupEditor> {
   @override
   void initState() {
     super.initState();
-    _controller = GroupEditorController(widget.group);
+    _controller = GroupEditorController(
+      widget.group,
+      requiresInitialTypeSelection: widget.effectiveMode == GroupEditorMode.add,
+    );
     _dialogs = GroupEditorDialogs(_controller);
   }
 
@@ -66,7 +69,11 @@ class _GroupEditorState extends State<GroupEditor> {
   }
 
   Future<void> _saveGroup() async {
-    final group = _controller.save();
+    final group = _controller.saveIfSelected();
+    if (group == null) {
+      showSnack(context, 'Sélectionnez un type de groupe.');
+      return;
+    }
     final issues = BusinessValidation.validateGroup(group);
     final nameIssue = issues
         .where((issue) => issue.field == BusinessField.groupName)

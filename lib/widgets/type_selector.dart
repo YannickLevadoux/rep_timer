@@ -4,7 +4,7 @@ import '../models/group_type.dart';
 
 /// Sélecteur compact partagé par les trois parcours d'édition.
 class TypeSelector extends StatelessWidget {
-  final GroupType value;
+  final GroupType? value;
   final ValueChanged<GroupType> onChanged;
 
   const TypeSelector({super.key, required this.value, required this.onChanged});
@@ -22,6 +22,7 @@ class TypeSelector extends StatelessWidget {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<GroupType>(
               value: value,
+              hint: const Text('Sélectionner un type'),
               isExpanded: true,
               isDense: true,
               items: GroupType.values
@@ -38,12 +39,14 @@ class TypeSelector extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 6),
-        Text(
-          value.description,
-          key: const Key('group-type-description'),
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+        if (value != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            value!.description,
+            key: const Key('group-type-description'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
       ],
     );
   }
