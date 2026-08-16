@@ -3,6 +3,7 @@ import 'dart:async';
 import '../models/notification_mode.dart';
 import '../models/notification_sound.dart';
 import 'app_settings_storage.dart';
+import 'pre_session_signal_coordinator.dart';
 import 'session_countdown_scheduler.dart';
 import 'session_notification_data_builder.dart';
 import 'session_notification_service.dart';
@@ -56,6 +57,11 @@ class SessionNotificationCoordinator {
         soundGoOffset: notificationSound.goOffset,
         now: now,
       ) {
+    _preparationSignals = PreSessionSignalCoordinator(
+      modeProvider: () => _mode,
+      notifier: stepEndNotifier,
+      sound: notificationSound,
+    );
     _countdown = SessionCountdownScheduler(
       modeProvider: () => _mode,
       snapshotProvider: _snapshotProvider,
@@ -74,38 +80,57 @@ class SessionNotificationCoordinator {
   final void Function() _onModeChanged;
   final SessionNotificationDataBuilder _dataBuilder;
   late final SessionCountdownScheduler _countdown;
+  late final PreSessionSignalCoordinator _preparationSignals;
 
   NotificationMode _mode = NotificationMode.none;
   bool _modeOverridden = false;
   bool _disposed = false;
+  bool _sessionStarted = false;
   Future<void>? _stopFuture;
+  Future<void>? _modeLoadFuture;
 
   NotificationMode get mode => _mode;
 
   void start() {
-    _countdown.preload();
+    _sessionStarted = true;
+    if (_modeLoadFuture == null) prepare();
     _countdown.arm();
     syncForegroundNotification();
-    unawaited(_loadInitialMode());
+  }
+
+  void prepare() {
+    _countdown.preload();
+    _modeLoadFuture ??= _loadInitialMode();
   }
 
   Future<void> _loadInitialMode() async {
     final mode = await _settingsStorage.loadNotificationMode();
     if (_disposed || _modeOverridden) return;
     _mode = mode;
-    _countdown.arm();
-    syncForegroundNotification();
+    _preparationSignals.markModeReady();
+    if (_sessionStarted) {
+      _countdown.arm();
+      syncForegroundNotification();
+    }
     _onModeChanged();
   }
 
   void cycleMode() {
     _modeOverridden = true;
     _mode = _mode.next;
+    _preparationSignals.discardPending();
     _countdown.cancel();
-    _countdown.arm();
-    syncForegroundNotification();
+    if (_sessionStarted) {
+      _countdown.arm();
+      syncForegroundNotification();
+    }
     _onModeChanged();
   }
+
+  void signalPreparation(int secondsRemaining) =>
+      _preparationSignals.emit(secondsRemaining);
+
+  void stopPreparationSignal() => _preparationSignals.stop();
 
   void handleAppBackgrounded() => _countdown.suspend();
 

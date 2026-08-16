@@ -57,7 +57,9 @@ class _RestoreBackupDialog extends StatelessWidget {
               label: 'Compte à rebours',
               value: settings.preSessionCountdownSeconds == 0
                   ? 'Désactivé'
-                  : '${settings.preSessionCountdownSeconds} seconde(s)',
+                  : settings.preSessionCountdownSeconds == 1
+                  ? '1 seconde'
+                  : '${settings.preSessionCountdownSeconds} secondes',
             ),
             const SizedBox(height: 16),
             const Text(

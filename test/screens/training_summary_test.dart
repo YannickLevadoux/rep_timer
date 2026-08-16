@@ -6,12 +6,16 @@ import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/screens/training_session.dart';
 import 'package:rep_timer/screens/training_summary.dart';
+import 'package:rep_timer/services/app_settings_storage.dart';
 import 'package:rep_timer/services/session_notification_permission_service.dart';
 import 'package:rep_timer/widgets/statistic_badge.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_session_permission_platform.dart';
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   testWidgets('affiche une fois le titre et les trois badges comptabilisés', (
     tester,
   ) async {
@@ -161,6 +165,9 @@ void main() {
   });
 
   testWidgets('Commencer lance toujours TrainingSessionScreen', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      AppSettingsStorage.preSessionCountdownSecondsKey: 6,
+    });
     final training = _training(groups: [_group('Groupe')]);
     await _pumpSummary(tester, training);
 
@@ -171,6 +178,7 @@ void main() {
       find.byType(TrainingSessionScreen, skipOffstage: false),
     );
     expect(session.training, same(training));
+    expect(session.preSessionCountdownSeconds, 6);
   });
 
   testWidgets('une suite variable pilote statistiques et aperçu des tours', (

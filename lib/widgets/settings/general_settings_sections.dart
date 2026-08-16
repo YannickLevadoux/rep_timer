@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/notification_mode.dart';
 import '../../utils/notification_mode_icons.dart';
 import '../settings_section.dart';
+import '../dialogs/pre_session_countdown_dialog.dart';
 
 class DisplaySettingsSection extends StatelessWidget {
   final ThemeMode themeMode;
@@ -98,6 +99,35 @@ class NotificationSettingsSection extends StatelessWidget {
                 '(appuyer pour changer)',
             onPressed: onCycleMode,
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class SessionSettingsSection extends StatelessWidget {
+  const SessionSettingsSection({
+    super.key,
+    required this.countdownSeconds,
+    required this.onEditCountdown,
+  });
+
+  final int countdownSeconds;
+  final VoidCallback onEditCountdown;
+
+  @override
+  Widget build(BuildContext context) {
+    return SettingsSection(
+      title: 'Séance',
+      children: [
+        ListTile(
+          key: const Key('pre-session-countdown-setting'),
+          title: _TitleWithStatus(
+            title: 'Compte à rebours',
+            status: preSessionCountdownLabel(countdownSeconds),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: onEditCountdown,
         ),
       ],
     );

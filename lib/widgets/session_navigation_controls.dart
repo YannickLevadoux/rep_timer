@@ -14,6 +14,8 @@ class SessionNavigationControls extends StatelessWidget {
     required this.onPrevious,
     required this.onNext,
     required this.onTogglePause,
+    this.previousVisible = true,
+    this.nextTooltip = 'Exercice suivant',
   });
 
   final double width;
@@ -26,6 +28,8 @@ class SessionNavigationControls extends StatelessWidget {
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final VoidCallback onTogglePause;
+  final bool previousVisible;
+  final String nextTooltip;
 
   @override
   Widget build(BuildContext context) {
@@ -36,14 +40,17 @@ class SessionNavigationControls extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _NavigationButton(
-            buttonKey: const Key('previous-step-button'),
-            size: controlSize,
-            iconSize: 24 * scale,
-            icon: Icons.skip_previous,
-            tooltip: 'Exercice précédent',
-            onPressed: previousEnabled ? onPrevious : null,
-          ),
+          if (previousVisible)
+            _NavigationButton(
+              buttonKey: const Key('previous-step-button'),
+              size: controlSize,
+              iconSize: 24 * scale,
+              icon: Icons.skip_previous,
+              tooltip: 'Exercice précédent',
+              onPressed: previousEnabled ? onPrevious : null,
+            )
+          else
+            SizedBox.square(dimension: controlSize),
           SizedBox(width: gap),
           Semantics(
             button: true,
@@ -75,7 +82,7 @@ class SessionNavigationControls extends StatelessWidget {
             size: controlSize,
             iconSize: 24 * scale,
             icon: Icons.skip_next,
-            tooltip: 'Exercice suivant',
+            tooltip: nextTooltip,
             onPressed: nextEnabled ? onNext : null,
           ),
         ],

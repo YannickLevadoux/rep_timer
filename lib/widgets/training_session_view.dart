@@ -6,6 +6,7 @@ import '../services/amrap_execution_state.dart';
 import '../services/session_navigation_coordinator.dart';
 import 'session_finished_view.dart';
 import 'session_running_body.dart';
+import 'session_preparing_body.dart';
 
 /// Vue présentative des états vide, actif et terminé d'une séance.
 class TrainingSessionView extends StatelessWidget {
@@ -34,6 +35,10 @@ class TrainingSessionView extends StatelessWidget {
     this.amrap,
     this.onRecordAmrapLap = _noop,
     this.onUndoAmrapLap = _noop,
+    this.preparing = false,
+    this.preparationSeconds = 0,
+    this.onSkipPreparation = _noop,
+    this.announceSessionStart = false,
   });
 
   final String trainingName;
@@ -59,6 +64,10 @@ class TrainingSessionView extends StatelessWidget {
   final AmrapExecutionSnapshot? amrap;
   final VoidCallback onRecordAmrapLap;
   final VoidCallback onUndoAmrapLap;
+  final bool preparing;
+  final int preparationSeconds;
+  final VoidCallback onSkipPreparation;
+  final bool announceSessionStart;
 
   @override
   Widget build(BuildContext context) {
@@ -85,37 +94,53 @@ class TrainingSessionView extends StatelessWidget {
   Widget _runningView() {
     return Scaffold(
       appBar: _appBar(
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.checklist),
-            tooltip: 'Progression détaillée',
-            onPressed: onOpenProgress,
-          ),
-        ],
+        actions: preparing
+            ? null
+            : [
+                IconButton(
+                  icon: const Icon(Icons.checklist),
+                  tooltip: 'Progression détaillée',
+                  onPressed: onOpenProgress,
+                ),
+              ],
       ),
       body: SafeArea(
-        child: SessionRunningBody(
-          step: step!,
-          nextStep: nextStep,
-          currentIndex: currentIndex,
-          totalSteps: totalSteps,
-          globalElapsed: globalElapsed,
-          stepElapsed: stepElapsed,
-          paused: paused,
-          notificationMode: notificationMode,
-          blinkOpacity: blinkOpacity,
-          previousEnabled: canNavigateToPrevious(step!, currentIndex),
-          nextEnabled: canNavigateToNext(currentIndex, totalSteps),
-          onPrevious: onPrevious,
-          onNext: onNext,
-          onComplete: onComplete,
-          onTogglePause: onTogglePause,
-          onEditComment: onEditComment,
-          onCycleNotificationMode: onCycleNotificationMode,
-          amrap: amrap,
-          onRecordAmrapLap: onRecordAmrapLap,
-          onUndoAmrapLap: onUndoAmrapLap,
-        ),
+        child: preparing
+            ? SessionPreparingBody(
+                secondsRemaining: preparationSeconds,
+                paused: paused,
+                notificationMode: notificationMode,
+                blinkOpacity: blinkOpacity,
+                onTogglePause: onTogglePause,
+                onSkip: onSkipPreparation,
+                onCycleNotificationMode: onCycleNotificationMode,
+              )
+            : Semantics(
+                liveRegion: announceSessionStart,
+                label: announceSessionStart ? 'Démarrage de la séance' : null,
+                child: SessionRunningBody(
+                  step: step!,
+                  nextStep: nextStep,
+                  currentIndex: currentIndex,
+                  totalSteps: totalSteps,
+                  globalElapsed: globalElapsed,
+                  stepElapsed: stepElapsed,
+                  paused: paused,
+                  notificationMode: notificationMode,
+                  blinkOpacity: blinkOpacity,
+                  previousEnabled: canNavigateToPrevious(step!, currentIndex),
+                  nextEnabled: canNavigateToNext(currentIndex, totalSteps),
+                  onPrevious: onPrevious,
+                  onNext: onNext,
+                  onComplete: onComplete,
+                  onTogglePause: onTogglePause,
+                  onEditComment: onEditComment,
+                  onCycleNotificationMode: onCycleNotificationMode,
+                  amrap: amrap,
+                  onRecordAmrapLap: onRecordAmrapLap,
+                  onUndoAmrapLap: onUndoAmrapLap,
+                ),
+              ),
       ),
     );
   }

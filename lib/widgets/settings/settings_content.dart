@@ -12,6 +12,8 @@ class SettingsContent extends StatelessWidget {
   final bool prefillExerciseName;
   final ValueChanged<bool> onPrefillChanged;
   final NotificationMode notificationMode;
+  final int preSessionCountdownSeconds;
+  final VoidCallback onEditPreSessionCountdown;
   final VoidCallback onCycleNotificationMode;
   final bool busy;
   final VoidCallback onImport;
@@ -27,6 +29,8 @@ class SettingsContent extends StatelessWidget {
     required this.prefillExerciseName,
     required this.onPrefillChanged,
     required this.notificationMode,
+    required this.preSessionCountdownSeconds,
+    required this.onEditPreSessionCountdown,
     required this.onCycleNotificationMode,
     required this.busy,
     required this.onImport,
@@ -62,6 +66,10 @@ class SettingsContent extends StatelessWidget {
           PermissionsSettingsSection(
             permissionStatus: permissionStatus,
             onOpenPermissions: onOpenPermissions,
+          ),
+          SessionSettingsSection(
+            countdownSeconds: preSessionCountdownSeconds,
+            onEditCountdown: onEditPreSessionCountdown,
           ),
           AboutSettingsSection(onOpenAbout: onOpenAbout),
         ],

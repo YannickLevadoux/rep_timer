@@ -19,6 +19,9 @@ class SessionCommandRow extends StatelessWidget {
     required this.onNext,
     required this.onTogglePause,
     required this.onCycleNotificationMode,
+    this.showGlobalTimer = true,
+    this.previousVisible = true,
+    this.nextTooltip = 'Exercice suivant',
   });
 
   final Duration globalElapsed;
@@ -30,6 +33,9 @@ class SessionCommandRow extends StatelessWidget {
   final VoidCallback onNext;
   final VoidCallback onTogglePause;
   final VoidCallback onCycleNotificationMode;
+  final bool showGlobalTimer;
+  final bool previousVisible;
+  final String nextTooltip;
 
   @override
   Widget build(BuildContext context) {
@@ -41,11 +47,14 @@ class SessionCommandRow extends StatelessWidget {
           height: metrics.controlSize,
           child: Row(
             children: [
-              SessionGlobalTimer(
-                width: metrics.sideWidth,
-                elapsed: globalElapsed,
-                scale: metrics.scale,
-              ),
+              if (showGlobalTimer)
+                SessionGlobalTimer(
+                  width: metrics.sideWidth,
+                  elapsed: globalElapsed,
+                  scale: metrics.scale,
+                )
+              else
+                SizedBox(width: metrics.sideWidth),
               SessionNavigationControls(
                 width: metrics.controlsWidth,
                 controlSize: metrics.controlSize,
@@ -57,6 +66,8 @@ class SessionCommandRow extends StatelessWidget {
                 onPrevious: onPrevious,
                 onNext: onNext,
                 onTogglePause: onTogglePause,
+                previousVisible: previousVisible,
+                nextTooltip: nextTooltip,
               ),
               _NotificationButton(
                 width: metrics.sideWidth,

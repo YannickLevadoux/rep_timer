@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 
-import '../models/notification_mode.dart';
-import '../models/notification_sound.dart';
+import '../controllers/settings_preferences_controller.dart';
 import '../services/app_settings_storage.dart';
 import '../services/backup_export_exception.dart';
 import '../services/backup_import_exception.dart';
 import '../services/json_prefs_storage.dart';
 import '../services/session_notification_permission_service.dart';
 import '../services/settings_transfer_service.dart';
-import '../services/step_end_notification_service.dart';
 import '../utils/snack.dart';
 import '../widgets/backup_import_flow.dart';
 import '../widgets/settings/app_about_dialog.dart';
 import '../widgets/settings/settings_sections.dart';
+import '../widgets/dialogs/pre_session_countdown_dialog.dart';
 import 'permissions_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -38,16 +37,11 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final StepEndNotificationService _notificationService =
-      StepEndNotificationService();
-
   late final SettingsTransferService _transferService;
   late final AppSettingsStorage _settingsStorage;
+  late final SettingsPreferencesController _preferences;
   late final SessionNotificationPermissionService _sessionPermissions;
   bool _busy = false;
-  bool _prefillExerciseName = AppSettingsStorage.defaultPrefillExerciseName;
-  NotificationMode _notificationMode =
-      AppSettingsStorage.defaultNotificationMode;
   late ThemeMode _themeMode;
   bool _savingTheme = false;
   SessionNotificationPermissionStatus? _sessionPermissionStatus;
@@ -56,29 +50,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _settingsStorage = widget.settingsStorage ?? AppSettingsStorage();
+    _preferences = SettingsPreferencesController(_settingsStorage)
+      ..addListener(_preferencesChanged)
+      ..load();
     _transferService = widget.transferService ?? SettingsTransferService();
     _themeMode = widget.themeMode;
     _sessionPermissions =
         widget.permissionService ?? SessionNotificationPermissionService();
-    _loadPrefillExerciseNameSetting();
-    _loadNotificationModeSetting();
     _loadSessionPermissionStatus();
   }
 
   @override
   void dispose() {
-    _notificationService.dispose();
+    _preferences
+      ..removeListener(_preferencesChanged)
+      ..dispose();
     super.dispose();
   }
 
-  Future<void> _loadPrefillExerciseNameSetting() async {
-    final value = await _settingsStorage.loadPrefillExerciseName();
-    if (mounted) setState(() => _prefillExerciseName = value);
-  }
-
-  Future<void> _togglePrefillExerciseName(bool value) async {
-    setState(() => _prefillExerciseName = value);
-    await _settingsStorage.savePrefillExerciseName(value);
+  void _preferencesChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _cycleThemeMode() async {
@@ -96,28 +87,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _loadNotificationModeSetting() async {
-    final value = await _settingsStorage.loadNotificationMode();
-    if (mounted) setState(() => _notificationMode = value);
-  }
-
   Future<void> _loadSessionPermissionStatus() async {
     final status = await _sessionPermissions.notificationPermissionStatus();
     if (mounted) setState(() => _sessionPermissionStatus = status);
   }
 
-  Future<void> _cycleNotificationMode() async {
-    final newMode = _notificationMode.next;
-    setState(() => _notificationMode = newMode);
-    await _settingsStorage.saveNotificationMode(newMode);
-
-    switch (newMode) {
-      case NotificationMode.sound:
-        await _notificationService.playPreview(NotificationSound.classic);
-      case NotificationMode.vibration:
-        await _notificationService.vibrate();
-      case NotificationMode.none:
-        break;
+  Future<void> _editPreSessionCountdown() async {
+    final value = await showPreSessionCountdownDialog(
+      context,
+      initialValue: _preferences.preSessionCountdownSeconds,
+    );
+    if (value == null || !mounted) return;
+    try {
+      await _preferences.setPreSessionCountdownSeconds(value);
+    } on AppSettingsWriteException {
+      if (mounted) {
+        showSnack(context, "Le compte à rebours n'a pas pu être enregistré.");
+      }
     }
   }
 
@@ -153,9 +139,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (restoredPlan != null && mounted) {
         setState(() {
           _themeMode = restoredPlan.settings.themeMode;
-          _prefillExerciseName = restoredPlan.settings.prefillExerciseName;
-          _notificationMode = restoredPlan.settings.notificationMode;
         });
+        _preferences.applyRestored(restoredPlan.settings);
         widget.onThemeRestored?.call(restoredPlan.settings.themeMode);
       }
     } on BackupImportException catch (error) {
@@ -179,10 +164,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return SettingsContent(
       themeMode: _themeMode,
       onToggleTheme: _savingTheme ? null : _cycleThemeMode,
-      prefillExerciseName: _prefillExerciseName,
-      onPrefillChanged: _togglePrefillExerciseName,
-      notificationMode: _notificationMode,
-      onCycleNotificationMode: _cycleNotificationMode,
+      prefillExerciseName: _preferences.prefillExerciseName,
+      onPrefillChanged: _preferences.setPrefillExerciseName,
+      notificationMode: _preferences.notificationMode,
+      onCycleNotificationMode: _preferences.cycleNotificationMode,
+      preSessionCountdownSeconds: _preferences.preSessionCountdownSeconds,
+      onEditPreSessionCountdown: _editPreSessionCountdown,
       busy: _busy,
       onImport: _handleImport,
       onExport: _handleExport,

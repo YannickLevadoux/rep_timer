@@ -5,6 +5,7 @@ import '../models/session_checkpoint.dart';
 import '../models/training.dart';
 import '../models/training_history_entry.dart';
 import 'app_settings_storage.dart';
+import 'pre_session_countdown_storage.dart';
 import 'amrap_execution_state.dart';
 import 'session_checkpoint_storage.dart';
 import 'session_clock.dart';
@@ -47,6 +48,7 @@ class SessionControllerComposition {
     Future<void> Function()? enableWakelock,
     Future<void> Function()? disableWakelock,
     SessionNow? now,
+    int preSessionCountdownSeconds = 0,
   }) {
     final progress = SessionProgressState(
       training: training,
@@ -54,10 +56,15 @@ class SessionControllerComposition {
     );
     final restored = progress.restoredFromCheckpoint ? initialCheckpoint : null;
     final sessionNow = now ?? DateTime.now;
+    final countdownSeconds = isValidCountdownSeconds(preSessionCountdownSeconds)
+        ? preSessionCountdownSeconds
+        : defaultCountdownSeconds;
+    final shouldPrepare =
+        initialCheckpoint == null && !progress.finished && countdownSeconds > 0;
     final clock = SessionClock(
       initialGlobalElapsed: restored?.globalElapsed ?? Duration.zero,
       initialStepElapsed: restored?.stepElapsed ?? Duration.zero,
-      initiallyPaused: restored?.paused ?? false,
+      initiallyPaused: shouldPrepare || (restored?.paused ?? false),
       restoredAt: restored?.savedAt,
       active: !progress.finished,
       now: sessionNow,
@@ -87,6 +94,8 @@ class SessionControllerComposition {
           foregroundNotificationService ?? SessionNotificationService(),
       enableWakelock: enableWakelock ?? WakelockPlus.enable,
       disableWakelock: disableWakelock ?? WakelockPlus.disable,
+      now: sessionNow,
+      preparationSeconds: shouldPrepare ? countdownSeconds : 0,
     );
   }
 
@@ -103,6 +112,8 @@ class SessionControllerComposition {
     required this._foregroundService,
     required this.enableWakelock,
     required this.disableWakelock,
+    required this.now,
+    required this.preparationSeconds,
   });
 
   final Training training;
@@ -117,6 +128,8 @@ class SessionControllerComposition {
   final SessionNotificationService _foregroundService;
   final Future<void> Function() enableWakelock;
   final Future<void> Function() disableWakelock;
+  final SessionNow now;
+  final int preparationSeconds;
 
   bool get pendingIncompleteReview => progress.pendingIncompleteReview;
   AmrapExecutionSnapshot? get amrapSnapshot => timedGroups.snapshot(

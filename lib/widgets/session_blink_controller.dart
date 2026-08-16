@@ -31,11 +31,17 @@ class SessionBlinkController {
           ),
         );
 
-  void synchronize({required bool paused, required bool finished}) {
+  void synchronize({
+    required bool paused,
+    required bool finished,
+    bool animationsDisabled = false,
+  }) {
     final controller = animationController;
     if (controller == null) return;
-    if (finished || paused) {
-      controller.stop();
+    if (finished || paused || animationsDisabled) {
+      controller
+        ..stop()
+        ..value = 1;
     } else if (!controller.isAnimating) {
       controller.repeat(reverse: true);
     }

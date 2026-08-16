@@ -20,21 +20,26 @@ class TimedSessionHarness {
   final checkpoints = FakeCheckpointStorage();
   final history = FakeHistoryStorage();
   final notifier = FakeStepEndNotifier();
+  final foreground = FakeForegroundService();
   DateTime time = DateTime(2026);
   void Function()? tick;
 
-  SessionController build({SessionCheckpoint? checkpoint}) => SessionController(
+  SessionController build({
+    SessionCheckpoint? checkpoint,
+    int countdownSeconds = 0,
+  }) => SessionController(
     training: training,
     initialCheckpoint: checkpoint,
     checkpointStorage: checkpoints,
     historyStorage: history,
     settingsStorage: FakeSettingsStorage(mode),
     notificationService: notifier,
-    foregroundNotificationService: FakeForegroundService(),
+    foregroundNotificationService: foreground,
     enableWakelock: () async {},
     disableWakelock: () async {},
     now: () => time,
     tickSchedule: _schedule,
+    preSessionCountdownSeconds: countdownSeconds,
   );
 
   SessionTickCancel _schedule(void Function() callback) {
@@ -50,11 +55,12 @@ class TimedSessionHarness {
 
 class FakeCheckpointStorage extends SessionCheckpointStorage {
   final List<SessionCheckpoint> saved = [];
+  int clearCalls = 0;
   @override
   Future<void> saveCheckpoint(SessionCheckpoint checkpoint) async =>
       saved.add(checkpoint);
   @override
-  Future<void> clearCheckpoint() async {}
+  Future<void> clearCheckpoint() async => clearCalls++;
 }
 
 class FakeHistoryStorage extends TrainingHistoryStorage {
@@ -86,13 +92,14 @@ class FakeStepEndNotifier implements StepEndNotifier {
 }
 
 class FakeForegroundService extends SessionNotificationService {
+  int pinCalls = 0;
   @override
   Future<void> pin({
     required SessionNotificationPinData data,
     required void Function() onPausePressed,
     required void Function(String) onSoundThreshold,
     required void Function(String, NotificationMode) onTimedStepEnded,
-  }) async {}
+  }) async => pinCalls++;
   @override
   Future<void> stop() async {}
   @override
