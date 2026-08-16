@@ -20,6 +20,8 @@ class AmrapExecutionState {
       _lastClockElapsed = checkpoint.activeElapsed,
       _status = checkpoint.completed
           ? AmrapAttemptStatus.completed
+          : checkpoint.incomplete
+          ? AmrapAttemptStatus.incomplete
           : checkpoint.activeElapsed > Duration.zero
           ? AmrapAttemptStatus.running
           : AmrapAttemptStatus.notStarted;
@@ -132,6 +134,7 @@ class AmrapExecutionState {
     currentLapDuration: _currentLapDuration,
     buttonDelayRemaining: _buttonDelayRemaining,
     completed: completed,
+    incomplete: _status == AmrapAttemptStatus.incomplete,
   );
 
   AmrapHistoryData toHistory({required bool stepCompleted}) => AmrapHistoryData(

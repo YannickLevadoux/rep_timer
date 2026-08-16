@@ -31,10 +31,35 @@ void main() {
     );
 
     expect(find.text('Effort · 2 tours'), findsOneWidget);
-    expect(find.text('Tour 1'), findsOneWidget);
-    expect(find.text('Tour 2'), findsOneWidget);
-    expect(find.text('Tour partiel'), findsOneWidget);
-    expect(find.text('00:15'), findsOneWidget);
+    expect(find.text('Tour 1 · 00:20'), findsOneWidget);
+    expect(find.text('Tour 2 · 00:25'), findsOneWidget);
+    expect(find.text('Tour partiel · 00:15'), findsOneWidget);
+    expect(find.text('Statut · Terminé'), findsOneWidget);
+  });
+
+  testWidgets('affiche le statut incomplet du groupe AMRAP', (tester) async {
+    await _pump(
+      tester,
+      HistoryStepEntry(
+        groupId: 'amrap',
+        groupName: 'AMRAP',
+        itemType: ItemType.exercise,
+        itemName: 'Effort',
+        comment: null,
+        actualDuration: const Duration(seconds: 12),
+        completed: false,
+        amrap: AmrapHistoryData(
+          configuredDuration: const Duration(seconds: 60),
+          activeDuration: const Duration(seconds: 12),
+          completedLapDurations: const [],
+          partialLapDuration: const Duration(seconds: 12),
+          completed: false,
+        ),
+      ),
+    );
+
+    expect(find.text('Statut · Incomplet'), findsOneWidget);
+    expect(find.text('Effort · 0 tours'), findsOneWidget);
   });
 
   testWidgets('identifie chaque minute EMOM', (tester) async {

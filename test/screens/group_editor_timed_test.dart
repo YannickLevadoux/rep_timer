@@ -189,13 +189,90 @@ void main() {
       hasFollowingGroup: true,
     );
 
-    expect(find.text('02:00'), findsNWidgets(2));
+    expect(find.text('02:00'), findsOneWidget);
     await tester.tap(find.text("Ajouter une récupération après l'AMRAP"));
     await tester.pump();
     expect(find.text('03:00'), findsOneWidget);
-    await tester.tap(find.byTooltip('Supprimer'));
+    final recoveryRow = find.byKey(const Key('amrap-recovery-row'));
+    final recoveryName = find.descendant(
+      of: recoveryRow,
+      matching: find.text('Récupération'),
+    );
+    final delete = find.descendant(
+      of: recoveryRow,
+      matching: find.byTooltip('Supprimer'),
+    );
+    final recoveryPicker = find.descendant(
+      of: recoveryRow,
+      matching: find.byType(DurationMinutesSecondsPicker),
+    );
+    expect(recoveryName, findsOneWidget);
+    expect(delete, findsOneWidget);
+    expect(recoveryPicker, findsOneWidget);
+    expect(
+      tester.getTopRight(recoveryName).dx,
+      lessThan(tester.getTopLeft(delete).dx),
+    );
+    expect(
+      tester.getTopRight(delete).dx,
+      lessThan(tester.getTopLeft(recoveryPicker).dx),
+    );
+    _expectSameVerticalCenter(tester, [recoveryName, delete, recoveryPicker]);
+    await tester.tap(delete);
     await tester.pump();
     expect(find.text('03:00'), findsNothing);
+  });
+
+  testWidgets('AMRAP expose le sélecteur principal avec ses bornes exactes', (
+    tester,
+  ) async {
+    await _pumpEditor(tester, ExerciseGroup.amrap(id: 'amrap'));
+
+    final effortRow = find.byKey(const Key('amrap-effort-row'));
+    final effortIcon = find.descendant(
+      of: effortRow,
+      matching: find.byIcon(Icons.fitness_center),
+    );
+    final effortName = find.descendant(
+      of: effortRow,
+      matching: find.text('Effort'),
+    );
+    final edit = find.descendant(
+      of: effortRow,
+      matching: find.byTooltip("Modifier l'effort"),
+    );
+    final effortPicker = find.descendant(
+      of: effortRow,
+      matching: find.byType(DurationMinutesSecondsPicker),
+    );
+    final picker = tester.widget<DurationMinutesSecondsPicker>(effortPicker);
+    expect(picker.value, const Duration(minutes: 2));
+    expect(picker.minimum, const Duration(minutes: 1));
+    expect(picker.maximum, const Duration(minutes: 60));
+    expect(find.text("Durée de l'AMRAP"), findsNothing);
+    expect(effortIcon, findsOneWidget);
+    expect(effortName, findsOneWidget);
+    expect(edit, findsOneWidget);
+    expect(effortPicker, findsOneWidget);
+    expect(
+      tester.getTopLeft(effortIcon).dx,
+      lessThan(tester.getTopLeft(effortName).dx),
+    );
+    expect(
+      tester.getTopRight(effortName).dx,
+      lessThan(tester.getTopLeft(edit).dx),
+    );
+    expect(
+      tester.getTopRight(edit).dx,
+      lessThan(tester.getTopLeft(effortPicker).dx),
+    );
+    _expectSameVerticalCenter(tester, [
+      effortIcon,
+      effortName,
+      edit,
+      effortPicker,
+    ]);
+    expect(find.textContaining('chaque tour terminé'), findsOneWidget);
   });
 
   testWidgets('EMOM borne les minutes et conserve l’effort à 60 secondes', (

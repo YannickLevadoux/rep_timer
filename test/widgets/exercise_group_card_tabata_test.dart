@@ -38,6 +38,20 @@ void main() {
     );
   });
 
+  testWidgets('la carte AMRAP résume l’effort et sa récupération utile', (
+    tester,
+  ) async {
+    final group = ExerciseGroup.amrap(id: 'amrap')
+      ..postGroupRestDuration = const Duration(minutes: 1);
+
+    await _pumpCard(tester, group);
+    expect(find.text('AMRAP · Effort · 02:00'), findsOneWidget);
+    expect(find.textContaining('Mono'), findsNothing);
+
+    await _pumpCard(tester, group, hasFollowingGroup: true);
+    expect(find.text('AMRAP · Effort · 03:00'), findsOneWidget);
+  });
+
   testWidgets('la carte reste stable à 360 × 640 avec texte agrandi', (
     tester,
   ) async {

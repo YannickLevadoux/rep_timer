@@ -73,7 +73,9 @@ class SessionProgressState {
     if (!canJumpTo(index)) return false;
     if (_isEmomMinute(currentIndex)) completed[currentIndex] = false;
     currentIndex = index;
-    if (_isEmomMinute(currentIndex)) completed[currentIndex] = false;
+    if (_isEmomMinute(currentIndex) || _isAmrapStep(currentIndex)) {
+      completed[currentIndex] = false;
+    }
     stepOccurrence++;
     pendingIncompleteReview = false;
     return true;
@@ -86,6 +88,10 @@ class SessionProgressState {
 
   bool _isEmomMinute(int index) =>
       steps[index].group.type == GroupType.emom &&
+      steps[index].item.type == ItemType.exercise;
+
+  bool _isAmrapStep(int index) =>
+      steps[index].group.type == GroupType.amrap &&
       steps[index].item.type == ItemType.exercise;
 
   bool _canRestore(SessionCheckpoint? checkpoint) =>

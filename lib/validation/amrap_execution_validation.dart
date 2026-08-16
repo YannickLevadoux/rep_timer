@@ -10,6 +10,7 @@ abstract final class AmrapExecutionValidation {
     required Duration currentLapDuration,
     required Duration buttonDelayRemaining,
     required bool completed,
+    bool incomplete = false,
   }) {
     _requireConfiguredDuration(configuredDuration);
     _requireWholeNonNegative(activeElapsed, 'activeElapsed');
@@ -20,7 +21,8 @@ abstract final class AmrapExecutionValidation {
     if (buttonDelayRemaining > BusinessLimits.maximumAmrapButtonDelay ||
         activeElapsed + activeRemaining != configuredDuration ||
         _sum(completedLaps) + currentLapDuration != activeElapsed ||
-        (completed && activeRemaining != Duration.zero)) {
+        (completed && activeRemaining != Duration.zero) ||
+        (incomplete && (completed || activeElapsed == Duration.zero))) {
       throw const FormatException('État de checkpoint AMRAP incohérent.');
     }
   }

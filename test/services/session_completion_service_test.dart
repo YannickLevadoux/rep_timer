@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rep_timer/models/amrap_history_data.dart';
 import 'package:rep_timer/models/exercise_group.dart';
 import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/session_checkpoint.dart';
@@ -156,6 +157,58 @@ void main() {
       [1, 2, null, null],
     );
   });
+
+  test(
+    'omet une récupération AMRAP jamais exécutée et borne sa durée',
+    () async {
+      final historyStorage = _FakeHistoryStorage();
+      final amrap = ExerciseGroup.amrap(id: 'amrap')
+        ..items.single.duration = const Duration(minutes: 1)
+        ..postGroupRestDuration = const Duration(seconds: 30);
+      final training = Training(
+        id: 'amrap-training',
+        name: 'AMRAP',
+        groups: [amrap, _training().groups.single],
+        createdAt: DateTime(2026),
+      );
+      final steps = buildSessionSteps(training);
+      final service = SessionCompletionService(
+        checkpointStorage: _FakeCheckpointStorage(),
+        historyStorage: historyStorage,
+        now: () => DateTime(2026),
+      );
+
+      await service.completeSession(
+        training: training,
+        steps: steps,
+        completed: const [true, false, false],
+        stepActualDurations: const [
+          Duration(seconds: 65),
+          Duration.zero,
+          Duration.zero,
+        ],
+        totalDuration: const Duration(seconds: 65),
+        status: TrainingSessionStatus.incomplete,
+        amrapHistory: {
+          0: AmrapHistoryData(
+            configuredDuration: const Duration(minutes: 1),
+            activeDuration: const Duration(minutes: 1),
+            completedLapDurations: const [],
+            partialLapDuration: const Duration(minutes: 1),
+            completed: true,
+          ),
+        },
+      );
+
+      final history = historyStorage.entries.single;
+      expect(history.steps, hasLength(2));
+      expect(history.steps.first.actualDuration, const Duration(minutes: 1));
+      expect(
+        history.steps.where((step) => step.itemType == ItemType.rest),
+        isEmpty,
+      );
+    },
+  );
 }
 
 Training _training() {

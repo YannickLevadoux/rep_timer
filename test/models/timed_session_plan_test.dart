@@ -73,6 +73,23 @@ void main() {
     },
   );
 
+  test('AMRAP reste une étape unique avec récupération conditionnelle', () {
+    final amrap = ExerciseGroup.amrap(id: 'amrap')
+      ..postGroupRestDuration = const Duration(minutes: 1);
+
+    final alone = buildSessionSteps(_training([amrap]));
+    expect(alone, hasLength(1));
+    expect(alone.single.item.type, ItemType.exercise);
+    expect(alone.single.totalRounds, 1);
+
+    final followed = buildSessionSteps(_training([amrap, _followingGroup()]));
+    expect(followed.take(2).map((step) => step.item.type), [
+      ItemType.exercise,
+      ItemType.rest,
+    ]);
+    expect(followed[1].item.duration, const Duration(minutes: 1));
+  });
+
   test('accepte exactement 10 000 étapes réellement développées', () {
     final prefix = ExerciseGroup(
       id: 'prefix',

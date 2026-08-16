@@ -3,28 +3,33 @@ import '../models/amrap_history_data.dart';
 import '../models/group_type.dart';
 import '../models/session_checkpoint.dart';
 import '../models/session_step.dart';
+import '../models/training_item.dart';
 import 'amrap_execution_state.dart';
 
 /// Coordonne les états temporisés purs avec les indices du plan de séance.
 class SessionTimedGroupState {
   SessionTimedGroupState({
     required List<SessionStep> steps,
-    required int currentIndex,
     SessionCheckpoint? checkpoint,
   }) {
     for (var index = 0; index < steps.length; index++) {
       final step = steps[index];
-      if (step.group.type != GroupType.amrap) continue;
+      if (step.group.type != GroupType.amrap ||
+          step.item.type != ItemType.exercise) {
+        continue;
+      }
       _amrapStates[index] = AmrapExecutionState(step.item.duration!);
     }
-    final restored = checkpoint?.amrapState;
-    if (restored != null && _amrapStates.containsKey(currentIndex)) {
-      final duration = steps[currentIndex].item.duration;
-      if (duration == restored.configuredDuration) {
-        _amrapStates[currentIndex] = AmrapExecutionState.fromCheckpoint(
-          restored,
-        );
+    final restoredStates =
+        checkpoint?.amrapStates ?? const <int, AmrapCheckpointState>{};
+    for (final entry in restoredStates.entries) {
+      final index = entry.key;
+      final restored = entry.value;
+      if (!_amrapStates.containsKey(index) ||
+          steps[index].item.duration != restored.configuredDuration) {
+        continue;
       }
+      _amrapStates[index] = AmrapExecutionState.fromCheckpoint(restored);
     }
   }
 
@@ -64,14 +69,15 @@ class SessionTimedGroupState {
   void completeCurrent({required int index, required Duration stepElapsed}) =>
       _amrapStates[index]?.markCompleted(stepElapsed);
 
-  AmrapCheckpointState? checkpointFor({
+  Map<int, AmrapCheckpointState> checkpoints({
     required int index,
     required Duration stepElapsed,
   }) {
-    final state = _amrapStates[index];
-    if (state == null) return null;
-    state.synchronize(stepElapsed);
-    return state.toCheckpoint();
+    _amrapStates[index]?.synchronize(stepElapsed);
+    return {
+      for (final entry in _amrapStates.entries)
+        entry.key: entry.value.toCheckpoint(),
+    };
   }
 
   Map<int, AmrapHistoryData> historyData(List<bool> completed) => {

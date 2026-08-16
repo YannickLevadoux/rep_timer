@@ -43,6 +43,7 @@ class SessionCompletionService {
     required bool paused,
     required List<Duration> stepActualDurations,
     AmrapCheckpointState? amrapState,
+    Map<int, AmrapCheckpointState> amrapStates = const {},
   }) {
     return _checkpointStorage.saveCheckpoint(
       SessionCheckpoint(
@@ -55,6 +56,7 @@ class SessionCompletionService {
         savedAt: _now(),
         stepActualDurations: List<Duration>.of(stepActualDurations),
         amrapState: amrapState,
+        amrapStates: amrapStates,
       ),
     );
   }
@@ -79,22 +81,24 @@ class SessionCompletionService {
         status: status,
         steps: <HistoryStepEntry>[
           for (var i = 0; i < steps.length; i++)
-            HistoryStepEntry(
-              groupId: steps[i].group.id,
-              groupName: steps[i].group.name,
-              itemType: steps[i].item.type,
-              itemName: steps[i].item.name,
-              repetitions: steps[i].item.repetitions,
-              comment: steps[i].item.comment,
-              actualDuration: stepActualDurations[i],
-              completed: completed[i],
-              emomMinuteIndex:
-                  steps[i].group.type == GroupType.emom &&
-                      steps[i].item.type == ItemType.exercise
-                  ? steps[i].roundIndex
-                  : null,
-              amrap: amrapHistory[i],
-            ),
+            if (_includeStep(steps[i], stepActualDurations[i]))
+              HistoryStepEntry(
+                groupId: steps[i].group.id,
+                groupName: steps[i].group.name,
+                itemType: steps[i].item.type,
+                itemName: steps[i].item.name,
+                repetitions: steps[i].item.repetitions,
+                comment: steps[i].item.comment,
+                actualDuration:
+                    amrapHistory[i]?.activeDuration ?? stepActualDurations[i],
+                completed: completed[i],
+                emomMinuteIndex:
+                    steps[i].group.type == GroupType.emom &&
+                        steps[i].item.type == ItemType.exercise
+                    ? steps[i].roundIndex
+                    : null,
+                amrap: amrapHistory[i],
+              ),
         ],
       );
       await _historyStorage.addEntry(entry);
@@ -105,4 +109,9 @@ class SessionCompletionService {
   }
 
   Future<void> clearCheckpoint() => _checkpointStorage.clearCheckpoint();
+
+  bool _includeStep(SessionStep step, Duration actualDuration) =>
+      step.group.type != GroupType.amrap ||
+      step.item.type != ItemType.rest ||
+      actualDuration > Duration.zero;
 }

@@ -17,8 +17,15 @@ class TrainingHistoryAmrapRows extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            '${step.itemName} · ${amrap.completedLapDurations.length} tours',
+            '${step.itemName} · ${amrap.completedLapDurations.length} '
+            '${amrap.completedLapDurations.length == 1 ? 'tour' : 'tours'}',
             style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Statut · ${amrap.completed ? 'Terminé' : 'Incomplet'}',
+            ),
           ),
           for (
             var index = 0;
@@ -46,11 +53,6 @@ class _LapRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(top: 4),
-    child: Row(
-      children: [
-        Expanded(child: Text(label)),
-        Text(formatDuration(duration)),
-      ],
-    ),
+    child: Text('$label · ${formatDuration(duration)}'),
   );
 }

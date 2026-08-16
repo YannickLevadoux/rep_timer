@@ -33,8 +33,45 @@ void main() {
   });
 
   test('un ancien checkpoint sans état AMRAP reste lisible', () {
-    final json = _checkpoint(null).toJson()..remove('amrapState');
+    final json = _checkpoint(null).toJson()
+      ..remove('amrapState')
+      ..remove('amrapStates');
     expect(SessionCheckpoint.fromJson(json).amrapState, isNull);
+  });
+
+  test('conserve toutes les occurrences et leur statut dans le checkpoint', () {
+    final running = _state();
+    final incomplete = AmrapCheckpointState(
+      configuredDuration: const Duration(minutes: 1),
+      activeElapsed: const Duration(seconds: 12),
+      activeRemaining: const Duration(seconds: 48),
+      completedLapDurations: const [],
+      currentLapDuration: const Duration(seconds: 12),
+      buttonDelayRemaining: Duration.zero,
+      completed: false,
+      incomplete: true,
+    );
+    final checkpoint = SessionCheckpoint(
+      trainingId: 'training',
+      currentIndex: 2,
+      completed: const [false, false, false],
+      globalElapsed: const Duration(seconds: 22),
+      stepElapsed: const Duration(seconds: 10),
+      paused: false,
+      savedAt: DateTime(2026),
+      stepActualDurations: const [
+        Duration(seconds: 12),
+        Duration.zero,
+        Duration(seconds: 10),
+      ],
+      amrapStates: {0: incomplete, 2: running},
+    );
+
+    final decoded = SessionCheckpoint.fromJson(checkpoint.toJson());
+    expect(decoded.amrapStates.keys, [0, 2]);
+    expect(decoded.amrapStates[0]!.incomplete, isTrue);
+    expect(decoded.amrapState!.activeElapsed, const Duration(seconds: 10));
+    expect(() => decoded.amrapStates[3] = running, throwsUnsupportedError);
   });
 
   test('refuse les checkpoints AMRAP incohérents', () {
@@ -57,6 +94,19 @@ void main() {
     expect(() => _state(laps: [Duration.zero]), throwsFormatException);
     expect(
       () => _state(buttonDelay: const Duration(seconds: 3)),
+      throwsFormatException,
+    );
+    expect(
+      () => AmrapCheckpointState(
+        configuredDuration: const Duration(minutes: 1),
+        activeElapsed: Duration.zero,
+        activeRemaining: const Duration(minutes: 1),
+        completedLapDurations: const [],
+        currentLapDuration: Duration.zero,
+        buttonDelayRemaining: Duration.zero,
+        completed: false,
+        incomplete: true,
+      ),
       throwsFormatException,
     );
   });
