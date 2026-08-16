@@ -12,15 +12,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Types de groupe'), findsOneWidget);
-    expect(find.text('Choisir un type'), findsOneWidget);
-    for (final heading in [
+    for (final expectedText in [
       'Libre',
+      'Variable',
       'Répétitions variables',
       'Tabata',
       'AMRAP',
+      'As Many Rep As Possible',
       'EMOM',
+      'Every Minute On the Minute',
     ]) {
-      expect(find.textContaining(heading), findsWidgets);
+      expect(find.text(expectedText), findsOneWidget);
     }
     expect(find.byKey(const Key('group-types-help-content')), findsOneWidget);
   });
