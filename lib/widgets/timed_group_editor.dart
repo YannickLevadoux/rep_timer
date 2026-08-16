@@ -4,7 +4,6 @@ import '../controllers/group_editor_controller.dart';
 import '../models/group_type.dart';
 import '../services/group_duration_estimator.dart';
 import '../validation/business_validation.dart';
-import 'duration_minutes_seconds_picker.dart';
 import 'quick_tabata_sections.dart';
 import 'rounds_editor.dart';
 import 'timed_inline_duration_row.dart';
@@ -76,18 +75,15 @@ class TimedGroupEditor extends StatelessWidget {
   ];
 
   List<Widget> _amrap(BuildContext context) => [
-    Text("Durée de l'AMRAP", style: Theme.of(context).textTheme.titleMedium),
-    DurationMinutesSecondsPicker(
-      value: controller.group.items.first.duration!,
-      minimum: BusinessLimits.minimumAmrapDuration,
-      maximum: BusinessLimits.maximumAmrapDuration,
-      onChanged: controller.setEffortDuration,
-    ),
-    const Text('Enregistrez chaque tour terminé pendant le temps imparti.'),
-    TimedExerciseSection(
+    TimedExerciseDurationRow(
+      key: const Key('amrap-effort-row'),
       item: controller.group.items.first,
       onEdit: onEditEffort,
+      onChanged: controller.setEffortDuration,
+      minimum: BusinessLimits.minimumAmrapDuration,
+      maximum: BusinessLimits.maximumAmrapDuration,
     ),
+    const Text('Enregistrez chaque tour terminé pendant le temps imparti.'),
     const Divider(),
     if (!quick)
       _OptionalRest(
@@ -96,6 +92,8 @@ class TimedGroupEditor extends StatelessWidget {
         value: controller.group.postGroupRestDuration,
         onEnabled: controller.setPostGroupRestEnabled,
         onChanged: controller.setPostGroupRestDuration,
+        inline: true,
+        inlineKey: const Key('amrap-recovery-row'),
       ),
   ];
 
@@ -133,6 +131,7 @@ class _OptionalRest extends StatelessWidget {
     required this.onEnabled,
     required this.onChanged,
     this.inline = false,
+    this.inlineKey,
   });
 
   final String title;
@@ -141,6 +140,7 @@ class _OptionalRest extends StatelessWidget {
   final ValueChanged<bool> onEnabled;
   final ValueChanged<Duration> onChanged;
   final bool inline;
+  final Key? inlineKey;
 
   @override
   Widget build(BuildContext context) => value == null
@@ -151,7 +151,7 @@ class _OptionalRest extends StatelessWidget {
         )
       : inline
       ? TimedRestDurationRow(
-          key: const Key('tabata-final-rest-row'),
+          key: inlineKey ?? const Key('tabata-final-rest-row'),
           title: title,
           value: value!,
           onChanged: onChanged,

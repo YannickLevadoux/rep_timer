@@ -64,10 +64,11 @@ void main() {
     await tester.tap(find.text('Continuer'));
     await tester.pumpAndSettle();
 
-    expect(find.text("Durée de l'AMRAP"), findsOneWidget);
+    expect(find.text("Durée de l'AMRAP"), findsNothing);
+    expect(find.byKey(const Key('amrap-effort-row')), findsOneWidget);
     expect(find.textContaining('chaque tour terminé'), findsOneWidget);
     expect(find.text("Ajouter une récupération après l'AMRAP"), findsNothing);
-    expect(find.text('02:00'), findsNWidgets(2));
+    expect(find.text('02:00'), findsOneWidget);
   });
 
   testWidgets('AMRAP rapide lance le moteur partagé sans récupération', (
