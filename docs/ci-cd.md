@@ -107,10 +107,12 @@ calculable. Elle affiche `N/A` sans faire échouer ce second contrôle lorsque l
 contexte de Pull Request est indisponible ou qu'aucune ligne instrumentable n'a
 changé. Le LCOV absent ou invalide reste toujours bloquant.
 
-La baseline finale de la version 1.3.2, mesurée sur le commit `3f8820e`, est de
-**91,78 %** (`5 079 / 5 534` lignes) avec 422 tests réussis. Cette valeur reste
-un indicateur de couverture de lignes : elle ne remplace pas les validations
-des comportements natifs Android.
+La baseline bloquante reste celle de la version 1.3.2, soit **91,78 %**. Le
+bilan final de la version 1.4.0 atteint **92,77 %** (`6 430 / 6 931` lignes).
+Sur les lignes ajoutées ou modifiées calculables, la couverture atteint
+**94,05 %** (`458 / 487`). Ces valeurs restent des indicateurs de couverture de
+lignes : elles ne remplacent pas les validations des comportements natifs
+Android.
 
 Le fichier `coverage/lcov.info` est publié dans l'artefact
 `test-coverage-lcov` pendant 14 jours. Aucun service de couverture externe,

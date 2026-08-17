@@ -87,9 +87,13 @@ contextes suivants :
 | Modification | **Édition du groupe** / **Enregistrer** | Le groupe remplace l'original après validation. |
 | Session rapide | **Session rapide** / **Commencer** | Une séance temporaire est construite uniquement au lancement. |
 
-Le type est choisi dans le sélecteur compact existant. Une description courte
-est affichée sous le champ. Le bouton d'aide partagé explique les acronymes
-Tabata, AMRAP et EMOM sans occuper en permanence la hauteur de cinq cartes :
+En ajout et en Session rapide, l'écran commence sans type sélectionné. Le nom,
+les paramètres et l'action principale restent masqués jusqu'au choix explicite
+de l'un des cinq types. Cette première sélection initialise les valeurs par
+défaut sans confirmation ; les changements suivants réutilisent les
+confirmations et les brouillons partagés. Une description courte est affichée
+sous le sélecteur. Le bouton d'aide ouvre le guide Markdown local des cinq
+types :
 
 | Type | Description |
 | --- | --- |
@@ -466,8 +470,8 @@ EMOM · Effort · 10:00
 ## Session rapide
 
 La destination de navigation s'appelle **Rapide** et l'écran
-**Session rapide**. Le type Tabata est sélectionné au premier affichage afin de
-préserver l'usage de Quick Tabata.
+**Session rapide**. Aucun type n'est présélectionné : l'utilisateur choisit
+explicitement l'un des cinq modèles avant d'accéder au formulaire.
 
 | Type choisi | Valeurs initiales spécifiques |
 | --- | --- |
@@ -591,14 +595,15 @@ elle est soit absente (`null`), soit valide selon les bornes de durée.
 
 ### Éditeur et conversion
 
-1. Ajouter chacun des cinq types puis l'enregistrer avec une configuration
-   valide.
-2. Changer d'un type existant vers Tabata, AMRAP ou EMOM, annuler la
+1. Ouvrir un ajout ou une Session rapide, vérifier l'état sans type, puis
+   choisir chacun des cinq types sans confirmation.
+2. Enregistrer chaque type avec une configuration valide.
+3. Changer d'un type existant vers Tabata, AMRAP ou EMOM, annuler la
    confirmation et vérifier l'absence de mutation.
-3. Continuer, modifier le nouveau brouillon, revenir à l'ancien type et
+4. Continuer, modifier le nouveau brouillon, revenir à l'ancien type et
    retrouver son brouillon exact.
-4. Enregistrer et vérifier que seul le type sélectionné est persisté.
-5. Vérifier la récupération avec un groupe suivant, puis son absence en fin de
+5. Enregistrer et vérifier que seul le type sélectionné est persisté.
+6. Vérifier la récupération avec un groupe suivant, puis son absence en fin de
    séance et en Session rapide.
 
 ### Tabata
@@ -652,7 +657,9 @@ elle est soit absente (`null`), soit valide selon les bornes de durée.
 | #161 | Parcours complet Tabata. |
 | #162 | Parcours complet AMRAP. |
 | #163 | Parcours complet EMOM. |
+| #176 | Choix explicite du type avant l'affichage du formulaire. |
 | #164 | Remplacement de Quick Tabata par Session rapide. |
+| #170 | Compte à rebours de préparation partagé. |
 
 Chaque issue fonctionnelle livre ses tests unitaires et widget. Tous les
 fichiers Dart suivis sous `lib/` restent sous 200 lignes, la couverture globale

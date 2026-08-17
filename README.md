@@ -12,10 +12,13 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 ## Fonctionnalités
 
 ### Création et édition des séances
-- Séances composées de **groupes d'exercices** libres ou à répétitions variables :
+- Séances composées de cinq types de **groupes d'exercices** :
   - un groupe libre répète tous ses éléments pendant un nombre de tours défini ;
   - un groupe à répétitions variables applique une suite ordonnée (par exemple `10, 12, 15, 12, 10`) aux exercices en mode Répétitions, sans modifier les exercices chronométrés, les durées libres ni les pauses ;
-  - le passage d'un type de groupe à l'autre conserve les tours, la suite et les répétitions individuelles afin d'éviter toute perte de configuration.
+  - un groupe Tabata alterne un effort chronométré et une pause pendant 1 à 999 cycles ;
+  - un groupe AMRAP enregistre les tours terminés pendant une durée de 1 à 60 minutes et conserve le tour partiel ;
+  - un groupe EMOM redémarre automatiquement le même effort de 60 secondes pendant 1 à 60 minutes.
+- L'ajout d'un groupe commence par le choix explicite de son type. Les changements incompatibles demandent confirmation et les brouillons des types visités restent disponibles jusqu'à la fermeture de l'éditeur.
 - Trois types d'exercices :
   - **Répétitions** — un nombre de répétitions à effectuer.
   - **Temps** — une durée définie (saisie via un sélecteur Minutes/Secondes).
@@ -45,6 +48,8 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Alerte de fin des exercices et pauses chronométrés, configurable sur **Son**, **Vibration** ou **Rien** depuis les paramètres et ajustable pendant la séance.
 - Notification Android persistante pendant qu'un chronomètre est actif (pause, exercice Temps ou Durée libre — jamais pour un exercice Répétitions) : icône Play/Pause dans la barre d'état, nom de l'exercice/de la pause et temps restant (ou écoulé en Durée libre), prochain élément de la séance et bouton **Pause** / **Reprendre**. Un appui sur la notification rouvre la séance. Repose sur un vrai Foreground Service Android (et non une simple notification), afin que la mise à jour du chronomètre ainsi que le son/la vibration de fin d'exercice restent fiables même lorsque l'application est en arrière-plan. Disparaît automatiquement à la fin, à l'abandon, ou à l'arrêt de la séance.
 - Exécution tour par tour des groupes à répétitions variables, avec la valeur résolue affichée et conservée dans l'historique. La reprise d'une séance interrompue restaure le bon tour et la bonne répétition.
+- Exécution des Tabata cycle par cycle, des AMRAP avec suivi et annulation du dernier tour, et des EMOM minute par minute. Les récupérations configurées après un groupe ne sont exécutées que lorsqu'un autre groupe suit.
+- Compte à rebours de préparation facultatif de 0 à 15 secondes, commun aux séances enregistrées et rapides. Il peut être mis en pause ou passé et n'est jamais inclus dans les chronos, checkpoints, estimations, historiques ou statistiques.
 
 ### Session rapide
 - Lancement d'un groupe Libre, à répétitions variables, Tabata, AMRAP ou EMOM sans créer d'entraînement enregistré (accessible via « Rapide » dans la barre de navigation).
@@ -58,6 +63,7 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Bilan des séances terminées et incomplètes, ainsi que du temps global passé : détail quotidien en vue hebdomadaire et agrégation par semaine en vue mensuelle.
 - Suppression d'une entrée d'historique avec confirmation.
 - Détail d'une séance avec sa date et son heure, ses statistiques de réalisation, ses durées de travail et de pause, puis le temps passé sur chaque exercice ou pause, regroupé dans des groupes initialement repliés.
+- Détail des tours terminés et du tour partiel pour un AMRAP, ainsi que de chaque minute terminée ou incomplète pour un EMOM.
 
 ### Import / Export
 - Export d'une sauvegarde complète v3 via la fenêtre standard de partage : séances, historique, groupes temporisés et préférences exportables.
@@ -124,7 +130,10 @@ releases](docs/release.md).
 ## Documentation
 
 - [Créer et exécuter des séances](docs/training-sessions.md) : groupes libres,
-  groupes à répétitions variables, édition et exécution.
+  groupes à répétitions variables, Tabata, AMRAP, EMOM, Session rapide et
+  compte à rebours de préparation.
+- [Contrats des cinq types de groupes](docs/group-types-1.4.0.md) : structures,
+  bornes, transitions, checkpoints et historique.
 - [Importer, exporter et restaurer](docs/import-export.md) : sauvegarde v3,
   compatibilité v1 et précautions avant une restauration.
 - [Contribuer au projet](CONTRIBUTING.md) : environnement de développement,
@@ -133,6 +142,8 @@ releases](docs/release.md).
   authentification, validations et reproductibilité.
 - [Builds et releases](docs/release.md) : distributions DEV et officielles,
   métadonnées, signature, dialogue « À propos » et publication.
+- [Notes de version 1.4.0](docs/release-notes-1.4.0.md) : groupes temporisés,
+  Session rapide, préparation et compatibilité des sauvegardes.
 - [Notes de version 1.3.2](docs/release-notes-1.3.2.md) : couverture CI,
   tests des frontières plateforme et ajustements ergonomiques.
 - [Notes de version 1.3.1](docs/release-notes-1.3.1.md) : maintenance,

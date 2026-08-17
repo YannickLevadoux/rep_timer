@@ -26,7 +26,7 @@ toutes les données avant de créer le fichier et refuse de présenter comme
 complète une sauvegarde dont une partie n'a pas pu être lue.
 
 Le schéma détaillé est décrit dans le [contrat de sauvegarde v3](backup-v3.md).
-RepTimer 1.3.0 ne crée plus d'export v1.
+Depuis RepTimer 1.3.0, l'application ne crée plus d'export v1.
 
 ## Importer un ancien fichier v1
 
