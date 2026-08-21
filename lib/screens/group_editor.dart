@@ -22,6 +22,9 @@ class GroupEditor extends StatefulWidget {
     this.mode,
     this.hasFollowingGroup = false,
     this.onSubmit,
+    this.preSessionPreparationSeconds,
+    this.preSessionPreparationEnabled,
+    this.onPreSessionPreparationChanged,
   });
 
   final ExerciseGroup group;
@@ -29,6 +32,9 @@ class GroupEditor extends StatefulWidget {
   final GroupEditorMode? mode;
   final bool hasFollowingGroup;
   final Future<void> Function(ExerciseGroup group)? onSubmit;
+  final int? preSessionPreparationSeconds;
+  final bool? preSessionPreparationEnabled;
+  final ValueChanged<bool>? onPreSessionPreparationChanged;
 
   GroupEditorMode get effectiveMode =>
       mode ?? (isNewGroup ? GroupEditorMode.add : GroupEditorMode.edit);
@@ -158,6 +164,9 @@ class _GroupEditorState extends State<GroupEditor> {
           onDismissQuickWarning: () =>
               setState(() => _showQuickWarning = false),
           isSubmitting: _isSubmitting,
+          preSessionPreparationSeconds: widget.preSessionPreparationSeconds,
+          preSessionPreparationEnabled: widget.preSessionPreparationEnabled,
+          onPreSessionPreparationChanged: widget.onPreSessionPreparationChanged,
         ),
       ),
     );

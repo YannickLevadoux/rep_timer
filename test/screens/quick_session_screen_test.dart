@@ -47,6 +47,7 @@ void main() {
     expect(find.text('Pause'), findsNothing);
     expect(find.text('Temps total estimé'), findsNothing);
     expect(find.text('Commencer'), findsNothing);
+    expect(find.textContaining('Préparation :'), findsNothing);
     expect(tester.testTextInput.isVisible, isFalse);
   });
 
@@ -222,10 +223,38 @@ void main() {
     });
     await _pumpScreen(tester);
     await _selectType(tester, GroupType.tabata);
+
+    expect(find.text('Préparation : 7 sec'), findsOneWidget);
+    expect(
+      tester
+          .widget<Switch>(
+            find.byKey(const Key('pre-session-preparation-switch')),
+          )
+          .value,
+      isTrue,
+    );
     await _start(tester);
 
     expect(_session(tester).preSessionCountdownSeconds, 7);
   });
+
+  testWidgets(
+    'désactiver la préparation rapide ne modifie pas les paramètres',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        AppSettingsStorage.preSessionCountdownSecondsKey: 7,
+      });
+      await _pumpScreen(tester);
+      await _selectType(tester, GroupType.tabata);
+
+      await tester.tap(find.byKey(const Key('pre-session-preparation-switch')));
+      await tester.pump();
+      await _start(tester);
+
+      expect(_session(tester).preSessionCountdownSeconds, 0);
+      expect(await AppSettingsStorage().loadPreSessionCountdownSeconds(), 7);
+    },
+  );
 
   for (final type in [GroupType.free, GroupType.variableRepetitions]) {
     testWidgets('${type.name} peut être configuré et lancé', (tester) async {

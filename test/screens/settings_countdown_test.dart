@@ -68,6 +68,19 @@ void main() {
       isNull,
     );
   });
+
+  testWidgets('place Séance entre Édition et Notifications', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await _pumpSettings(tester);
+
+    final editingTop = tester.getTopLeft(find.text('Édition')).dy;
+    final sessionTop = tester.getTopLeft(find.text('Séance')).dy;
+    final notificationsTop = tester.getTopLeft(find.text('Notifications')).dy;
+
+    expect(sessionTop, greaterThan(editingTop));
+    expect(sessionTop, lessThan(notificationsTop));
+  });
 }
 
 Future<void> _scrollToCountdown(WidgetTester tester) async {

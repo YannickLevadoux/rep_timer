@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../controllers/pre_session_preparation_controller.dart';
 import '../models/exercise_group.dart';
 import '../models/group_editor_mode.dart';
 import '../models/training.dart';
@@ -15,11 +16,13 @@ class QuickSessionScreen extends StatefulWidget {
     super.key,
     this.permissionService,
     this.settingsStorage,
+    this.countdownStorage,
     this.controllerFactory,
   });
 
   final SessionNotificationPermissionService? permissionService;
   final SessionPermissionPromptStorage? settingsStorage;
+  final AppSettingsStorage? countdownStorage;
   @visibleForTesting
   final SessionControllerFactory? controllerFactory;
 
@@ -29,6 +32,8 @@ class QuickSessionScreen extends StatefulWidget {
 
 class _QuickSessionScreenState extends State<QuickSessionScreen> {
   late final ExerciseGroup _initialGroup;
+  late final AppSettingsStorage _countdownStorage;
+  late final PreSessionPreparationController _preparation;
 
   @override
   void initState() {
@@ -38,9 +43,30 @@ class _QuickSessionScreenState extends State<QuickSessionScreen> {
       name: '',
       items: [],
     );
+    _countdownStorage = resolvePreSessionCountdownStorage(
+      countdownStorage: widget.countdownStorage,
+      permissionStorage: widget.settingsStorage,
+    );
+    _preparation = PreSessionPreparationController(_countdownStorage)
+      ..addListener(_preparationChanged)
+      ..load();
+  }
+
+  @override
+  void dispose() {
+    _preparation
+      ..removeListener(_preparationChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _preparationChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _start(ExerciseGroup group) async {
+    await _preparation.load();
+    if (!mounted) return;
     final timestamp = DateTime.now();
     final training = Training(
       id: 'quick_${timestamp.microsecondsSinceEpoch}',
@@ -48,9 +74,10 @@ class _QuickSessionScreenState extends State<QuickSessionScreen> {
       groups: [group.copyWith()],
       createdAt: timestamp,
     );
-    final countdownSeconds = await SessionStartPermissionGate(
+    await SessionStartPermissionGate(
       permissionService: widget.permissionService,
       settingsStorage: widget.settingsStorage,
+      countdownStorage: _countdownStorage,
     ).prepare(context, training);
     if (!mounted) return;
     Navigator.push(
@@ -60,7 +87,7 @@ class _QuickSessionScreenState extends State<QuickSessionScreen> {
           training: training,
           trainingChangesPersistence: TrainingChangesPersistence.memoryOnly,
           controllerFactory: widget.controllerFactory,
-          preSessionCountdownSeconds: countdownSeconds,
+          preSessionCountdownSeconds: _preparation.effectiveSeconds,
         ),
       ),
     );
@@ -71,5 +98,10 @@ class _QuickSessionScreenState extends State<QuickSessionScreen> {
     group: _initialGroup,
     mode: GroupEditorMode.quick,
     onSubmit: _start,
+    preSessionPreparationSeconds: _preparation.seconds,
+    preSessionPreparationEnabled: _preparation.enabled,
+    onPreSessionPreparationChanged: _preparation.loaded
+        ? _preparation.setEnabled
+        : null,
   );
 }

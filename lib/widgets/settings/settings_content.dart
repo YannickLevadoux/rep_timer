@@ -54,6 +54,10 @@ class SettingsContent extends StatelessWidget {
             prefillExerciseName: prefillExerciseName,
             onPrefillChanged: onPrefillChanged,
           ),
+          SessionSettingsSection(
+            countdownSeconds: preSessionCountdownSeconds,
+            onEditCountdown: onEditPreSessionCountdown,
+          ),
           NotificationSettingsSection(
             notificationMode: notificationMode,
             onCycleMode: onCycleNotificationMode,
@@ -66,10 +70,6 @@ class SettingsContent extends StatelessWidget {
           PermissionsSettingsSection(
             permissionStatus: permissionStatus,
             onOpenPermissions: onOpenPermissions,
-          ),
-          SessionSettingsSection(
-            countdownSeconds: preSessionCountdownSeconds,
-            onEditCountdown: onEditPreSessionCountdown,
           ),
           AboutSettingsSection(onOpenAbout: onOpenAbout),
         ],

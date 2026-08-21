@@ -181,6 +181,52 @@ void main() {
     expect(session.preSessionCountdownSeconds, 6);
   });
 
+  testWidgets('désactiver la préparation ne vaut que pour la séance lancée', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      AppSettingsStorage.preSessionCountdownSecondsKey: 6,
+    });
+    final training = _training(groups: [_group('Groupe')]);
+    await _pumpSummary(tester, training);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Préparation : 6 sec'), findsOneWidget);
+    expect(
+      tester
+          .widget<Switch>(
+            find.byKey(const Key('pre-session-preparation-switch')),
+          )
+          .value,
+      isTrue,
+    );
+
+    await tester.tap(find.byKey(const Key('pre-session-preparation-switch')));
+    await tester.pump();
+    await tester.tap(find.text('Commencer'));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(_session(tester).preSessionCountdownSeconds, 0);
+    expect(await AppSettingsStorage().loadPreSessionCountdownSeconds(), 6);
+  });
+
+  testWidgets('une préparation à zéro affiche un switch éteint', (
+    tester,
+  ) async {
+    await _pumpSummary(tester, _training(groups: [_group('Groupe')]));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Préparation : 0 sec'), findsOneWidget);
+    expect(
+      tester
+          .widget<Switch>(
+            find.byKey(const Key('pre-session-preparation-switch')),
+          )
+          .value,
+      isFalse,
+    );
+  });
+
   testWidgets('une suite variable pilote statistiques et aperçu des tours', (
     tester,
   ) async {
@@ -283,6 +329,11 @@ Color _statisticsBackground(WidgetTester tester) {
       .widget<ColoredBox>(find.byKey(const Key('training-summary-statistics')))
       .color;
 }
+
+TrainingSessionScreen _session(WidgetTester tester) =>
+    tester.widget<TrainingSessionScreen>(
+      find.byType(TrainingSessionScreen, skipOffstage: false),
+    );
 
 Future<void> _pumpSummary(
   WidgetTester tester,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../controllers/pre_session_preparation_controller.dart';
 import '../models/exercise_group.dart';
 import '../models/training.dart';
 import '../models/training_item.dart';
@@ -9,6 +10,7 @@ import '../services/session_start_permission_gate.dart';
 import '../utils/snack.dart';
 import '../utils/validation_messages.dart';
 import '../validation/business_validation.dart';
+import '../widgets/pre_session_preparation_toggle.dart';
 import '../widgets/training_summary_groups_list.dart';
 import '../widgets/training_summary_statistics.dart';
 import 'training_session.dart';
@@ -20,12 +22,14 @@ class TrainingSummaryScreen extends StatefulWidget {
   final Training training;
   final SessionNotificationPermissionService? permissionService;
   final SessionPermissionPromptStorage? settingsStorage;
+  final AppSettingsStorage? countdownStorage;
 
   const TrainingSummaryScreen({
     super.key,
     required this.training,
     this.permissionService,
     this.settingsStorage,
+    this.countdownStorage,
   });
 
   @override
@@ -33,7 +37,33 @@ class TrainingSummaryScreen extends StatefulWidget {
 }
 
 class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
+  late final AppSettingsStorage _countdownStorage;
+  late final PreSessionPreparationController _preparation;
   bool _starting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _countdownStorage = resolvePreSessionCountdownStorage(
+      countdownStorage: widget.countdownStorage,
+      permissionStorage: widget.settingsStorage,
+    );
+    _preparation = PreSessionPreparationController(_countdownStorage)
+      ..addListener(_preparationChanged)
+      ..load();
+  }
+
+  @override
+  void dispose() {
+    _preparation
+      ..removeListener(_preparationChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _preparationChanged() {
+    if (mounted) setState(() {});
+  }
 
   int _roundsOf(ExerciseGroup group) => group.executedRounds;
 
@@ -49,9 +79,13 @@ class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
     }
     setState(() => _starting = true);
 
-    final countdownSeconds = await SessionStartPermissionGate(
+    await _preparation.load();
+    if (!mounted) return;
+
+    await SessionStartPermissionGate(
       permissionService: widget.permissionService,
       settingsStorage: widget.settingsStorage,
+      countdownStorage: _countdownStorage,
     ).prepare(context, widget.training);
 
     if (!mounted) return;
@@ -61,7 +95,7 @@ class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
       MaterialPageRoute(
         builder: (context) => TrainingSessionScreen(
           training: widget.training,
-          preSessionCountdownSeconds: countdownSeconds,
+          preSessionCountdownSeconds: _preparation.effectiveSeconds,
         ),
       ),
     );
@@ -118,7 +152,16 @@ class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
+
+            PreSessionPreparationToggle(
+              seconds: _preparation.seconds,
+              enabled: _preparation.enabled,
+              onChanged: _preparation.loaded && !_starting
+                  ? _preparation.setEnabled
+                  : null,
+            ),
+            const SizedBox(height: 4),
 
             Expanded(
               child: TrainingSummaryGroupsList(

@@ -103,7 +103,11 @@ class _HomePageState extends State<HomePage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TrainingSummaryScreen(training: training),
+        builder: (context) => TrainingSummaryScreen(
+          training: training,
+          settingsStorage: widget.settingsStorage,
+          countdownStorage: widget.settingsStorage,
+        ),
       ),
     );
   }
@@ -136,7 +140,10 @@ class _HomePageState extends State<HomePage> {
 
   void _openDestination(int index) {
     final Widget? destination = switch (index) {
-      1 => const QuickSessionScreen(),
+      1 => QuickSessionScreen(
+        settingsStorage: widget.settingsStorage,
+        countdownStorage: widget.settingsStorage,
+      ),
       2 => TrainingHistoryScreen(
         controller: TrainingHistoryController(storage: widget.historyStorage),
       ),
