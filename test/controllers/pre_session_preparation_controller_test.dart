@@ -30,7 +30,9 @@ void main() {
     SharedPreferences.setMockInitialValues({
       AppSettingsStorage.preSessionCountdownSecondsKey: 10,
     });
-    final controller = PreSessionPreparationController(AppSettingsStorage());
+    final controller = PreSessionPreparationController(
+      countdownStorage: AppSettingsStorage(),
+    );
     addTearDown(controller.dispose);
 
     await controller.load();
@@ -45,18 +47,103 @@ void main() {
       AppSettingsStorage.preSessionCountdownSecondsKey: 10,
     });
     final storage = AppSettingsStorage();
-    final controller = PreSessionPreparationController(storage);
+    final controller = PreSessionPreparationController(
+      countdownStorage: storage,
+    );
     addTearDown(controller.dispose);
     await controller.load();
 
-    controller.setEnabled(false);
+    await controller.setEnabled(false, selectDuration: () async => null);
 
     expect(controller.effectiveSeconds, 0);
     expect(await storage.loadPreSessionCountdownSeconds(), 10);
   });
 
+  test('réactive la dernière durée connue sans rouvrir le sélecteur', () async {
+    SharedPreferences.setMockInitialValues({
+      AppSettingsStorage.preSessionCountdownSecondsKey: 10,
+    });
+    final controller = PreSessionPreparationController();
+    addTearDown(controller.dispose);
+    await controller.load();
+    await controller.setEnabled(false, selectDuration: () async => null);
+
+    var selectorCalls = 0;
+    await controller.setEnabled(
+      true,
+      selectDuration: () async {
+        selectorCalls++;
+        return 5;
+      },
+    );
+
+    expect(selectorCalls, 0);
+    expect(controller.enabled, isTrue);
+    expect(controller.effectiveSeconds, 10);
+  });
+
+  test(
+    'active une durée temporaire sans persister la valeur globale',
+    () async {
+      final storage = AppSettingsStorage();
+      final controller = PreSessionPreparationController(
+        countdownStorage: storage,
+      );
+      addTearDown(controller.dispose);
+      await controller.load();
+
+      await controller.setEnabled(true, selectDuration: () async => 15);
+
+      expect(controller.enabled, isTrue);
+      expect(controller.seconds, 15);
+      expect(controller.effectiveSeconds, 15);
+      expect(await storage.loadPreSessionCountdownSeconds(), 0);
+
+      await controller.setEnabled(false, selectDuration: () async => null);
+      var selectorCalls = 0;
+      await controller.setEnabled(
+        true,
+        selectDuration: () async {
+          selectorCalls++;
+          return 5;
+        },
+      );
+      expect(selectorCalls, 0);
+      expect(controller.effectiveSeconds, 15);
+    },
+  );
+
+  test('un nouveau contrôleur repart de la valeur globale', () async {
+    final first = PreSessionPreparationController();
+    addTearDown(first.dispose);
+    await first.load();
+    await first.setEnabled(true, selectDuration: () async => 10);
+
+    final next = PreSessionPreparationController();
+    addTearDown(next.dispose);
+    await next.load();
+
+    expect(first.effectiveSeconds, 10);
+    expect(next.enabled, isFalse);
+    expect(next.effectiveSeconds, 0);
+  });
+
+  test('une annulation ou zéro conserve la préparation désactivée', () async {
+    final controller = PreSessionPreparationController();
+    addTearDown(controller.dispose);
+    await controller.load();
+
+    await controller.setEnabled(true, selectDuration: () async => null);
+    expect(controller.enabled, isFalse);
+    expect(controller.seconds, 0);
+
+    await controller.setEnabled(true, selectDuration: () async => 0);
+    expect(controller.enabled, isFalse);
+    expect(controller.seconds, 0);
+  });
+
   test('la valeur zéro charge un switch éteint', () async {
-    final controller = PreSessionPreparationController(AppSettingsStorage());
+    final controller = PreSessionPreparationController();
     addTearDown(controller.dispose);
 
     await controller.load();

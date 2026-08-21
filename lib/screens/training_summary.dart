@@ -13,6 +13,7 @@ import '../validation/business_validation.dart';
 import '../widgets/pre_session_preparation_toggle.dart';
 import '../widgets/training_summary_groups_list.dart';
 import '../widgets/training_summary_statistics.dart';
+import 'pre_session_preparation_flow.dart';
 import 'training_session.dart';
 
 /// Écran affiché quand l'utilisateur clique sur "Commencer" depuis
@@ -37,20 +38,19 @@ class TrainingSummaryScreen extends StatefulWidget {
 }
 
 class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
-  late final AppSettingsStorage _countdownStorage;
   late final PreSessionPreparationController _preparation;
   bool _starting = false;
 
   @override
   void initState() {
     super.initState();
-    _countdownStorage = resolvePreSessionCountdownStorage(
-      countdownStorage: widget.countdownStorage,
-      permissionStorage: widget.settingsStorage,
-    );
-    _preparation = PreSessionPreparationController(_countdownStorage)
-      ..addListener(_preparationChanged)
-      ..load();
+    _preparation =
+        PreSessionPreparationController(
+            countdownStorage: widget.countdownStorage,
+            permissionStorage: widget.settingsStorage,
+          )
+          ..addListener(_preparationChanged)
+          ..load();
   }
 
   @override
@@ -85,7 +85,7 @@ class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
     await SessionStartPermissionGate(
       permissionService: widget.permissionService,
       settingsStorage: widget.settingsStorage,
-      countdownStorage: _countdownStorage,
+      countdownStorage: _preparation.settingsStorage,
     ).prepare(context, widget.training);
 
     if (!mounted) return;
@@ -158,7 +158,7 @@ class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
               seconds: _preparation.seconds,
               enabled: _preparation.enabled,
               onChanged: _preparation.loaded && !_starting
-                  ? _preparation.setEnabled
+                  ? preSessionPreparationHandler(context, _preparation)
                   : null,
             ),
             const SizedBox(height: 4),

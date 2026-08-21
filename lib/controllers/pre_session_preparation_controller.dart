@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../services/app_settings_storage.dart';
+import '../services/pre_session_countdown_storage.dart';
 
 AppSettingsStorage resolvePreSessionCountdownStorage({
   AppSettingsStorage? countdownStorage,
@@ -16,9 +17,15 @@ AppSettingsStorage resolvePreSessionCountdownStorage({
 /// La durée vient des paramètres, mais l'activation reste volontairement en
 /// mémoire afin que ce choix n'altère pas la préférence globale.
 class PreSessionPreparationController extends ChangeNotifier {
-  PreSessionPreparationController(this._settingsStorage);
+  PreSessionPreparationController({
+    AppSettingsStorage? countdownStorage,
+    SessionPermissionPromptStorage? permissionStorage,
+  }) : settingsStorage = resolvePreSessionCountdownStorage(
+         countdownStorage: countdownStorage,
+         permissionStorage: permissionStorage,
+       );
 
-  final AppSettingsStorage _settingsStorage;
+  final AppSettingsStorage settingsStorage;
 
   Future<void>? _loading;
   bool _disposed = false;
@@ -34,7 +41,7 @@ class PreSessionPreparationController extends ChangeNotifier {
   Future<void> load() => _loading ??= _load();
 
   Future<void> _load() async {
-    final seconds = await _settingsStorage.loadPreSessionCountdownSeconds();
+    final seconds = await settingsStorage.loadPreSessionCountdownSeconds();
     if (_disposed) return;
     _seconds = seconds;
     _enabled = seconds > 0;
@@ -42,9 +49,31 @@ class PreSessionPreparationController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setEnabled(bool enabled) {
+  Future<void> setEnabled(
+    bool enabled, {
+    required Future<int?> Function() selectDuration,
+  }) async {
     if (!_loaded || _enabled == enabled) return;
-    _enabled = enabled;
+    if (!enabled) {
+      _enabled = false;
+      notifyListeners();
+      return;
+    }
+    if (_seconds > 0) {
+      _enabled = true;
+      notifyListeners();
+      return;
+    }
+
+    final seconds = await selectDuration();
+    if (_disposed ||
+        seconds == null ||
+        seconds <= 0 ||
+        !isValidCountdownSeconds(seconds)) {
+      return;
+    }
+    _seconds = seconds;
+    _enabled = true;
     notifyListeners();
   }
 

@@ -9,6 +9,7 @@ import '../services/session_controller.dart';
 import '../services/session_notification_permission_service.dart';
 import '../services/session_start_permission_gate.dart';
 import 'group_editor.dart';
+import 'pre_session_preparation_flow.dart';
 import 'training_session.dart';
 
 class QuickSessionScreen extends StatefulWidget {
@@ -32,7 +33,6 @@ class QuickSessionScreen extends StatefulWidget {
 
 class _QuickSessionScreenState extends State<QuickSessionScreen> {
   late final ExerciseGroup _initialGroup;
-  late final AppSettingsStorage _countdownStorage;
   late final PreSessionPreparationController _preparation;
 
   @override
@@ -43,13 +43,13 @@ class _QuickSessionScreenState extends State<QuickSessionScreen> {
       name: '',
       items: [],
     );
-    _countdownStorage = resolvePreSessionCountdownStorage(
-      countdownStorage: widget.countdownStorage,
-      permissionStorage: widget.settingsStorage,
-    );
-    _preparation = PreSessionPreparationController(_countdownStorage)
-      ..addListener(_preparationChanged)
-      ..load();
+    _preparation =
+        PreSessionPreparationController(
+            countdownStorage: widget.countdownStorage,
+            permissionStorage: widget.settingsStorage,
+          )
+          ..addListener(_preparationChanged)
+          ..load();
   }
 
   @override
@@ -77,7 +77,7 @@ class _QuickSessionScreenState extends State<QuickSessionScreen> {
     await SessionStartPermissionGate(
       permissionService: widget.permissionService,
       settingsStorage: widget.settingsStorage,
-      countdownStorage: _countdownStorage,
+      countdownStorage: _preparation.settingsStorage,
     ).prepare(context, training);
     if (!mounted) return;
     Navigator.push(
@@ -101,7 +101,7 @@ class _QuickSessionScreenState extends State<QuickSessionScreen> {
     preSessionPreparationSeconds: _preparation.seconds,
     preSessionPreparationEnabled: _preparation.enabled,
     onPreSessionPreparationChanged: _preparation.loaded
-        ? _preparation.setEnabled
+        ? preSessionPreparationHandler(context, _preparation)
         : null,
   );
 }
