@@ -32,7 +32,9 @@ class StepEndNotificationService
   static const _vibrationDurationMs = 300;
   static const _preparationSignalDuration = Duration(milliseconds: 650);
   static final _notificationAudioContext = AudioContext(
-    android: const AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
+    android: const AudioContextAndroid(
+      audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+    ),
   );
 
   // Lecteur dédié à la séquence "3-2-1-GO" pendant une séance. Un seul

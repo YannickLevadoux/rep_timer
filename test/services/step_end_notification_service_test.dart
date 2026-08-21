@@ -34,12 +34,12 @@ void main() {
     expect(countdown.audioContexts, hasLength(1));
     expect(
       countdown.audioContexts.single.android.audioFocus,
-      AndroidAudioFocus.none,
+      AndroidAudioFocus.gainTransientMayDuck,
     );
     expect(preview.audioContexts, hasLength(1));
     expect(
       preview.audioContexts.single.android.audioFocus,
-      AndroidAudioFocus.none,
+      AndroidAudioFocus.gainTransientMayDuck,
     );
   });
 
