@@ -3,6 +3,7 @@ import 'package:vibration/vibration.dart';
 
 /// Lecteur audio minimal utilisé par les notifications de fin d'étape.
 abstract interface class StepEndAudioPlayer {
+  Future<void> setAudioContext(AudioContext context);
   Future<void> setSource(String assetPath);
   Future<void> play(String assetPath);
   Future<void> playFrom(String assetPath, Duration position);
@@ -15,6 +16,10 @@ class AudioplayersStepEndAudioPlayer implements StepEndAudioPlayer {
     : _player = player ?? AudioPlayer();
 
   final AudioPlayer _player;
+
+  @override
+  Future<void> setAudioContext(AudioContext context) =>
+      _player.setAudioContext(context);
 
   @override
   Future<void> setSource(String assetPath) =>

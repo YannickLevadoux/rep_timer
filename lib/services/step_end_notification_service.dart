@@ -31,6 +31,11 @@ class StepEndNotificationService
     implements StepEndNotifier, PreSessionSoundNotifier {
   static const _vibrationDurationMs = 300;
   static const _preparationSignalDuration = Duration(milliseconds: 650);
+  static final _notificationAudioContext = AudioContext(
+    android: const AudioContextAndroid(
+      audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+    ),
+  );
 
   // Lecteur dédié à la séquence "3-2-1-GO" pendant une séance. Un seul
   // fichier composite par déclenchement ne nécessite plus le pool de
@@ -46,6 +51,8 @@ class StepEndNotificationService
 
   bool _disposed = false;
   Timer? _preparationStopTimer;
+  Future<void>? _countdownAudioConfiguration;
+  Future<void>? _previewAudioConfiguration;
 
   StepEndNotificationService({
     AudioPlayer? countdownPlayer,
@@ -71,6 +78,7 @@ class StepEndNotificationService
   Future<void> preload(NotificationSound sound) async {
     if (_disposed) return;
     try {
+      await _configureCountdownAudio();
       await _countdownPlayer.setSource(sound.sequenceAsset);
     } catch (_) {
       // Ignoré : la lecture réelle rechargera la source elle-même.
@@ -84,6 +92,7 @@ class StepEndNotificationService
   Future<void> playCountdown(NotificationSound sound) async {
     if (_disposed) return;
     try {
+      await _configureCountdownAudio();
       await _countdownPlayer.stop();
       await _countdownPlayer.play(sound.sequenceAsset);
     } catch (_) {
@@ -115,6 +124,7 @@ class StepEndNotificationService
       microseconds: sound.goOffset.inMicroseconds * (3 - secondsRemaining) ~/ 3,
     );
     try {
+      await _configureCountdownAudio();
       await _countdownPlayer.stop();
       await _countdownPlayer.playFrom(sound.sequenceAsset, position);
       _preparationStopTimer = Timer(
@@ -132,6 +142,7 @@ class StepEndNotificationService
   Future<void> playPreview(NotificationSound sound) async {
     if (_disposed) return;
     try {
+      await _configurePreviewAudio();
       await _previewPlayer.stop();
       await _previewPlayer.play(sound.sequenceAsset);
     } catch (_) {}
@@ -168,4 +179,10 @@ class StepEndNotificationService
       await player.dispose();
     } catch (_) {}
   }
+
+  Future<void> _configureCountdownAudio() => _countdownAudioConfiguration ??=
+      _countdownPlayer.setAudioContext(_notificationAudioContext);
+
+  Future<void> _configurePreviewAudio() => _previewAudioConfiguration ??=
+      _previewPlayer.setAudioContext(_notificationAudioContext);
 }
