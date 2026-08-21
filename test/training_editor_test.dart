@@ -31,6 +31,10 @@ void main() {
 
     expect(find.text('Nom de la séance'), findsNWidgets(2));
     expect(find.byType(TextField), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).textCapitalization,
+      TextCapitalization.sentences,
+    );
     expect(tester.testTextInput.hasAnyClients, isTrue);
 
     await tester.enterText(find.byType(TextField), '  Full Body  ');

@@ -25,6 +25,7 @@ class ExerciseForm extends StatelessWidget {
             const SizedBox(height: 16),
             TextField(
               controller: controller.nameController,
+              textCapitalization: TextCapitalization.sentences,
               maxLength: BusinessLimits.maximumNameCharacters,
               maxLengthEnforcement: MaxLengthEnforcement.none,
               decoration: InputDecoration(
@@ -59,6 +60,7 @@ class ExerciseForm extends StatelessWidget {
             ],
             TextField(
               controller: controller.commentController,
+              textCapitalization: TextCapitalization.sentences,
               maxLines: 3,
               minLines: 2,
               maxLength: BusinessLimits.maximumCommentCharacters,

@@ -32,6 +32,7 @@ Future<String?> showDuplicateTrainingDialog(
       return TextField(
         controller: controller,
         autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
         maxLength: BusinessLimits.maximumNameCharacters,
         maxLengthEnforcement: MaxLengthEnforcement.none,
         decoration: InputDecoration(

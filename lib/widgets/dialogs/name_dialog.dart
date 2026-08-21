@@ -86,6 +86,7 @@ class _NameDialogState extends State<_NameDialog> {
       content: TextField(
         controller: _controller,
         autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
         maxLength: BusinessLimits.maximumNameCharacters,
         maxLengthEnforcement: MaxLengthEnforcement.none,
         textInputAction: TextInputAction.done,
