@@ -15,6 +15,71 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  testWidgets('une nouvelle séance édite son nom depuis le titre', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: TrainingEditor()));
+    await tester.pumpAndSettle();
+
+    final title = tester.widget<Text>(find.text('Nouvelle séance'));
+    expect(title.style?.fontStyle, FontStyle.italic);
+    expect(find.byType(TextField), findsNothing);
+    expect(find.byTooltip('Modifier le nom de la séance'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Modifier le nom de la séance'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nom de la séance'), findsNWidgets(2));
+    expect(find.byType(TextField), findsOneWidget);
+    expect(tester.testTextInput.hasAnyClients, isTrue);
+
+    await tester.enterText(find.byType(TextField), '  Full Body  ');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('Full Body'), findsOneWidget);
+  });
+
+  testWidgets('annuler l’édition conserve le nom de la séance', (tester) async {
+    await _pumpTrainingEditor(tester, _training(const []));
+
+    await tester.tap(find.byTooltip('Modifier le nom de la séance'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Nom annulé');
+    await tester.tap(find.text('Annuler'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Séance'), findsOneWidget);
+    expect(find.text('Nom annulé'), findsNothing);
+  });
+
+  testWidgets('l’erreur de nom vide disparaît dès la saisie', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: TrainingEditor()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Enregistrer'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.text('Ce champ est obligatoire.'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'Cardio');
+    await tester.pump();
+
+    expect(find.text('Ce champ est obligatoire.'), findsNothing);
+    expect(find.byType(AlertDialog), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '');
+    await tester.tap(find.text('Valider'));
+    await tester.pump();
+    expect(find.text('Ce champ est obligatoire.'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'Cardio');
+    await tester.pump();
+    expect(find.text('Ce champ est obligatoire.'), findsNothing);
+  });
+
   testWidgets('la séance affiche les groupes en lecture seule et repliables', (
     tester,
   ) async {
