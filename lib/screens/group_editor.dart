@@ -8,6 +8,7 @@ import '../utils/editor_back_handler.dart';
 import '../utils/snack.dart';
 import '../utils/validation_messages.dart';
 import '../validation/business_validation.dart';
+import '../widgets/dialogs/group_name_dialog.dart';
 import '../widgets/dialogs/group_editor_settings_dialog.dart';
 import '../widgets/dialogs/quick_session_exit_dialog.dart';
 import '../widgets/group_editor_view.dart';
@@ -39,7 +40,6 @@ class GroupEditor extends StatefulWidget {
 class _GroupEditorState extends State<GroupEditor> {
   late final GroupEditorController _controller;
   late final GroupEditorDialogs _dialogs;
-  String? _nameError;
   bool _showQuickWarning = true;
   bool _isSubmitting = false;
 
@@ -94,17 +94,14 @@ class _GroupEditorState extends State<GroupEditor> {
         .where((issue) => issue.field == BusinessField.groupName)
         .firstOrNull;
     if (issues.isNotEmpty) {
-      setState(() {
-        _nameError = nameIssue == null ? null : validationMessage(nameIssue);
-      });
       if (nameIssue != null) {
         showSnack(context, "Merci de donner un nom au groupe");
+        await _editName(initialErrorText: validationMessage(nameIssue));
       } else {
         showSnack(context, validationMessage(issues.first));
       }
       return;
     }
-    setState(() => _nameError = null);
     if (widget.onSubmit != null) {
       setState(() => _isSubmitting = true);
       try {
@@ -122,6 +119,17 @@ class _GroupEditorState extends State<GroupEditor> {
     }
   }
 
+  Future<void> _editName({String? initialErrorText}) async {
+    final name = await showGroupNameDialog(
+      context,
+      initialName: _controller.name,
+      initialErrorText: initialErrorText,
+    );
+    if (name != null && mounted) {
+      _controller.nameController.text = name;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -134,6 +142,7 @@ class _GroupEditorState extends State<GroupEditor> {
         builder: (context, _) => GroupEditorView(
           controller: _controller,
           mode: widget.effectiveMode,
+          onEditName: _editName,
           onOpenSettings: () => showGroupEditorSettingsDialog(context),
           onAddExercise: () => _dialogs.addExercise(context),
           onAddRest: () => _dialogs.addRest(context),
@@ -149,7 +158,6 @@ class _GroupEditorState extends State<GroupEditor> {
           onDismissQuickWarning: () =>
               setState(() => _showQuickWarning = false),
           isSubmitting: _isSubmitting,
-          nameError: _nameError,
         ),
       ),
     );

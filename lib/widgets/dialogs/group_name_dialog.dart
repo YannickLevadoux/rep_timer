@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import '../../validation/business_validation.dart';
 import 'name_dialog.dart';
 
-/// Demande un nouveau nom de séance sans modifier la valeur existante tant
-/// que l'utilisateur n'a pas validé le dialogue.
-Future<String?> showTrainingNameDialog(
+/// Demande un nouveau nom de groupe en appliquant le contrat métier existant.
+Future<String?> showGroupNameDialog(
   BuildContext context, {
   required String initialName,
   String? initialErrorText,
@@ -13,10 +12,10 @@ Future<String?> showTrainingNameDialog(
   return showNameDialog(
     context,
     initialName: initialName,
-    field: BusinessField.trainingName,
-    title: "Nom de la séance",
-    label: "Nom de la séance",
-    hintText: "Ex : Full Body",
+    field: BusinessField.groupName,
+    title: "Nom du groupe",
+    label: "Nom du groupe",
+    hintText: "Ex : Échauffement",
     initialErrorText: initialErrorText,
   );
 }

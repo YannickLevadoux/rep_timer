@@ -29,7 +29,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('La valeur minimale est 60.'), findsWidgets);
-    expect(find.text('Édition du groupe'), findsOneWidget);
+    expect(find.text('AMRAP'), findsWidgets);
     expect(
       tester
           .widget<DurationMinutesSecondsPicker>(

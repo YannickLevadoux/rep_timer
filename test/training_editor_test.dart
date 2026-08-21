@@ -261,7 +261,7 @@ void main() {
 
     await tester.tap(find.byTooltip('Éditer le groupe'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).first, 'Modifié');
+    await _editGroupName(tester, 'Modifié');
     await tester.tap(find.text('Enregistrer'));
     await tester.pumpAndSettle();
 
@@ -271,7 +271,7 @@ void main() {
 
     await tester.tap(find.byTooltip('Éditer le groupe'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).first, 'Annulé');
+    await _editGroupName(tester, 'Annulé');
     await tester.pageBack();
     await tester.pumpAndSettle();
 
@@ -293,7 +293,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text(GroupType.free.shortLabel).last);
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).first, 'Nouveau');
+    await _editGroupName(tester, 'Nouveau');
     await tester.tap(find.text('Ajouter à la séance'));
     await tester.pumpAndSettle();
 
@@ -532,25 +532,29 @@ void main() {
 
     await _pumpGroupLauncher(
       tester,
-      ExerciseGroup(id: 'group', name: 'Circuit', items: []),
+      ExerciseGroup(id: 'group', name: '', items: []),
       onResult: (group) => savedGroup = group,
     );
     await tester.tap(find.text('Ouvrir'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField).first, '');
     await tester.tap(find.text('Enregistrer'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('Merci de donner un nom au groupe'), findsOneWidget);
-    expect(find.text('Édition du groupe'), findsOneWidget);
+    expect(find.text('Nom du groupe'), findsNWidgets(2));
+    expect(find.text('Ce champ est obligatoire.'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField).first, 'Modifié');
+    await tester.enterText(find.byType(TextField), 'Modifié');
+    await tester.pump();
+    expect(find.text('Ce champ est obligatoire.'), findsNothing);
+    await tester.tap(find.text('Valider'));
+    await tester.pumpAndSettle();
     await tester.pageBack();
     await tester.pumpAndSettle();
     await tester.tap(find.text('Annuler'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Édition du groupe'), findsOneWidget);
+    expect(find.text('Modifié'), findsOneWidget);
     expect(savedGroup, isNull);
   });
 }
@@ -618,5 +622,13 @@ Future<void> _pumpGroupLauncher(
       ),
     ),
   );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _editGroupName(WidgetTester tester, String name) async {
+  await tester.tap(find.byTooltip('Modifier le nom du groupe'));
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byType(TextField), name);
+  await tester.tap(find.text('Valider'));
   await tester.pumpAndSettle();
 }

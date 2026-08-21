@@ -7,6 +7,54 @@ import 'package:rep_timer/screens/group_editor.dart';
 import 'package:rep_timer/widgets/type_selector.dart';
 
 void main() {
+  testWidgets('un groupe édite son nom depuis le titre', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GroupEditor(
+          group: ExerciseGroup(id: 'group', name: 'Circuit', items: []),
+        ),
+      ),
+    );
+
+    expect(find.text('Circuit'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    expect(find.byTooltip('Modifier le nom du groupe'), findsOneWidget);
+    expect(find.byTooltip('Paramètres'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Modifier le nom du groupe'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nom du groupe'), findsNWidgets(2));
+    expect(find.byType(TextField), findsOneWidget);
+    expect(tester.testTextInput.hasAnyClients, isTrue);
+
+    await tester.enterText(find.byType(TextField), '  Échauffement  ');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('Échauffement'), findsOneWidget);
+  });
+
+  testWidgets('annuler l’édition conserve le nom du groupe', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GroupEditor(
+          group: ExerciseGroup(id: 'group', name: 'Circuit', items: []),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Modifier le nom du groupe'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Nom annulé');
+    await tester.tap(find.text('Annuler'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Circuit'), findsOneWidget);
+    expect(find.text('Nom annulé'), findsNothing);
+  });
+
   testWidgets('l’ajout commence sans type, formulaire, clavier ni action', (
     tester,
   ) async {
@@ -41,7 +89,9 @@ void main() {
 
       expect(find.text('Changer de type de groupe ?'), findsNothing);
       expect(find.text('Ajouter à la séance'), findsOneWidget);
-      expect(find.byType(TextField), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text(type.shortLabel), findsWidgets);
+      expect(find.byTooltip('Modifier le nom du groupe'), findsOneWidget);
       expect(
         tester.widget<TypeSelector>(find.byType(TypeSelector)).value,
         type,

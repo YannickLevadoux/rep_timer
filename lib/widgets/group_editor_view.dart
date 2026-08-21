@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../controllers/group_editor_controller.dart';
 import '../models/group_editor_mode.dart';
 import '../models/group_type.dart';
-import '../validation/business_validation.dart';
 import 'group_editor_fields.dart';
 import 'group_type_selection.dart';
 
@@ -13,6 +11,7 @@ class GroupEditorView extends StatelessWidget {
     super.key,
     required this.controller,
     required this.mode,
+    required this.onEditName,
     required this.onOpenSettings,
     required this.onAddExercise,
     required this.onAddRest,
@@ -26,11 +25,11 @@ class GroupEditorView extends StatelessWidget {
     required this.showQuickWarning,
     required this.onDismissQuickWarning,
     required this.isSubmitting,
-    this.nameError,
   });
 
   final GroupEditorController controller;
   final GroupEditorMode mode;
+  final VoidCallback onEditName;
   final VoidCallback onOpenSettings;
   final VoidCallback onAddExercise;
   final VoidCallback onAddRest;
@@ -44,7 +43,6 @@ class GroupEditorView extends StatelessWidget {
   final bool showQuickWarning;
   final VoidCallback onDismissQuickWarning;
   final bool isSubmitting;
-  final String? nameError;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +50,10 @@ class GroupEditorView extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(mode.title),
+        centerTitle: true,
+        title: hasSelectedType
+            ? _GroupTitle(name: controller.name, onEditName: onEditName)
+            : Text(mode.title),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -102,18 +103,6 @@ class GroupEditorView extends StatelessWidget {
                 showInitialMessage: true,
               )
             else ...[
-              TextField(
-                controller: controller.nameController,
-                maxLength: BusinessLimits.maximumNameCharacters,
-                maxLengthEnforcement: MaxLengthEnforcement.none,
-                decoration: InputDecoration(
-                  border: const OutlineInputBorder(),
-                  labelText: "Nom du groupe",
-                  hintText: "Ex : Échauffement",
-                  errorText: nameError,
-                ),
-              ),
-              const SizedBox(height: 16),
               GroupTypeSelection(
                 value: controller.selectedType,
                 onChanged: onTypeChanged,
@@ -136,6 +125,38 @@ class GroupEditorView extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _GroupTitle extends StatelessWidget {
+  const _GroupTitle({required this.name, required this.onEditName});
+
+  final String name;
+  final VoidCallback onEditName;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasName = name.isNotEmpty;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: Text(
+            hasName ? name : "Nouveau groupe",
+            overflow: TextOverflow.ellipsis,
+            style: hasName
+                ? null
+                : const TextStyle(fontStyle: FontStyle.italic),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.edit),
+          tooltip: "Modifier le nom du groupe",
+          onPressed: onEditName,
+        ),
+      ],
     );
   }
 }
