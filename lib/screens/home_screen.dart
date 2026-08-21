@@ -4,10 +4,12 @@ import '../controllers/home_controller.dart';
 import '../controllers/training_history_controller.dart';
 import '../models/training.dart';
 import '../services/app_settings_storage.dart';
+import '../services/json_prefs_storage.dart';
 import '../services/pending_session_recovery_service.dart';
 import '../services/training_history_storage.dart';
 import '../utils/snack.dart';
 import '../utils/validation_messages.dart';
+import '../widgets/dialogs/confirm_dialog.dart';
 import '../widgets/dialogs/duplicate_training_dialog.dart';
 import '../widgets/home_screen_view.dart';
 import 'quick_session_screen.dart';
@@ -123,6 +125,24 @@ class _HomePageState extends State<HomePage> {
     if (mounted && errorMessage != null) showSnack(context, errorMessage);
   }
 
+  Future<void> _deleteTraining(Training training) async {
+    try {
+      await confirmAndDelete(
+        context,
+        title: "Supprimer la séance ?",
+        content:
+            'Cette action est irréversible. Supprimer "${training.name}" ?',
+        onDelete: () => _controller.deleteTraining(training),
+      );
+    } on StorageMutationBlockedException {
+      if (!mounted) return;
+      showSnack(
+        context,
+        "Suppression impossible : certaines séances n'ont pas pu être lues.",
+      );
+    }
+  }
+
   Future<void> _openSettings() async {
     await Navigator.push(
       context,
@@ -170,6 +190,7 @@ class _HomePageState extends State<HomePage> {
         onRetry: _controller.loadTrainings,
         onToggleExpanded: _controller.toggleExpanded,
         onDuplicate: _duplicateTraining,
+        onDelete: _deleteTraining,
         onEdit: (training) => _openEditor(training: training),
         onStart: _startTraining,
         onDestinationSelected: _openDestination,
