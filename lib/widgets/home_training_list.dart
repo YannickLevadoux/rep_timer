@@ -13,6 +13,7 @@ class HomeTrainingList extends StatelessWidget {
     required this.startBlocked,
     required this.onToggleExpanded,
     required this.onDuplicate,
+    required this.onDelete,
     required this.onEdit,
     required this.onStart,
   });
@@ -23,6 +24,7 @@ class HomeTrainingList extends StatelessWidget {
   final bool startBlocked;
   final ValueChanged<String> onToggleExpanded;
   final ValueChanged<Training> onDuplicate;
+  final ValueChanged<Training> onDelete;
   final ValueChanged<Training> onEdit;
   final ValueChanged<Training> onStart;
 
@@ -44,6 +46,7 @@ class HomeTrainingList extends StatelessWidget {
           startBlocked: startBlocked,
           onToggleExpanded: () => onToggleExpanded(training.id),
           onDuplicate: () => onDuplicate(training),
+          onDelete: () => onDelete(training),
           onEdit: () => onEdit(training),
           onStart: () => onStart(training),
         );
@@ -61,6 +64,7 @@ class _HomeTrainingCard extends StatelessWidget {
     required this.startBlocked,
     required this.onToggleExpanded,
     required this.onDuplicate,
+    required this.onDelete,
     required this.onEdit,
     required this.onStart,
   });
@@ -71,6 +75,7 @@ class _HomeTrainingCard extends StatelessWidget {
   final bool startBlocked;
   final VoidCallback onToggleExpanded;
   final VoidCallback onDuplicate;
+  final VoidCallback onDelete;
   final VoidCallback onEdit;
   final VoidCallback onStart;
 
@@ -92,23 +97,61 @@ class _HomeTrainingCard extends StatelessWidget {
           if (expanded)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.copy),
-                    tooltip: "Dupliquer la séance",
-                    onPressed: mutationsBlocked ? null : onDuplicate,
+                  Row(
+                    key: ValueKey('home-primary-actions-${training.id}'),
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.copy),
+                        tooltip: "Dupliquer la séance",
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
+                        ),
+                        onPressed: mutationsBlocked ? null : onDuplicate,
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        tooltip: "Supprimer la séance",
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
+                        ),
+                        onPressed: mutationsBlocked ? null : onDelete,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final onPressed = mutationsBlocked ? null : onEdit;
+                            if (constraints.maxWidth < 144) {
+                              return OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                ),
+                                onPressed: onPressed,
+                                child: const Text("Éditer"),
+                              );
+                            }
+                            return OutlinedButton.icon(
+                              onPressed: onPressed,
+                              icon: const Icon(Icons.edit),
+                              label: const Text("Éditer"),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: mutationsBlocked ? null : onEdit,
-                      icon: const Icon(Icons.edit),
-                      label: const Text("Éditer"),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    key: ValueKey('home-secondary-actions-${training.id}'),
+                    width: double.infinity,
                     child: FilledButton.icon(
                       onPressed: startBlocked ? null : onStart,
                       icon: const Icon(Icons.play_arrow),

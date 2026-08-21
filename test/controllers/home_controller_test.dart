@@ -66,12 +66,69 @@ void main() {
     expect(controller.actions.trainingMutationsAllowed, isFalse);
     expect(controller.actions.sessionStartAllowed, isFalse);
   });
+
+  test(
+    'supprime la séance sélectionnée, recharge et nettoie la sélection',
+    () async {
+      final storage = _FakeTrainingStore(
+        StorageReadSuccess([_training('one'), _training('two')]),
+      );
+      final controller = HomeController(storage: storage);
+      addTearDown(controller.dispose);
+
+      await controller.loadTrainings();
+      controller.toggleExpanded('one');
+      await controller.deleteTraining(controller.trainings.first);
+
+      expect(storage.deletedIds, ['one']);
+      expect(controller.trainings.map((training) => training.id), ['two']);
+      expect(controller.expandedTrainingId, isNull);
+    },
+  );
+
+  test('refuse la suppression lorsque les mutations sont bloquées', () async {
+    final storage = _FakeTrainingStore(
+      StorageReadPartial([_training('one')], rejectedIndexes: const [1]),
+    );
+    final controller = HomeController(storage: storage);
+    addTearDown(controller.dispose);
+
+    await controller.loadTrainings();
+    controller.toggleExpanded('one');
+
+    await expectLater(
+      controller.deleteTraining(controller.trainings.single),
+      throwsA(isA<StorageMutationBlockedException>()),
+    );
+    expect(storage.deletedIds, isEmpty);
+    expect(controller.expandedTrainingId, 'one');
+  });
+
+  test('propage un blocage du stockage et protège la liste affichée', () async {
+    final storage = _FakeTrainingStore(StorageReadSuccess([_training('one')]));
+    final controller = HomeController(storage: storage);
+    addTearDown(controller.dispose);
+
+    await controller.loadTrainings();
+    controller.toggleExpanded('one');
+    storage.blockDeletion = true;
+
+    await expectLater(
+      controller.deleteTraining(controller.trainings.single),
+      throwsA(isA<StorageMutationBlockedException>()),
+    );
+    expect(controller.status, HomeLoadStatus.partial);
+    expect(controller.trainings.single.id, 'one');
+    expect(controller.expandedTrainingId, 'one');
+  });
 }
 
 class _FakeTrainingStore implements TrainingStore {
   _FakeTrainingStore(this.result);
 
   StorageReadResult<List<Training>> result;
+  bool blockDeletion = false;
+  final List<String> deletedIds = [];
 
   @override
   Future<StorageReadResult<List<Training>>> loadTrainings() async => result;
@@ -80,7 +137,17 @@ class _FakeTrainingStore implements TrainingStore {
   Future<void> addOrUpdateTraining(Training training) async {}
 
   @override
-  Future<void> deleteTraining(String id) async {}
+  Future<void> deleteTraining(String id) async {
+    if (blockDeletion) {
+      throw const StorageMutationBlockedException(StorageBlockedState.partial);
+    }
+    deletedIds.add(id);
+    if (result case StorageReadSuccess<List<Training>>(:final data)) {
+      result = StorageReadSuccess(
+        data.where((training) => training.id != id).toList(),
+      );
+    }
+  }
 }
 
 Training _training(String id) => Training(

@@ -106,6 +106,27 @@ class HomeController extends ChangeNotifier {
     return null;
   }
 
+  /// Supprime une séance puis recharge la liste, sans contourner les
+  /// protections appliquées aux mutations depuis l'accueil.
+  Future<void> deleteTraining(Training training) async {
+    if (!actions.trainingMutationsAllowed) {
+      throw const StorageMutationBlockedException(StorageBlockedState.partial);
+    }
+
+    try {
+      await storage.deleteTraining(training.id);
+    } on StorageMutationBlockedException {
+      if (!_disposed) {
+        status = HomeLoadStatus.partial;
+        _notify();
+      }
+      rethrow;
+    }
+
+    if (expandedTrainingId == training.id) expandedTrainingId = null;
+    await loadTrainings();
+  }
+
   void _notify() {
     if (!_disposed) notifyListeners();
   }

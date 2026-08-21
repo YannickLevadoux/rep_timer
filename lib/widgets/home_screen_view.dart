@@ -17,6 +17,7 @@ class HomeScreenView extends StatelessWidget {
     required this.onRetry,
     required this.onToggleExpanded,
     required this.onDuplicate,
+    required this.onDelete,
     required this.onEdit,
     required this.onStart,
     required this.onDestinationSelected,
@@ -31,6 +32,7 @@ class HomeScreenView extends StatelessWidget {
   final VoidCallback onRetry;
   final ValueChanged<String> onToggleExpanded;
   final ValueChanged<Training> onDuplicate;
+  final ValueChanged<Training> onDelete;
   final ValueChanged<Training> onEdit;
   final ValueChanged<Training> onStart;
   final ValueChanged<int> onDestinationSelected;
@@ -74,6 +76,7 @@ class HomeScreenView extends StatelessWidget {
                     startBlocked: !actions.sessionStartAllowed,
                     onToggleExpanded: onToggleExpanded,
                     onDuplicate: onDuplicate,
+                    onDelete: onDelete,
                     onEdit: onEdit,
                     onStart: onStart,
                   ),
