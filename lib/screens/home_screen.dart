@@ -9,8 +9,8 @@ import '../services/pending_session_recovery_service.dart';
 import '../services/training_history_storage.dart';
 import '../utils/snack.dart';
 import '../utils/validation_messages.dart';
-import '../widgets/dialogs/confirm_dialog.dart';
 import '../widgets/dialogs/duplicate_training_dialog.dart';
+import '../widgets/dialogs/training_deletion_dialog.dart';
 import '../widgets/home_screen_view.dart';
 import 'quick_session_screen.dart';
 import 'settings_screen.dart';
@@ -127,11 +127,9 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _deleteTraining(Training training) async {
     try {
-      await confirmAndDelete(
+      await confirmTrainingDeletion(
         context,
-        title: "Supprimer la séance ?",
-        content:
-            'Cette action est irréversible. Supprimer "${training.name}" ?',
+        training: training,
         onDelete: () => _controller.deleteTraining(training),
       );
     } on StorageMutationBlockedException {

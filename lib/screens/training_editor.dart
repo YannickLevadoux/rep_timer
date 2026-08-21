@@ -10,6 +10,7 @@ import '../utils/snack.dart';
 import '../utils/validation_messages.dart';
 import '../validation/business_validation.dart';
 import '../widgets/dialogs/confirm_dialog.dart';
+import '../widgets/dialogs/training_deletion_dialog.dart';
 import '../widgets/dialogs/training_name_dialog.dart';
 import '../widgets/training_editor_view.dart';
 import 'group_editor.dart';
@@ -107,11 +108,9 @@ class _TrainingEditorState extends State<TrainingEditor> {
     if (training == null) return;
 
     try {
-      final deleted = await confirmAndDelete(
+      final deleted = await confirmTrainingDeletion(
         context,
-        title: "Supprimer la séance ?",
-        content:
-            'Cette action est irréversible. Supprimer "${training.name}" ?',
+        training: training,
         onDelete: () => _storage.deleteTraining(training.id),
       );
       if (deleted && mounted) Navigator.pop(context, true);
