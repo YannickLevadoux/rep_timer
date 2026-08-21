@@ -2,16 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../controllers/settings_preferences_controller.dart';
 import '../services/app_settings_storage.dart';
-import '../services/backup_export_exception.dart';
-import '../services/backup_import_exception.dart';
-import '../services/json_prefs_storage.dart';
 import '../services/session_notification_permission_service.dart';
 import '../services/settings_transfer_service.dart';
 import '../utils/snack.dart';
-import '../widgets/backup_import_flow.dart';
 import '../widgets/settings/app_about_dialog.dart';
 import '../widgets/settings/settings_sections.dart';
 import '../widgets/dialogs/pre_session_countdown_dialog.dart';
+import 'export_screen.dart';
+import 'import_screen.dart';
 import 'permissions_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -41,7 +39,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final AppSettingsStorage _settingsStorage;
   late final SettingsPreferencesController _preferences;
   late final SessionNotificationPermissionService _sessionPermissions;
-  bool _busy = false;
   late ThemeMode _themeMode;
   bool _savingTheme = false;
   SessionNotificationPermissionStatus? _sessionPermissionStatus;
@@ -118,45 +115,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) _loadSessionPermissionStatus();
   }
 
-  Future<void> _handleExport() async {
-    setState(() => _busy = true);
-    try {
-      await _transferService.exportAndShare();
-    } on BackupExportException catch (error) {
-      if (mounted) showSnack(context, error.userMessage);
-    } on Object {
-      if (mounted) showSnack(context, "La sauvegarde n'a pas pu être créée.");
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+  void _applyRestoredSettings(ExportableAppSettings settings) {
+    setState(() => _themeMode = settings.themeMode);
+    _preferences.applyRestored(settings);
+    widget.onThemeRestored?.call(settings.themeMode);
   }
 
-  Future<void> _handleImport() async {
-    setState(() => _busy = true);
+  void _openImport() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ImportScreen(
+          transferService: _transferService,
+          onSettingsRestored: _applyRestoredSettings,
+        ),
+      ),
+    );
+  }
 
-    try {
-      final restoredPlan = await runBackupImportFlow(context, _transferService);
-      if (restoredPlan != null && mounted) {
-        setState(() {
-          _themeMode = restoredPlan.settings.themeMode;
-        });
-        _preferences.applyRestored(restoredPlan.settings);
-        widget.onThemeRestored?.call(restoredPlan.settings.themeMode);
-      }
-    } on BackupImportException catch (error) {
-      if (mounted) showSnack(context, error.userMessage);
-    } on StorageMutationBlockedException {
-      if (!mounted) return;
-      showSnack(
-        context,
-        "L'import est impossible car certaines séances enregistrées n'ont "
-        'pas pu être lues.',
-      );
-    } on Object {
-      if (mounted) showSnack(context, "L'import n'a pas pu être terminé.");
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+  void _openExport() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExportScreen(transferService: _transferService),
+      ),
+    );
   }
 
   @override
@@ -170,9 +153,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       onCycleNotificationMode: _preferences.cycleNotificationMode,
       preSessionCountdownSeconds: _preferences.preSessionCountdownSeconds,
       onEditPreSessionCountdown: _editPreSessionCountdown,
-      busy: _busy,
-      onImport: _handleImport,
-      onExport: _handleExport,
+      onImport: _openImport,
+      onExport: _openExport,
       permissionStatus: _sessionPermissionStatus,
       onOpenPermissions: _openPermissions,
       onOpenAbout: () => showRepTimerAboutDialog(context),

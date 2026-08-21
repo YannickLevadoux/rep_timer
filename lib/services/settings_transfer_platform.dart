@@ -7,7 +7,9 @@ typedef BackupFilePicker = Future<BackupFileSelection?> Function();
 typedef BackupFileReader = Future<String> Function(String filePath);
 typedef BackupWriter =
     Future<String> Function(String content, {required DateTime exportedAt});
-typedef BackupShare = Future<void> Function(String filePath);
+typedef BackupShare = Future<TransferShareResult> Function(String filePath);
+
+enum TransferShareResult { success, dismissed, unavailable }
 
 /// Résultat minimal du sélecteur nécessaire à l'orchestration de l'import.
 final class BackupFileSelection {
@@ -30,12 +32,17 @@ abstract final class SettingsTransferPlatform {
   static Future<String> readBackup(String filePath) =>
       File(filePath).readAsString();
 
-  static Future<void> shareBackup(String filePath) async {
-    await SharePlus.instance.share(
+  static Future<TransferShareResult> shareBackup(String filePath) async {
+    final result = await SharePlus.instance.share(
       ShareParams(
         files: [XFile(filePath)],
         subject: 'Export des séances RepTimer',
       ),
     );
+    return switch (result.status) {
+      ShareResultStatus.success => TransferShareResult.success,
+      ShareResultStatus.dismissed => TransferShareResult.dismissed,
+      ShareResultStatus.unavailable => TransferShareResult.unavailable,
+    };
   }
 }

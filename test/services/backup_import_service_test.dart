@@ -398,6 +398,66 @@ void main() {
     expect(controller.group.rounds, 7);
     expect(controller.group.items.single.repetitions, 6);
   });
+
+  test(
+    'le parcours séances refuse une sauvegarde complète sans mutation',
+    () async {
+      final original = jsonEncode([_freeTraining(id: 'local').toJson()]);
+      SharedPreferences.setMockInitialValues({'trainings': original});
+
+      await expectLater(
+        BackupImportService().importTrainings(jsonEncode(_v2Payload())),
+        throwsA(
+          isA<BackupImportException>().having(
+            (error) => error.kind,
+            'kind',
+            BackupImportFailureKind.wrongTrainingImportPath,
+          ),
+        ),
+      );
+
+      expect(
+        (await SharedPreferences.getInstance()).getString('trainings'),
+        original,
+      );
+    },
+  );
+
+  test('le parcours restauration refuse un export de séances', () async {
+    await expectLater(
+      BackupImportService().prepareRestore(
+        jsonEncode(_v1Payload([_freeTraining(id: 'shared').toJson()])),
+      ),
+      throwsA(
+        isA<BackupImportException>().having(
+          (error) => error.kind,
+          'kind',
+          BackupImportFailureKind.wrongRestorePath,
+        ),
+      ),
+    );
+  });
+
+  test('le parcours séances refuse un export v1 vide sans mutation', () async {
+    const original = 'private-original';
+    SharedPreferences.setMockInitialValues({'trainings': original});
+
+    await expectLater(
+      BackupImportService().importTrainings(jsonEncode(_v1Payload([]))),
+      throwsA(
+        isA<BackupImportException>().having(
+          (error) => error.kind,
+          'kind',
+          BackupImportFailureKind.emptyTrainingExport,
+        ),
+      ),
+    );
+
+    expect(
+      (await SharedPreferences.getInstance()).getString('trainings'),
+      original,
+    );
+  });
 }
 
 Map<String, dynamic> _v1Payload(List<Map<String, dynamic>> trainings) => {

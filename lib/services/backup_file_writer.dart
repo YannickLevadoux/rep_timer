@@ -14,9 +14,18 @@ class BackupFileWriter {
   final BackupDirectoryProvider _directoryProvider;
 
   Future<String> write(String content, {required DateTime exportedAt}) async {
+    return _write(content, fileName(exportedAt));
+  }
+
+  Future<String> writeTrainingExport(
+    String content, {
+    required DateTime exportedAt,
+  }) => _write(content, trainingExportFileName(exportedAt));
+
+  Future<String> _write(String content, String fileName) async {
     try {
       final directory = await _directoryProvider();
-      final path = '${directory.path}/${fileName(exportedAt)}';
+      final path = '${directory.path}/$fileName';
       await File(path).writeAsString(content);
       return path;
     } on Object {
@@ -25,6 +34,14 @@ class BackupFileWriter {
   }
 
   static String fileName(DateTime exportedAt) {
+    return 'reptimer_backup_v3_${_timestamp(exportedAt)}.json';
+  }
+
+  static String trainingExportFileName(DateTime exportedAt) {
+    return 'reptimer_trainings_v1_${_timestamp(exportedAt)}.json';
+  }
+
+  static String _timestamp(DateTime exportedAt) {
     final date = exportedAt.toUtc();
     String digits(int value, int width) => value.toString().padLeft(width, '0');
     final timestamp =
@@ -32,6 +49,6 @@ class BackupFileWriter {
         '${digits(date.day, 2)}T${digits(date.hour, 2)}'
         '${digits(date.minute, 2)}${digits(date.second, 2)}'
         '${digits(date.millisecond, 3)}Z';
-    return 'reptimer_backup_v3_$timestamp.json';
+    return timestamp;
   }
 }

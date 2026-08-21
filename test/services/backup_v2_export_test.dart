@@ -13,6 +13,7 @@ import 'package:rep_timer/services/backup_export_service.dart';
 import 'package:rep_timer/services/backup_file_writer.dart';
 import 'package:rep_timer/services/backup_v2_encoder.dart';
 import 'package:rep_timer/services/settings_transfer_service.dart';
+import 'package:rep_timer/services/settings_transfer_platform.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -254,7 +255,10 @@ void main() {
       final service = SettingsTransferService(
         backupService: BackupExportService(now: () => exportedAt),
         fileWriter: BackupFileWriter(directoryProvider: () async => directory),
-        shareBackup: (path) async => sharedPath = path,
+        shareBackup: (path) async {
+          sharedPath = path;
+          return TransferShareResult.success;
+        },
       );
 
       await service.exportAndShare();

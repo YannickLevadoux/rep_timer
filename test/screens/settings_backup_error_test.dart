@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/screens/settings_screen.dart';
+import 'package:rep_timer/services/settings_transfer_platform.dart';
 import 'package:rep_timer/services/settings_transfer_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,24 +24,30 @@ void main() {
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Exporter'));
 
-    await tester.tap(find.text('Exporter'));
+    await tester.tap(find.widgetWithText(ListTile, 'Exporter'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Sauvegarder les données'),
+    );
     await tester.pumpAndSettle();
 
-    expect(find.text("La sauvegarde n'a pas pu être créée."), findsOneWidget);
+    expect(find.text("Le fichier n'a pas pu être partagé."), findsOneWidget);
     expect(find.textContaining('private-technical-detail'), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(
       tester
-          .widget<ListTile>(find.widgetWithText(ListTile, 'Exporter'))
-          .enabled,
-      isTrue,
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Sauvegarder les données'),
+          )
+          .onPressed,
+      isNotNull,
     );
   });
 }
 
 class _FailingTransferService extends SettingsTransferService {
   @override
-  Future<void> exportAndShare() async {
+  Future<TransferShareResult> exportAndShare() async {
     throw StateError('private-technical-detail');
   }
 }
