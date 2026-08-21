@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/main.dart';
+import 'package:rep_timer/screens/home_screen.dart';
 import 'package:rep_timer/services/app_settings_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -54,6 +55,43 @@ void main() {
     expect(await storage.loadThemeMode(), ThemeMode.light);
   });
 
+  testWidgets('le cycle du thème couvre clair, sombre et système', (
+    tester,
+  ) async {
+    final storage = AppSettingsStorage();
+    await tester.pumpWidget(
+      MyApp(initialThemeMode: ThemeMode.light, settingsStorage: storage),
+    );
+    await tester.pumpAndSettle();
+    await _openSettings(tester);
+
+    await tester.tap(find.byTooltip(_lightThemeTooltip));
+    await tester.pumpAndSettle();
+    expect(_materialApp(tester).themeMode, ThemeMode.dark);
+    expect(find.text('Sombre'), findsOneWidget);
+    expect(await storage.loadThemeMode(), ThemeMode.dark);
+
+    await tester.tap(find.byTooltip(_darkThemeTooltip));
+    await tester.pumpAndSettle();
+    expect(_materialApp(tester).themeMode, ThemeMode.system);
+    expect(find.text('Système'), findsOneWidget);
+    expect(await storage.loadThemeMode(), ThemeMode.system);
+  });
+
+  testWidgets('un thème restauré met immédiatement à jour MaterialApp', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MyApp());
+    await tester.pumpAndSettle();
+    expect(_materialApp(tester).themeMode, ThemeMode.system);
+
+    final home = tester.widget<HomePage>(find.byType(HomePage));
+    home.onThemeRestored!(ThemeMode.dark);
+    await tester.pump();
+
+    expect(_materialApp(tester).themeMode, ThemeMode.dark);
+  });
+
   testWidgets(
     'un échec d’écriture conserve le thème confirmé et masque l’erreur',
     (tester) async {
@@ -77,6 +115,8 @@ void main() {
 }
 
 const _systemThemeTooltip = 'Thème : Système (appuyer pour changer)';
+const _lightThemeTooltip = 'Thème : Clair (appuyer pour changer)';
+const _darkThemeTooltip = 'Thème : Sombre (appuyer pour changer)';
 
 MaterialApp _materialApp(WidgetTester tester) =>
     tester.widget<MaterialApp>(find.byType(MaterialApp));
