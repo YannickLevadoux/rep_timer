@@ -15,7 +15,6 @@ class SettingsContent extends StatelessWidget {
   final int preSessionCountdownSeconds;
   final VoidCallback onEditPreSessionCountdown;
   final VoidCallback onCycleNotificationMode;
-  final bool busy;
   final VoidCallback onImport;
   final VoidCallback onExport;
   final SessionNotificationPermissionStatus? permissionStatus;
@@ -32,7 +31,6 @@ class SettingsContent extends StatelessWidget {
     required this.preSessionCountdownSeconds,
     required this.onEditPreSessionCountdown,
     required this.onCycleNotificationMode,
-    required this.busy,
     required this.onImport,
     required this.onExport,
     required this.permissionStatus,
@@ -62,11 +60,7 @@ class SettingsContent extends StatelessWidget {
             notificationMode: notificationMode,
             onCycleMode: onCycleNotificationMode,
           ),
-          TransferSettingsSection(
-            busy: busy,
-            onImport: onImport,
-            onExport: onExport,
-          ),
+          TransferSettingsSection(onImport: onImport, onExport: onExport),
           PermissionsSettingsSection(
             permissionStatus: permissionStatus,
             onOpenPermissions: onOpenPermissions,

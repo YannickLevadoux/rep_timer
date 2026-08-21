@@ -9,6 +9,9 @@ enum BackupImportFailureKind {
   incompatibleData,
   invalidTraining,
   invalidHistory,
+  wrongTrainingImportPath,
+  wrongRestorePath,
+  emptyTrainingExport,
   restoreFailed,
   rollbackFailed,
 }
@@ -42,6 +45,14 @@ final class BackupImportException implements Exception {
     BackupImportFailureKind.invalidTraining => _invalidTrainingMessage(),
     BackupImportFailureKind.invalidHistory =>
       "L'entrée d'historique ${(entityIndex ?? 0) + 1} est invalide.",
+    BackupImportFailureKind.wrongTrainingImportPath =>
+      'Ce fichier est une sauvegarde complète. Utilisez « Restaurer les '
+          'données ».',
+    BackupImportFailureKind.wrongRestorePath =>
+      'Ce fichier contient des séances à ajouter. Utilisez « Importer des '
+          'séances ».',
+    BackupImportFailureKind.emptyTrainingExport =>
+      "Ce fichier ne contient aucune séance à importer.",
     BackupImportFailureKind.restoreFailed =>
       "La restauration a échoué. Les données précédentes ont été rétablies.",
     BackupImportFailureKind.rollbackFailed =>

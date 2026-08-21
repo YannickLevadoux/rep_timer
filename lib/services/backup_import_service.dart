@@ -2,6 +2,7 @@ import '../models/backup_import_models.dart';
 import '../models/training.dart';
 import '../models/training_history_entry.dart';
 import 'app_settings_storage.dart';
+import 'backup_import_exception.dart';
 import 'backup_import_parser.dart';
 import 'backup_restore_service.dart';
 import 'json_prefs_storage.dart';
@@ -43,6 +44,35 @@ class BackupImportService {
         localDataWarning: await _localDataNeedsWarning(),
       ),
     };
+  }
+
+  Future<int> importTrainings(String content) async {
+    final plan = _parser.parse(content);
+    if (plan is BackupRestorePlan) {
+      throw const BackupImportException(
+        BackupImportFailureKind.wrongTrainingImportPath,
+      );
+    }
+    final v1Plan = plan as V1ImportPlan;
+    if (v1Plan.trainings.isEmpty) {
+      throw const BackupImportException(
+        BackupImportFailureKind.emptyTrainingExport,
+      );
+    }
+    return _v1Adapter.applyV1(v1Plan);
+  }
+
+  Future<RestorePending> prepareRestore(String content) async {
+    final plan = _parser.parse(content);
+    if (plan is V1ImportPlan) {
+      throw const BackupImportException(
+        BackupImportFailureKind.wrongRestorePath,
+      );
+    }
+    return RestorePending(
+      plan: plan as BackupRestorePlan,
+      localDataWarning: await _localDataNeedsWarning(),
+    );
   }
 
   Future<void> restoreBackup(BackupRestorePlan plan) => restoreV2(plan);

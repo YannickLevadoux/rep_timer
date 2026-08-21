@@ -3,13 +3,11 @@ import 'package:flutter/material.dart';
 import '../settings_section.dart';
 
 class TransferSettingsSection extends StatelessWidget {
-  final bool busy;
   final VoidCallback onImport;
   final VoidCallback onExport;
 
   const TransferSettingsSection({
     super.key,
-    required this.busy,
     required this.onImport,
     required this.onExport,
   });
@@ -23,27 +21,14 @@ class TransferSettingsSection extends StatelessWidget {
           leading: const Icon(Icons.file_upload_outlined),
           title: const Text('Importer'),
           subtitle: const Text('Importer ou restaurer depuis un fichier'),
-          enabled: !busy,
           onTap: onImport,
         ),
         ListTile(
           leading: const Icon(Icons.file_download_outlined),
           title: const Text('Exporter'),
           subtitle: const Text('Partager une sauvegarde complète'),
-          enabled: !busy,
           onTap: onExport,
         ),
-        if (busy)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-          ),
       ],
     );
   }

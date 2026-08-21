@@ -1,69 +1,69 @@
 # Importer, exporter et restaurer
 
-Les actions se trouvent dans **Paramètres**, section **Import / Export**.
-RepTimer reconnaît trois formats dont les effets sont volontairement différents.
+Les entrées **Importer** et **Exporter** de **Paramètres > Import / Export**
+ouvrent deux écrans distincts. Les quatre parcours ne sont pas
+interchangeables : un fichier choisi dans le mauvais parcours est refusé avant
+toute modification.
 
-| Fichier sélectionné | Action | Séances locales | Historique et préférences |
-| --- | --- | --- | --- |
-| Export v1 historique | Import additif | Conservées, les séances importées sont ajoutées avec de nouveaux identifiants | Inchangés |
-| Sauvegarde v2 | Restauration complète rétrocompatible | Remplacées par celles de la sauvegarde | Historique et préférences remplacés ; compte à rebours remis à 0 |
-| Sauvegarde v3 | Restauration complète après confirmation | Remplacées par celles de la sauvegarde | Historique et quatre préférences exportables remplacés |
+| Parcours | Format | Effet |
+| --- | --- | --- |
+| Exporter des séances | Crée un export v1 | Partage uniquement les séances sélectionnées |
+| Importer des séances | Accepte un export v1 | Ajoute les séances sans remplacer les données locales |
+| Sauvegarder les données | Crée une sauvegarde v3 | Partage toutes les données couvertes par la sauvegarde complète |
+| Restaurer les données | Accepte une sauvegarde v2 ou v3 | Remplace les données locales après confirmation |
 
-## Exporter une sauvegarde v3
+## Partager des séances
 
-Choisir **Exporter** construit puis partage un fichier JSON v3 contenant :
+Dans **Exporter > Exporter des séances**, toutes les séances sont cochées par
+défaut. Elles peuvent être sélectionnées individuellement, avec **Tout cocher**
+ou **Tout décocher**. L'export est désactivé lorsque la sélection est vide.
 
-- toutes les séances, y compris les groupes à répétitions variables et leurs
-  valeurs dormantes ;
-- tout l'historique ;
-- le thème, le préremplissage du nom des exercices, le mode de notification et
-  le compte à rebours de préparation de 0 à 15 secondes ;
-- l'identifiant RepTimer, la version du format et la date d'export.
+Le fichier v1 conserve l'ordre affiché et les définitions complètes des
+séances choisies, dont les groupes libres, à répétitions variables, Tabata,
+AMRAP et EMOM. Il ne contient ni historique, ni préférences, ni checkpoint.
+RepTimer valide toute la sélection avant d'écrire et de partager le fichier.
 
-Le checkpoint d'une séance en cours, les permissions Android, l'exemption
-batterie et les réglages techniques internes sont exclus. RepTimer valide
-toutes les données avant de créer le fichier et refuse de présenter comme
-complète une sauvegarde dont une partie n'a pas pu être lue.
+Dans **Importer > Importer des séances**, ce fichier est validé intégralement,
+puis toutes ses séances sont ajoutées à la liste locale avec de nouveaux
+identifiants de séances et de groupes. Les séances déjà présentes, les noms en
+double, l'historique, les préférences et le checkpoint restent inchangés. Un
+export v1 vide est refusé.
 
-Le schéma détaillé est décrit dans le [contrat de sauvegarde v3](backup-v3.md).
-Depuis RepTimer 1.3.0, l'application ne crée plus d'export v1.
+## Sauvegarder et restaurer toutes les données
 
-## Importer un ancien fichier v1
+**Exporter > Sauvegarder les données** crée exclusivement une sauvegarde v3
+contenant toutes les séances, tout l'historique, les préférences exportables et
+les métadonnées du format. Le checkpoint d'une séance en cours, les permissions
+Android et les réglages techniques internes restent exclus.
 
-Choisir **Importer**, puis sélectionner un export v1 ajoute uniquement ses
-séances à la liste existante. RepTimer attribue de nouveaux identifiants aux
-séances et groupes importés afin d'éviter les collisions.
+**Importer > Restaurer les données** accepte les sauvegardes v3 ainsi que les
+anciennes sauvegardes v2, conservées uniquement pour la compatibilité en
+lecture. RepTimer ne crée plus de sauvegarde v2. Après validation complète, un
+dialogue résume la date, les séances, l'historique et les préférences avant de
+proposer la restauration destructive.
 
-Ce chemin ne modifie ni l'historique ni les préférences. Les anciens groupes,
-qui ne possèdent ni type ni suite de répétitions, restent des groupes libres.
-Tout le fichier est validé avant écriture : une séance invalide annule
-l'import entier sans mutation partielle.
+La confirmation remplace transactionnellement les séances, l'historique et les
+préférences, applique immédiatement le thème restauré et supprime le checkpoint
+local. Une sauvegarde valide sans séance ou sans historique reste restaurable :
+le dialogue prévient alors explicitement que les données locales correspondantes
+seront toutes supprimées. Si les deux ensembles sont vides, toutes les séances
+et tout l'historique locaux sont supprimés, puis les préférences du fichier sont
+appliquées. Ce n'est pas une remise aux paramètres d'usine.
 
-## Restaurer une sauvegarde v2 ou v3
+En cas d'échec d'écriture, RepTimer restaure les anciennes données et n'annonce
+jamais de succès partiel. Annuler le dialogue ne modifie rien.
 
-Après la sélection d'un fichier v2 ou v3 valide, RepTimer affiche un résumé avec sa
-date, le nombre de séances, le nombre d'entrées d'historique et les préférences
-à restaurer.
+## Annulations et erreurs
 
-L'action **Restaurer** est destructive : après confirmation, elle remplace
-intégralement les séances et l'historique, puis remplace le thème, le
-préremplissage du nom, le mode de notification et le compte à rebours. Une
-sauvegarde v2 utilise la valeur 0 pour ce dernier. Le thème est appliqué
-immédiatement et le checkpoint local est supprimé. Les permissions Android et
-les autres drapeaux internes restent inchangés.
+Fermer un sélecteur sans choisir de fichier affiche une annulation et conserve
+l'écran **Importer**. Fermer explicitement la feuille de partage affiche une
+annulation et conserve l'écran **Exporter**. Quand la plateforme accepte le
+partage ou ne peut pas en déterminer le résultat, RepTimer considère que le
+fichier lui a été confié, affiche le succès puis revient aux Paramètres.
 
-**Annuler** ne modifie aucune donnée. En cas d'échec pendant l'écriture,
-RepTimer tente de restaurer exactement les valeurs précédentes et n'annonce
-jamais un succès partiel.
+Une lecture partielle ou illisible, un JSON invalide, un fichier d'une autre
+application, une version inconnue ou un format utilisé dans le mauvais parcours
+est refusé sans mutation ni partage. Après une erreur, l'écran courant reste
+ouvert afin de permettre une nouvelle tentative.
 
-## Précautions
-
-- conserver le fichier source jusqu'à la fin de la vérification ;
-- vérifier le résumé avant de confirmer une restauration v2 ou v3 ;
-- réaliser les essais destructifs sur des données de test ou après avoir créé
-  une sauvegarde récente ;
-- ne jamais utiliser l'unique copie de données personnelles de production pour
-  tester une restauration.
-
-Un JSON invalide, un fichier destiné à une autre application ou une version de
-format inconnue est refusé avant toute écriture.
+Le schéma complet v3 est décrit dans le [contrat de sauvegarde v3](backup-v3.md).

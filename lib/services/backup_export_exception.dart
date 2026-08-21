@@ -8,6 +8,7 @@ enum BackupExportFailureKind {
   historyUnreadable,
   preferencesUnreadable,
   invalidTraining,
+  emptySelection,
   fileWrite,
   share,
 }
@@ -32,10 +33,12 @@ final class BackupExportException implements Exception {
     BackupExportFailureKind.preferencesUnreadable =>
       "L'export est impossible : les préférences n'ont pas pu être lues.",
     BackupExportFailureKind.invalidTraining => _invalidTrainingMessage(),
+    BackupExportFailureKind.emptySelection =>
+      'Sélectionnez au moins une séance à exporter.',
     BackupExportFailureKind.fileWrite =>
-      "La sauvegarde n'a pas pu être créée sur l'appareil.",
+      "Le fichier n'a pas pu être créé sur l'appareil.",
     BackupExportFailureKind.share =>
-      "La sauvegarde a été créée, mais n'a pas pu être partagée.",
+      "Le fichier a été créé, mais n'a pas pu être partagé.",
   };
 
   String _invalidTrainingMessage() {

@@ -62,11 +62,7 @@ class _RestoreBackupDialog extends StatelessWidget {
                   : '${settings.preSessionCountdownSeconds} secondes',
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Cette restauration remplacera définitivement vos séances, '
-              'votre historique et vos préférences actuelles par le contenu '
-              'de la sauvegarde sélectionnée.',
-            ),
+            _DestructiveWarning(message: _replacementWarning(plan)),
             if (localDataWarning) ...[
               const SizedBox(height: 12),
               Text(
@@ -101,6 +97,52 @@ class _RestoreBackupDialog extends StatelessWidget {
     return '${two(date.day)}/${two(date.month)}/${date.year} '
         '${two(date.hour)}:${two(date.minute)}';
   }
+}
+
+String _replacementWarning(BackupRestorePlan plan) {
+  final trainingsEmpty = plan.trainings.isEmpty;
+  final historyEmpty = plan.history.isEmpty;
+  if (trainingsEmpty && historyEmpty) {
+    return 'Cette sauvegarde ne contient aucune séance ni aucun historique. '
+        'La restauration supprimera définitivement toutes vos séances et tout '
+        'votre historique actuels, puis appliquera les préférences contenues '
+        'dans le fichier.';
+  }
+  if (trainingsEmpty) {
+    return 'Cette sauvegarde ne contient aucune séance. La restauration '
+        'supprimera définitivement toutes vos séances actuelles, remplacera '
+        'votre historique puis appliquera les préférences du fichier.';
+  }
+  if (historyEmpty) {
+    return 'Cette sauvegarde ne contient aucun historique. La restauration '
+        'supprimera définitivement tout votre historique actuel, remplacera '
+        'vos séances puis appliquera les préférences du fichier.';
+  }
+  return 'Cette restauration remplacera définitivement vos séances, votre '
+      'historique et vos préférences actuelles par le contenu de la '
+      'sauvegarde sélectionnée.';
+}
+
+class _DestructiveWarning extends StatelessWidget {
+  const _DestructiveWarning({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'Avertissement : $message',
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          Icons.warning_amber_rounded,
+          color: Theme.of(context).colorScheme.error,
+        ),
+        const SizedBox(width: 8),
+        Expanded(child: Text(message)),
+      ],
+    ),
+  );
 }
 
 class _SummaryLine extends StatelessWidget {
