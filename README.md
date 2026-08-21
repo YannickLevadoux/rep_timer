@@ -26,6 +26,8 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Pauses chronométrées entre les exercices.
 - Réorganisation des groupes et des exercices par glisser-déposer depuis une poignée dédiée.
 - Groupes initialement repliés dans l'éditeur de séance, avec aperçu dépliable de leur contenu et écran dédié à l'édition de leurs paramètres, exercices et pauses.
+- Les noms des séances et des groupes s'affichent dans la barre de titre et se modifient depuis le titre ou son crayon. Les nouveaux groupes Libre et Variables reçoivent immédiatement un nom modifiable.
+- Le clavier propose naturellement une majuscule au début des noms et des textes libres, sans modifier automatiquement la casse choisie par l'utilisateur.
 - Option permettant de désactiver le préremplissage du nom des nouveaux exercices avec le nom du groupe.
 - Duplication d'une séance depuis l'écran d'accueil, avec choix du nom de la copie ; la nouvelle séance reste indépendante de l'originale.
 - Icône personnalisable par exercice, parmi une liste prédéfinie.
@@ -46,10 +48,16 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Si l'ordre d'exécution est modifié manuellement (exercices/pauses sautés, groupes réalisés dans un autre ordre) et que le dernier exercice du dernier groupe est terminé alors que des éléments restent non réalisés, la séance ne se termine pas automatiquement : elle se met en pause et propose de **reprendre à un exercice de son choix** (via l'écran de progression) ou de **terminer la séance** (enregistrée avec le statut `Incomplète`).
 - Si une pause est définie à la fin de la séance (dernière pause du dernier groupe), cette pause sera ignorée.
 - Alerte de fin des exercices et pauses chronométrés, configurable sur **Son**, **Vibration** ou **Rien** depuis les paramètres et ajustable pendant la séance.
+- Les signaux sonores et leurs aperçus diminuent temporairement le volume d'une autre application audio au lieu d'interrompre sa lecture.
 - Notification Android persistante pendant qu'un chronomètre est actif (pause, exercice Temps ou Durée libre — jamais pour un exercice Répétitions) : icône Play/Pause dans la barre d'état, nom de l'exercice/de la pause et temps restant (ou écoulé en Durée libre), prochain élément de la séance et bouton **Pause** / **Reprendre**. Un appui sur la notification rouvre la séance. Repose sur un vrai Foreground Service Android (et non une simple notification), afin que la mise à jour du chronomètre ainsi que le son/la vibration de fin d'exercice restent fiables même lorsque l'application est en arrière-plan. Disparaît automatiquement à la fin, à l'abandon, ou à l'arrêt de la séance.
 - Exécution tour par tour des groupes à répétitions variables, avec la valeur résolue affichée et conservée dans l'historique. La reprise d'une séance interrompue restaure le bon tour et la bonne répétition.
 - Exécution des Tabata cycle par cycle, des AMRAP avec suivi et annulation du dernier tour, et des EMOM minute par minute. Les récupérations configurées après un groupe ne sont exécutées que lorsqu'un autre groupe suit.
 - Compte à rebours de préparation facultatif de 0 à 15 secondes, commun aux séances enregistrées et rapides. Il peut être mis en pause ou passé et n'est jamais inclus dans les chronos, checkpoints, estimations, historiques ou statistiques.
+- Avant chaque lancement, un contrôle permet d'activer ou de désactiver temporairement cette préparation. Si le réglage global vaut 0, une durée peut être choisie uniquement pour la séance à venir, sans modifier les Paramètres.
+
+### Accueil
+- La sélection d'une séance affiche les actions **Dupliquer**, **Supprimer** et **Éditer** sur une première ligne, puis **Commencer** sur toute la largeur.
+- La suppression réutilise la même confirmation que l'éditeur et laisse la liste ainsi que la sélection dans un état cohérent.
 
 ### Session rapide
 - Lancement d'un groupe Libre, à répétitions variables, Tabata, AMRAP ou EMOM sans créer d'entraînement enregistré (accessible via « Rapide » dans la barre de navigation).
@@ -66,9 +74,9 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Détail des tours terminés et du tour partiel pour un AMRAP, ainsi que de chaque minute terminée ou incomplète pour un EMOM.
 
 ### Import / Export
-- Export d'une sauvegarde complète v3 via la fenêtre standard de partage : séances, historique, groupes temporisés et préférences exportables.
-- Compatibilité avec les anciens exports v1, importés de façon additive sans modifier l'historique ni les préférences.
-- Restauration v2/v3 complète après présentation d'un résumé et confirmation explicite, avec repli du compte à rebours à 0 pour v2.
+- Deux parcours de partage de séances : **Exporter des séances** crée un fichier v1 à partir des séances sélectionnées et **Importer des séances** les ajoute avec de nouveaux identifiants, sans remplacer les données locales.
+- Deux parcours distincts pour les données complètes : **Sauvegarder les données** crée une sauvegarde v3 et **Restaurer les données** accepte les sauvegardes v2/v3 après présentation d'un résumé et confirmation explicite.
+- Un fichier choisi dans le mauvais parcours est refusé avant toute mutation. L'import de séances reste strictement additif, tandis que la restauration complète remplace les séances, l'historique et les préférences couverts par la sauvegarde.
 - Lecture défensive du stockage local : les données récupérables restent consultables, les erreurs sont signalées sans exposer leur contenu et les mutations susceptibles d'écraser des données illisibles sont bloquées.
 
 ### Interface
@@ -142,6 +150,9 @@ releases](docs/release.md).
   authentification, validations et reproductibilité.
 - [Builds et releases](docs/release.md) : distributions DEV et officielles,
   métadonnées, signature, dialogue « À propos » et publication.
+- [Notes de version 1.5.0](docs/release-notes-1.5.0.md) : préparation au
+  lancement, édition des noms, actions de la Home, audio et nouveaux parcours
+  de partage et de sauvegarde.
 - [Notes de version 1.4.0](docs/release-notes-1.4.0.md) : groupes temporisés,
   Session rapide, préparation et compatibilité des sauvegardes.
 - [Notes de version 1.3.2](docs/release-notes-1.3.2.md) : couverture CI,
