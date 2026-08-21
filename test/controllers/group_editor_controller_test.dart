@@ -33,11 +33,11 @@ void main() {
       expect(controller.hasUnsavedChanges, isTrue);
       switch (type) {
         case GroupType.free:
-          expect(controller.group.name, isEmpty);
+          expect(controller.group.name, 'Libre');
           expect(controller.group.items, isEmpty);
           expect(controller.group.rounds, 1);
         case GroupType.variableRepetitions:
-          expect(controller.group.name, isEmpty);
+          expect(controller.group.name, 'Variables');
           expect(controller.group.items, isEmpty);
           expect(controller.group.repetitionSequence, [1]);
         case GroupType.tabata:
@@ -217,10 +217,10 @@ void main() {
   test('crée les brouillons Libre et Variables depuis Tabata', () {
     final controller = GroupEditorController(ExerciseGroup.tabata(id: 'g'));
     controller.switchType(GroupType.free);
-    expect(controller.group.name, 'Groupe libre');
+    expect(controller.group.name, 'Libre');
     controller.switchType(GroupType.variableRepetitions);
     expect(controller.group.repetitionSequence, [1]);
-    expect(controller.group.name, 'Groupe libre');
+    expect(controller.group.name, 'Libre');
     controller.dispose();
   });
 

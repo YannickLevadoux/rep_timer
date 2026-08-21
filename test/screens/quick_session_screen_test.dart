@@ -147,7 +147,7 @@ void main() {
 
     await tester.tap(find.text('Rester'));
     await tester.pumpAndSettle();
-    expect(find.text('Session rapide'), findsOneWidget);
+    expect(find.byTooltip('Modifier le nom du groupe'), findsOneWidget);
 
     await tester.pageBack();
     await tester.pumpAndSettle();
@@ -418,10 +418,6 @@ Future<void> _configureRepetitionExercise(
   GroupType type,
 ) async {
   await _selectType(tester, type);
-  await tester.enterText(
-    find.byType(TextField).first,
-    type == GroupType.free ? 'Groupe libre' : 'Répétitions variables',
-  );
   await tester.tap(find.text('Exercice'));
   await tester.pumpAndSettle();
   final fields = find.descendant(

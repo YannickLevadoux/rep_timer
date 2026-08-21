@@ -10,10 +10,14 @@ class GroupEditorDraftFactory {
         GroupType.tabata => ExerciseGroup.tabata(id: id),
         GroupType.amrap => ExerciseGroup.amrap(id: id),
         GroupType.emom => ExerciseGroup.emom(id: id),
-        GroupType.free => ExerciseGroup(id: id, name: '', items: []),
+        GroupType.free => ExerciseGroup(
+          id: id,
+          name: GroupType.free.shortLabel,
+          items: [],
+        ),
         GroupType.variableRepetitions => ExerciseGroup(
           id: id,
-          name: '',
+          name: GroupType.variableRepetitions.shortLabel,
           type: type,
           repetitionSequence: const [BusinessLimits.minimumCount],
           items: [],
@@ -32,12 +36,12 @@ class GroupEditorDraftFactory {
       GroupType.emom => ExerciseGroup.emom(id: current.id),
       GroupType.free => ExerciseGroup(
         id: current.id,
-        name: 'Groupe libre',
+        name: GroupType.free.shortLabel,
         items: [],
       ),
       GroupType.variableRepetitions => ExerciseGroup(
         id: current.id,
-        name: 'Répétitions variables',
+        name: GroupType.variableRepetitions.shortLabel,
         type: type,
         repetitionSequence: const [BusinessLimits.minimumCount],
         items: [],
