@@ -10,6 +10,7 @@ import '../utils/snack.dart';
 import '../utils/validation_messages.dart';
 import '../validation/business_validation.dart';
 import '../widgets/dialogs/confirm_dialog.dart';
+import '../widgets/dialogs/training_name_dialog.dart';
 import '../widgets/training_editor_view.dart';
 import 'group_editor.dart';
 
@@ -25,7 +26,6 @@ class TrainingEditor extends StatefulWidget {
 class _TrainingEditorState extends State<TrainingEditor> {
   final TrainingStorage _storage = TrainingStorage();
   late final TrainingEditorController _controller;
-  String? _nameError;
 
   @override
   void initState() {
@@ -46,11 +46,9 @@ class _TrainingEditorState extends State<TrainingEditor> {
         .where((issue) => issue.field == BusinessField.trainingName)
         .firstOrNull;
     if (issues.isNotEmpty) {
-      setState(() {
-        _nameError = nameIssue == null ? null : validationMessage(nameIssue);
-      });
       if (nameIssue != null) {
         showSnack(context, "Merci de donner un nom à la séance");
+        await _editName(initialErrorText: validationMessage(nameIssue));
       } else {
         showSnack(context, validationMessage(issues.first));
       }
@@ -91,6 +89,17 @@ class _TrainingEditorState extends State<TrainingEditor> {
     hasUnsavedChanges: _controller.hasUnsavedChanges,
     onSave: _saveTraining,
   );
+
+  Future<void> _editName({String? initialErrorText}) async {
+    final name = await showTrainingNameDialog(
+      context,
+      initialName: _controller.name,
+      initialErrorText: initialErrorText,
+    );
+    if (name != null && mounted) {
+      _controller.nameController.text = name;
+    }
+  }
 
   Future<void> _confirmDeleteTraining() async {
     FocusScope.of(context).unfocus();
@@ -176,11 +185,11 @@ class _TrainingEditorState extends State<TrainingEditor> {
           controller: _controller,
           canDeleteTraining: widget.training != null,
           onDeleteTraining: _confirmDeleteTraining,
+          onEditName: _editName,
           onAddGroup: _addGroup,
           onEditGroup: _editGroup,
           onDeleteGroup: _deleteGroup,
           onSave: _saveTraining,
-          nameError: _nameError,
         ),
       ),
     );
