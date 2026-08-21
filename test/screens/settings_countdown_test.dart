@@ -18,7 +18,7 @@ void main() {
     await _pumpSettings(tester);
     await _scrollToCountdown(tester);
 
-    expect(find.text('Séance'), findsOneWidget);
+    expect(find.text('Séances'), findsOneWidget);
     expect(find.text('1 seconde'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('pre-session-countdown-setting')));
@@ -67,6 +67,19 @@ void main() {
           .onPressed,
       isNull,
     );
+  });
+
+  testWidgets('place Séances entre Édition et Notifications', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await _pumpSettings(tester);
+
+    final editingTop = tester.getTopLeft(find.text('Édition')).dy;
+    final sessionTop = tester.getTopLeft(find.text('Séances')).dy;
+    final notificationsTop = tester.getTopLeft(find.text('Notifications')).dy;
+
+    expect(sessionTop, greaterThan(editingTop));
+    expect(sessionTop, lessThan(notificationsTop));
   });
 }
 

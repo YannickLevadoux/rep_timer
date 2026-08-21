@@ -181,6 +181,103 @@ void main() {
     expect(session.preSessionCountdownSeconds, 6);
   });
 
+  testWidgets('désactiver la préparation ne vaut que pour la séance lancée', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      AppSettingsStorage.preSessionCountdownSecondsKey: 6,
+    });
+    final training = _training(groups: [_group('Groupe')]);
+    await _pumpSummary(tester, training);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Préparation : 6 secondes'), findsOneWidget);
+    expect(
+      tester
+          .widget<Switch>(
+            find.byKey(const Key('pre-session-preparation-switch')),
+          )
+          .value,
+      isTrue,
+    );
+
+    await tester.tap(find.byKey(const Key('pre-session-preparation-switch')));
+    await tester.pump();
+    expect(find.text('Préparation : Désactivée'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('pre-session-preparation-switch')));
+    await tester.pump();
+    expect(find.text('Compte à rebours'), findsNothing);
+    expect(find.text('Préparation : 6 secondes'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('pre-session-preparation-switch')));
+    await tester.pump();
+    await tester.tap(find.text('Commencer'));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(_session(tester).preSessionCountdownSeconds, 0);
+    expect(await AppSettingsStorage().loadPreSessionCountdownSeconds(), 6);
+  });
+
+  testWidgets('active temporairement une préparation globale à zéro', (
+    tester,
+  ) async {
+    await _pumpSummary(tester, _training(groups: [_group('Groupe')]));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Préparation : Désactivée'), findsOneWidget);
+    expect(
+      tester
+          .widget<Switch>(
+            find.byKey(const Key('pre-session-preparation-switch')),
+          )
+          .value,
+      isFalse,
+    );
+    expect(
+      tester
+          .widget<Switch>(
+            find.byKey(const Key('pre-session-preparation-switch')),
+          )
+          .onChanged,
+      isNotNull,
+    );
+
+    await tester.tap(find.byKey(const Key('pre-session-preparation-switch')));
+    await tester.pumpAndSettle();
+    expect(find.text('Compte à rebours'), findsOneWidget);
+    await _selectCountdown(tester, 10);
+
+    expect(find.text('Préparation : 10 secondes'), findsOneWidget);
+    await tester.tap(find.text('Commencer'));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(_session(tester).preSessionCountdownSeconds, 10);
+    expect(await AppSettingsStorage().loadPreSessionCountdownSeconds(), 0);
+  });
+
+  testWidgets('annuler le sélecteur conserve la préparation désactivée', (
+    tester,
+  ) async {
+    await _pumpSummary(tester, _training(groups: [_group('Groupe')]));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('pre-session-preparation-switch')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Annuler'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Préparation : Désactivée'), findsOneWidget);
+    expect(
+      tester
+          .widget<Switch>(
+            find.byKey(const Key('pre-session-preparation-switch')),
+          )
+          .value,
+      isFalse,
+    );
+  });
+
   testWidgets('une suite variable pilote statistiques et aperçu des tours', (
     tester,
   ) async {
@@ -282,6 +379,20 @@ Color _statisticsBackground(WidgetTester tester) {
   return tester
       .widget<ColoredBox>(find.byKey(const Key('training-summary-statistics')))
       .color;
+}
+
+TrainingSessionScreen _session(WidgetTester tester) =>
+    tester.widget<TrainingSessionScreen>(
+      find.byType(TrainingSessionScreen, skipOffstage: false),
+    );
+
+Future<void> _selectCountdown(WidgetTester tester, int seconds) async {
+  for (var value = 0; value < seconds; value++) {
+    await tester.tap(find.byKey(const Key('increase-pre-session-countdown')));
+  }
+  await tester.pump();
+  await tester.tap(find.text('Valider'));
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pumpSummary(

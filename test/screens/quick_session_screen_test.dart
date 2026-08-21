@@ -47,6 +47,7 @@ void main() {
     expect(find.text('Pause'), findsNothing);
     expect(find.text('Temps total estimé'), findsNothing);
     expect(find.text('Commencer'), findsNothing);
+    expect(find.textContaining('Préparation :'), findsNothing);
     expect(tester.testTextInput.isVisible, isFalse);
   });
 
@@ -222,9 +223,56 @@ void main() {
     });
     await _pumpScreen(tester);
     await _selectType(tester, GroupType.tabata);
+
+    expect(find.text('Préparation : 7 secondes'), findsOneWidget);
+    expect(
+      tester
+          .widget<Switch>(
+            find.byKey(const Key('pre-session-preparation-switch')),
+          )
+          .value,
+      isTrue,
+    );
     await _start(tester);
 
     expect(_session(tester).preSessionCountdownSeconds, 7);
+  });
+
+  testWidgets(
+    'désactiver la préparation rapide ne modifie pas les paramètres',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        AppSettingsStorage.preSessionCountdownSecondsKey: 7,
+      });
+      await _pumpScreen(tester);
+      await _selectType(tester, GroupType.tabata);
+
+      await tester.tap(find.byKey(const Key('pre-session-preparation-switch')));
+      await tester.pump();
+      await _start(tester);
+
+      expect(_session(tester).preSessionCountdownSeconds, 0);
+      expect(await AppSettingsStorage().loadPreSessionCountdownSeconds(), 7);
+    },
+  );
+
+  testWidgets('active temporairement une préparation rapide depuis zéro', (
+    tester,
+  ) async {
+    await _pumpScreen(tester);
+    await _selectType(tester, GroupType.tabata);
+
+    expect(find.text('Préparation : Désactivée'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('pre-session-preparation-switch')));
+    await tester.pumpAndSettle();
+    expect(find.text('Compte à rebours'), findsOneWidget);
+    await _selectCountdown(tester, 3);
+
+    expect(find.text('Préparation : 3 secondes'), findsOneWidget);
+    await _start(tester);
+
+    expect(_session(tester).preSessionCountdownSeconds, 3);
+    expect(await AppSettingsStorage().loadPreSessionCountdownSeconds(), 0);
   });
 
   for (final type in [GroupType.free, GroupType.variableRepetitions]) {
@@ -395,6 +443,15 @@ Future<void> _selectType(WidgetTester tester, GroupType type) async {
     await tester.tap(find.text('Continuer'));
     await tester.pumpAndSettle();
   }
+}
+
+Future<void> _selectCountdown(WidgetTester tester, int seconds) async {
+  for (var value = 0; value < seconds; value++) {
+    await tester.tap(find.byKey(const Key('increase-pre-session-countdown')));
+  }
+  await tester.pump();
+  await tester.tap(find.text('Valider'));
+  await tester.pumpAndSettle();
 }
 
 Future<void> _start(WidgetTester tester) async {

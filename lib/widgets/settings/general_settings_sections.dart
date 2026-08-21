@@ -118,7 +118,7 @@ class SessionSettingsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SettingsSection(
-      title: 'Séance',
+      title: 'Séances',
       children: [
         ListTile(
           key: const Key('pre-session-countdown-setting'),

@@ -140,6 +140,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.byType(PermissionsSettingsSection),
+      200,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.pumpAndSettle();
+
     expect(find.text('Activer les notifications de séance'), findsNothing);
     expect(find.text('Autorisations'), findsNWidgets(2));
     expect(find.text('Notifications désactivées'), findsOneWidget);

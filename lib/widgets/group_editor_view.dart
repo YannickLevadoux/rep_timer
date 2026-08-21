@@ -5,6 +5,7 @@ import '../models/group_editor_mode.dart';
 import '../models/group_type.dart';
 import 'group_editor_fields.dart';
 import 'group_type_selection.dart';
+import 'pre_session_preparation_toggle.dart';
 
 class GroupEditorView extends StatelessWidget {
   const GroupEditorView({
@@ -25,6 +26,9 @@ class GroupEditorView extends StatelessWidget {
     required this.showQuickWarning,
     required this.onDismissQuickWarning,
     required this.isSubmitting,
+    this.preSessionPreparationSeconds,
+    this.preSessionPreparationEnabled,
+    this.onPreSessionPreparationChanged,
   });
 
   final GroupEditorController controller;
@@ -43,6 +47,9 @@ class GroupEditorView extends StatelessWidget {
   final bool showQuickWarning;
   final VoidCallback onDismissQuickWarning;
   final bool isSubmitting;
+  final int? preSessionPreparationSeconds;
+  final bool? preSessionPreparationEnabled;
+  final ValueChanged<bool>? onPreSessionPreparationChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -107,6 +114,14 @@ class GroupEditorView extends StatelessWidget {
                 value: controller.selectedType,
                 onChanged: onTypeChanged,
               ),
+              if (mode.isQuick && preSessionPreparationSeconds != null)
+                PreSessionPreparationToggle(
+                  seconds: preSessionPreparationSeconds!,
+                  enabled: preSessionPreparationEnabled ?? false,
+                  onChanged: isSubmitting
+                      ? null
+                      : onPreSessionPreparationChanged,
+                ),
               const SizedBox(height: 16),
               GroupEditorFields(
                 controller: controller,
