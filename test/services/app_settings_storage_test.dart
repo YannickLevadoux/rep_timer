@@ -119,6 +119,47 @@ void main() {
     );
   });
 
+  test(
+    'le groupe exportable refuse une notification inconnue ou illisible',
+    () async {
+      for (final value in <Object>['future-mode', 42]) {
+        SharedPreferences.setMockInitialValues({'notification_mode': value});
+
+        await expectLater(
+          AppSettingsStorage().loadExportableSettings(),
+          throwsA(isA<AppSettingsReadException>()),
+        );
+      }
+    },
+  );
+
+  test('restaure toutes les préférences exportables', () async {
+    SharedPreferences.setMockInitialValues({});
+    const settings = ExportableAppSettings(
+      themeMode: ThemeMode.light,
+      prefillExerciseName: false,
+      notificationMode: NotificationMode.vibration,
+      preSessionCountdownSeconds: 9,
+    );
+
+    await AppSettingsStorage().saveExportableSettings(settings);
+
+    final restored = await AppSettingsStorage().loadExportableSettings();
+    expect(restored.themeMode, ThemeMode.light);
+    expect(restored.prefillExerciseName, isFalse);
+    expect(restored.notificationMode, NotificationMode.vibration);
+    expect(restored.preSessionCountdownSeconds, 9);
+  });
+
+  test('lit et persiste le mode de notification', () async {
+    SharedPreferences.setMockInitialValues({});
+    final storage = AppSettingsStorage();
+
+    expect(await storage.loadNotificationMode(), NotificationMode.none);
+    await storage.saveNotificationMode(NotificationMode.sound);
+    expect(await storage.loadNotificationMode(), NotificationMode.sound);
+  });
+
   test('persiste la présentation de l’explication des notifications', () async {
     SharedPreferences.setMockInitialValues({});
     final storage = AppSettingsStorage();

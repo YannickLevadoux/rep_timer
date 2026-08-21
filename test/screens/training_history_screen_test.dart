@@ -145,6 +145,27 @@ void main() {
     expect(find.text('Mardi 4 août\n01:12:35 · 2 séances'), findsOneWidget);
   });
 
+  testWidgets('un appui sur une séance ouvre son écran de détail', (
+    tester,
+  ) async {
+    final entry = _entry('Séance détaillée', DateTime(2026, 8, 4, 18));
+    await _pumpHistory(
+      tester,
+      _FakeHistoryStorage(StorageReadSuccess([entry])),
+      now: now,
+    );
+
+    await tester.tap(find.text('Séance détaillée'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Séance détaillée'), findsOneWidget);
+    expect(find.text('04/08/2026 à 18:00'), findsOneWidget);
+    expect(
+      find.text('Détails non disponibles pour cette séance.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('un appui détaille les statuts sans filtrer la liste', (
     tester,
   ) async {
