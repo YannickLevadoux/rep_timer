@@ -1,3 +1,4 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/notification_sound.dart';
 import 'package:rep_timer/services/step_end_notification_platform.dart';
@@ -19,12 +20,27 @@ void main() {
     await service.playPreview(_sound);
 
     expect(countdown.calls, <String>[
+      'audio-context',
       'source:sounds/test.ogg',
       'stop',
       'play:sounds/test.ogg',
       'stop',
     ]);
-    expect(preview.calls, <String>['stop', 'play:sounds/test.ogg']);
+    expect(preview.calls, <String>[
+      'audio-context',
+      'stop',
+      'play:sounds/test.ogg',
+    ]);
+    expect(countdown.audioContexts, hasLength(1));
+    expect(
+      countdown.audioContexts.single.android.audioFocus,
+      AndroidAudioFocus.none,
+    );
+    expect(preview.audioContexts, hasLength(1));
+    expect(
+      preview.audioContexts.single.android.audioFocus,
+      AndroidAudioFocus.none,
+    );
   });
 
   test('un nouvel aperçu interrompt le précédent avant de jouer', () async {
@@ -39,11 +55,13 @@ void main() {
     await service.playPreview(_sound);
 
     expect(preview.calls, <String>[
+      'audio-context',
       'stop',
       'play:sounds/test.ogg',
       'stop',
       'play:sounds/test.ogg',
     ]);
+    expect(preview.audioContexts, hasLength(1));
   });
 
   test('joue séparément les signaux 3, 2, 1 et départ', () async {
@@ -60,6 +78,7 @@ void main() {
     }
 
     expect(countdown.calls, <String>[
+      'audio-context',
       'stop',
       'play:sounds/test.ogg@0',
       'stop',
@@ -153,10 +172,17 @@ class _FakeAudioPlayer implements StepEndAudioPlayer {
 
   final bool throwOnCalls;
   final calls = <String>[];
+  final audioContexts = <AudioContext>[];
 
   void _record(String call) {
     calls.add(call);
     if (throwOnCalls) throw StateError(call);
+  }
+
+  @override
+  Future<void> setAudioContext(AudioContext context) async {
+    audioContexts.add(context);
+    _record('audio-context');
   }
 
   @override
