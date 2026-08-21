@@ -75,4 +75,48 @@ void main() {
       isNull,
     );
   });
+
+  testWidgets('signale les valeurs hors bornes avec un libellé personnalisé', (
+    tester,
+  ) async {
+    final changes = <int>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RoundsEditor(
+            rounds: 0,
+            minimum: 1,
+            maximum: 3,
+            label: 'Tours',
+            onChanged: changes.add,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('rounds-error')), findsOneWidget);
+    expect(find.text('La valeur minimale est 1.'), findsOneWidget);
+    expect(find.byTooltip('Diminuer Tours'), findsOneWidget);
+    expect(find.byTooltip('Augmenter Tours'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Augmenter Tours'));
+    expect(changes, <int>[1]);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RoundsEditor(
+            rounds: 4,
+            minimum: 1,
+            maximum: 3,
+            label: 'Tours',
+            onChanged: changes.add,
+          ),
+        ),
+      ),
+    );
+    expect(find.text('La valeur maximale est 3.'), findsOneWidget);
+    await tester.tap(find.byTooltip('Diminuer Tours'));
+    expect(changes, <int>[1, 3]);
+  });
 }

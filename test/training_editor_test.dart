@@ -84,6 +84,34 @@ void main() {
     expect(find.text('Ce champ est obligatoire.'), findsNothing);
   });
 
+  testWidgets('une séance nommée sans groupe est refusée', (tester) async {
+    await _pumpTrainingEditor(tester, _training(const []));
+
+    await tester.tap(find.text('Enregistrer'));
+    await tester.pump();
+
+    expect(find.text("Ajoute au moins un groupe d'exercices"), findsOneWidget);
+  });
+
+  testWidgets('une séance existante peut être supprimée après confirmation', (
+    tester,
+  ) async {
+    final training = _training(const []);
+    await _pumpTrainingLauncher(tester, training);
+    await tester.tap(find.text('Ouvrir la séance'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Supprimer la séance'));
+    await tester.pumpAndSettle();
+    expect(find.text('Supprimer la séance ?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Supprimer'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ouvrir la séance'), findsOneWidget);
+    final raw = (await SharedPreferences.getInstance()).getString('trainings');
+    expect(jsonDecode(raw!), isEmpty);
+  });
+
   testWidgets('la séance affiche les groupes en lecture seule et repliables', (
     tester,
   ) async {

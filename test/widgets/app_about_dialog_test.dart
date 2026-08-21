@@ -90,4 +90,39 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(LicensePage), findsOneWidget);
   });
+
+  testWidgets('charge les informations plateforme avant d’ouvrir le dialogue', (
+    tester,
+  ) async {
+    PackageInfo.setMockInitialValues(
+      appName: 'RepTimer plateforme',
+      packageName: 'com.example.rep_timer',
+      version: '1.5.0',
+      buildNumber: '5',
+      buildSignature: '',
+      installerStore: null,
+    );
+    await tester.pumpWidget(const MaterialApp(home: _AboutHarness()));
+
+    await tester.tap(find.text('À propos'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(RepTimerAboutDialog), findsOneWidget);
+    expect(find.text('RepTimer plateforme'), findsOneWidget);
+    expect(find.text('1.5.0 (5)'), findsOneWidget);
+  });
+}
+
+class _AboutHarness extends StatelessWidget {
+  const _AboutHarness();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: FilledButton(
+        onPressed: () => showRepTimerAboutDialog(context),
+        child: const Text('À propos'),
+      ),
+    );
+  }
 }
