@@ -42,6 +42,7 @@ Future<String?> showCommentDialog(
                   controller: controller,
                   focusNode: focusNode,
                   autofocus: true,
+                  textCapitalization: TextCapitalization.sentences,
                   maxLines: 3,
                   minLines: 1,
                   maxLength: BusinessLimits.maximumCommentCharacters,

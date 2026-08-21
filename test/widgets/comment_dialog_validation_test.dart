@@ -18,6 +18,10 @@ void main() {
     );
     await tester.tap(find.text('Ouvrir'));
     await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).textCapitalization,
+      TextCapitalization.sentences,
+    );
     await tester.enterText(find.byType(TextField), 'un\ndeux\ntrois\nquatre');
     await tester.tap(find.widgetWithText(FilledButton, 'Valider'));
     await tester.pump();

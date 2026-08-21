@@ -19,6 +19,17 @@ void main() {
     await tester.tap(find.text('Ouvrir'));
     await tester.pumpAndSettle();
 
+    final name = find.widgetWithText(TextField, 'Nom');
+    final comment = find.widgetWithText(TextField, 'Commentaire (optionnel)');
+    expect(
+      tester.widget<TextField>(name).textCapitalization,
+      TextCapitalization.sentences,
+    );
+    expect(
+      tester.widget<TextField>(comment).textCapitalization,
+      TextCapitalization.sentences,
+    );
+
     await tester.tap(find.widgetWithText(FilledButton, 'Ajouter'));
     await tester.pump();
     expect(find.text('Ce champ est obligatoire.'), findsOneWidget);
