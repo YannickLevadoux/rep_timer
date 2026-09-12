@@ -30,6 +30,10 @@ class ExerciseGroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final exerciseValueOverride = group.type == GroupType.variableRepetitions
+        ? formatCompactRepetitionSequenceSummary(group.repetitionSequence)
+        : null;
+
     return Card(
       clipBehavior: Clip.antiAlias,
       margin: const EdgeInsets.only(bottom: 12),
@@ -118,7 +122,12 @@ class ExerciseGroupCard extends StatelessWidget {
                   )
                 : Column(
                     children: group.items
-                        .map((item) => _ReadonlyItemRow(item: item))
+                        .map(
+                          (item) => _ReadonlyItemRow(
+                            item: item,
+                            exerciseValueOverride: exerciseValueOverride,
+                          ),
+                        )
                         .toList(),
                   ),
           ),
@@ -130,8 +139,12 @@ class ExerciseGroupCard extends StatelessWidget {
 
 class _ReadonlyItemRow extends StatelessWidget {
   final TrainingItem item;
+  final String? exerciseValueOverride;
 
-  const _ReadonlyItemRow({required this.item});
+  const _ReadonlyItemRow({
+    required this.item,
+    required this.exerciseValueOverride,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -149,13 +162,22 @@ class _ReadonlyItemRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
+            flex: 2,
             child: Text(
               item.type == ItemType.rest ? "Pause" : item.name,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 8),
-          Text(_itemValue(item)),
+          Expanded(
+            child: Text(
+              _itemValue(item),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+            ),
+          ),
         ],
       ),
     );
@@ -166,6 +188,7 @@ class _ReadonlyItemRow extends StatelessWidget {
       final duration = item.duration;
       return duration == null ? 'Durée invalide' : formatDuration(duration);
     }
+    if (exerciseValueOverride != null) return exerciseValueOverride!;
     if (item.isFreeDuration) return "Durée libre";
     if (item.repetitions != null) return "${item.repetitions} répétitions";
     return formatDuration(item.duration ?? Duration.zero);
