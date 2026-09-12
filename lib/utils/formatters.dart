@@ -1,3 +1,24 @@
+const _frenchMonths = [
+  (full: 'janvier', abbreviated: 'janv.'),
+  (full: 'février', abbreviated: 'févr.'),
+  (full: 'mars', abbreviated: 'mars'),
+  (full: 'avril', abbreviated: 'avr.'),
+  (full: 'mai', abbreviated: 'mai'),
+  (full: 'juin', abbreviated: 'juin'),
+  (full: 'juillet', abbreviated: 'juil.'),
+  (full: 'août', abbreviated: 'août'),
+  (full: 'septembre', abbreviated: 'sept.'),
+  (full: 'octobre', abbreviated: 'oct.'),
+  (full: 'novembre', abbreviated: 'nov.'),
+  (full: 'décembre', abbreviated: 'déc.'),
+];
+
+/// Renvoie le nom français d'un mois, sous sa forme complète ou abrégée.
+String frenchMonthName(int month, {bool abbreviated = false}) {
+  final names = _frenchMonths[month - 1];
+  return abbreviated ? names.abbreviated : names.full;
+}
+
 /// Formate une durée en "mm:ss", ou "hh:mm:ss" au-delà d'une heure.
 /// Les valeurs négatives sont ramenées à zéro par sécurité.
 String formatDuration(Duration duration) {

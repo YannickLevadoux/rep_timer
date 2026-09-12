@@ -45,23 +45,20 @@ class _WeeklyHistoryDurationCardState extends State<WeeklyHistoryDurationCard> {
 
   @override
   Widget build(BuildContext context) {
-    // La ligne « Aujourd’hui » des semaines passées prend la place libérée en
-    // réduisant le graphe, afin de garder la carte proche de 280 px.
-    final maximumChartHeight = widget.isCurrentWeek ? 168.0 : 120.0;
     final chartHeight = (MediaQuery.sizeOf(context).height * 0.3).clamp(
       120.0,
-      maximumChartHeight,
+      168.0,
     );
 
     return Card(
       key: const Key('weekly-history-duration-card'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            WeeklyHistoryWeekNavigation(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+            child: WeeklyHistoryWeekNavigation(
               week: widget.summary.week,
               canGoNext: widget.canGoNext,
               isCurrentWeek: widget.isCurrentWeek,
@@ -69,32 +66,41 @@ class _WeeklyHistoryDurationCardState extends State<WeeklyHistoryDurationCard> {
               onNext: widget.onNext,
               onToday: widget.onToday,
             ),
-            Text(
-              'Temps total — ${formatLongDuration(widget.summary.totalDuration)}',
-              key: const Key('weekly-duration-total'),
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleSmall,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Temps total — ${formatLongDuration(widget.summary.totalDuration)}',
+                  key: const Key('weekly-duration-total'),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: chartHeight,
+                  child: WeeklyHistoryDurationChart(
+                    summary: widget.summary,
+                    today: widget.today,
+                    onSelectDay: (index) =>
+                        setState(() => _selectedDay = index),
+                  ),
+                ),
+                if (_selectedDay case final selected?) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    formatWeeklyHistoryDayDetail(widget.summary.days[selected]),
+                    key: const Key('weekly-duration-day-detail'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ],
             ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: chartHeight,
-              child: WeeklyHistoryDurationChart(
-                summary: widget.summary,
-                today: widget.today,
-                onSelectDay: (index) => setState(() => _selectedDay = index),
-              ),
-            ),
-            if (_selectedDay case final selected?) ...[
-              const SizedBox(height: 8),
-              Text(
-                formatWeeklyHistoryDayDetail(widget.summary.days[selected]),
-                key: const Key('weekly-duration-day-detail'),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

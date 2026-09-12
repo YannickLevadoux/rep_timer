@@ -1,4 +1,5 @@
 import '../models/training_history_entry.dart';
+import '../utils/formatters.dart';
 
 /// Bornes calendaires locales d'une semaine, du lundi inclus au lundi suivant
 /// exclu.
@@ -148,29 +149,20 @@ int _dayIndex(LocalWeek week, DateTime localDay) {
 
 /// Libellé français compact de la période, sans dépendance à Flutter.
 String formatLocalWeekLabel(LocalWeek week) {
-  const months = [
-    'janvier',
-    'février',
-    'mars',
-    'avril',
-    'mai',
-    'juin',
-    'juillet',
-    'août',
-    'septembre',
-    'octobre',
-    'novembre',
-    'décembre',
-  ];
   final first = week.start;
   final last = DateTime(week.end.year, week.end.month, week.end.day - 1);
   if (first.year != last.year) {
-    return '${first.day} ${months[first.month - 1]} ${first.year}–'
-        '${last.day} ${months[last.month - 1]} ${last.year}';
+    return '${first.day} '
+        '${frenchMonthName(first.month, abbreviated: true)} ${first.year}–'
+        '${last.day} '
+        '${frenchMonthName(last.month, abbreviated: true)} ${last.year}';
   }
   if (first.month != last.month) {
-    return '${first.day} ${months[first.month - 1]}–'
-        '${last.day} ${months[last.month - 1]} ${last.year}';
+    return '${first.day} '
+        '${frenchMonthName(first.month, abbreviated: true)}–'
+        '${last.day} '
+        '${frenchMonthName(last.month, abbreviated: true)} ${last.year}';
   }
-  return '${first.day}–${last.day} ${months[first.month - 1]} ${first.year}';
+  return '${first.day}–${last.day} '
+      '${frenchMonthName(first.month, abbreviated: true)} ${first.year}';
 }

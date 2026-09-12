@@ -21,21 +21,6 @@ const _longWeekdays = [
   'Dimanche',
 ];
 
-const _months = [
-  'janvier',
-  'février',
-  'mars',
-  'avril',
-  'mai',
-  'juin',
-  'juillet',
-  'août',
-  'septembre',
-  'octobre',
-  'novembre',
-  'décembre',
-];
-
 String formatWeeklyHistoryDayDetail(WeeklyHistoryDay day) {
   return '${_formatDayDate(day)}\n${_formatWeeklyHistoryDurationBreakdown(day)}';
 }
@@ -83,4 +68,4 @@ String weeklyHistoryPlural(int count, String singular) =>
 
 String _formatDayDate(WeeklyHistoryDay day) =>
     '${_longWeekdays[day.date.weekday - 1]} ${day.date.day} '
-    '${_months[day.date.month - 1]}';
+    '${frenchMonthName(day.date.month)}';
