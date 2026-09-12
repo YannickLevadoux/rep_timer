@@ -21,12 +21,12 @@ final class BackupFileSelection {
 /// Implémentations de production des frontières plateforme du transfert.
 abstract final class SettingsTransferPlatform {
   static Future<BackupFileSelection?> pickBackup() async {
-    final result = await FilePicker.pickFiles(
+    final file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: ['json'],
     );
-    if (result == null) return null;
-    return BackupFileSelection(path: result.files.single.path);
+    if (file == null) return null;
+    return BackupFileSelection(path: file.path);
   }
 
   static Future<String> readBackup(String filePath) =>
