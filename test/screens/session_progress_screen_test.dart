@@ -232,28 +232,143 @@ void main() {
   });
 
   testWidgets(
-    'défile initialement vers l’étape courante lorsqu’elle est rendue',
+    'défile vers une étape courante initialement hors de la zone construite',
     (tester) async {
+      await tester.binding.setSurfaceSize(const Size(320, 480));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
       final steps = List.generate(
-        12,
+        100,
         (index) => _step(
           name: 'Exercice $index',
           round: index + 1,
-          totalRounds: 12,
+          totalRounds: 100,
           repetitions: 10,
         ),
       );
 
-      await _openProgress(
+      await _pumpProgressHost(
         tester,
         steps: steps,
-        completed: List.filled(12, false),
-        currentIndex: 7,
+        completed: List.filled(100, false),
+        currentIndex: 50,
       );
+      await tester.tap(find.byKey(const Key('open-progress')));
+      await tester.pump();
+
+      expect(find.text('Exercice 50'), findsNothing);
+
+      await tester.pumpAndSettle();
 
       final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
       expect(scrollable.position.pixels, greaterThan(0));
-      expect(find.text('Exercice 7'), findsOneWidget);
+      expect(find.text('Exercice 50'), findsOneWidget);
+      expect(find.text('Exercice 49'), findsOneWidget);
+      expect(find.text('Exercice 51'), findsOneWidget);
+      expect(find.text('Exercice 52'), findsOneWidget);
+
+      final listTop = tester.getTopLeft(find.byType(ListView)).dy;
+      final listHeight = tester.getSize(find.byType(ListView)).height;
+      final currentTop = tester.getTopLeft(_tileFor('Exercice 50')).dy;
+      expect(currentTop - listTop, closeTo(listHeight * 0.3, 1));
+    },
+  );
+
+  testWidgets('respecte les limites de défilement en début et fin de liste', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 480));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final steps = List.generate(
+      100,
+      (index) => _step(
+        name: 'Exercice $index',
+        round: index + 1,
+        totalRounds: 100,
+        repetitions: 10,
+      ),
+    );
+
+    await _openProgress(
+      tester,
+      steps: steps,
+      completed: List.filled(100, false),
+      currentIndex: 1,
+    );
+    var scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+    expect(scrollable.position.pixels, scrollable.position.minScrollExtent);
+    expect(find.text('Exercice 1'), findsOneWidget);
+
+    await _openProgress(
+      tester,
+      steps: steps,
+      completed: List.filled(100, false),
+      currentIndex: 99,
+    );
+    scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+    expect(scrollable.position.pixels, scrollable.position.maxScrollExtent);
+    expect(find.text('Exercice 99'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'conserve la liste en haut pour une liste vide ou un index invalide',
+    (tester) async {
+      final cases =
+          <({List<SessionStep> steps, List<bool> completed, int index})>[
+            (steps: [], completed: [], index: 0),
+            (steps: [_step(name: 'Exercice 0')], completed: [false], index: -1),
+            (steps: [_step(name: 'Exercice 0')], completed: [false], index: 1),
+          ];
+
+      for (final testCase in cases) {
+        await _openProgress(
+          tester,
+          steps: testCase.steps,
+          completed: testCase.completed,
+          currentIndex: testCase.index,
+        );
+
+        final scrollable = tester.state<ScrollableState>(
+          find.byType(Scrollable),
+        );
+        expect(scrollable.position.pixels, scrollable.position.minScrollExtent);
+        expect(tester.takeException(), isNull);
+      }
+    },
+  );
+
+  testWidgets(
+    'ne recentre pas après un changement de progression ou un défilement manuel',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(320, 480));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final steps = List.generate(
+        100,
+        (index) => _step(
+          name: 'Exercice $index',
+          round: index + 1,
+          totalRounds: 100,
+          repetitions: 10,
+        ),
+      );
+      var currentIndex = 50;
+      await _openProgress(
+        tester,
+        steps: steps,
+        completed: List.filled(100, false),
+        currentIndexProvider: () => currentIndex,
+      );
+
+      await tester.drag(find.byType(ListView), const Offset(0, 220));
+      await tester.pumpAndSettle();
+      final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+      final manualOffset = scrollable.position.pixels;
+
+      currentIndex = 70;
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(scrollable.position.pixels, manualOffset);
     },
   );
 }
@@ -319,8 +434,32 @@ Future<void> _openProgress(
   void Function(int)? onSelectStep,
   TextScaler textScaler = TextScaler.noScaling,
 }) async {
+  await _pumpProgressHost(
+    tester,
+    steps: steps,
+    completed: completed,
+    currentIndex: currentIndex,
+    currentIndexProvider: currentIndexProvider,
+    onSelectStep: onSelectStep,
+    textScaler: textScaler,
+  );
+
+  await tester.tap(find.byKey(const Key('open-progress')));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _pumpProgressHost(
+  WidgetTester tester, {
+  required List<SessionStep> steps,
+  required List<bool> completed,
+  int currentIndex = 1,
+  int Function()? currentIndexProvider,
+  void Function(int)? onSelectStep,
+  TextScaler textScaler = TextScaler.noScaling,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
+      key: UniqueKey(),
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(textScaler: textScaler),
         child: child!,
@@ -333,9 +472,6 @@ Future<void> _openProgress(
       ),
     ),
   );
-
-  await tester.tap(find.byKey(const Key('open-progress')));
-  await tester.pumpAndSettle();
 }
 
 class _ProgressHost extends StatefulWidget {
