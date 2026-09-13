@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/session_step.dart';
-import '../widgets/session_progress_step_tile.dart';
+import '../widgets/session_progress_list.dart';
 
 /// Vue détaillée de la progression d'une séance en cours : exercices
 /// terminés (coche verte) vs en attente. Poussé par-dessus l'écran de
@@ -43,12 +43,14 @@ class _SessionProgressScreenState extends State<SessionProgressScreen> {
   Timer? _refreshTimer;
   final ScrollController _scrollController = ScrollController();
   late final int _initialCurrentIndex;
+  late final SessionProgressListLayout _listLayout;
 
   @override
   void initState() {
     super.initState();
 
     _initialCurrentIndex = widget.currentIndexProvider();
+    _listLayout = SessionProgressListLayout(widget.steps);
 
     _refreshTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
@@ -76,36 +78,43 @@ class _SessionProgressScreenState extends State<SessionProgressScreen> {
     }
 
     final position = _scrollController.position;
-    final itemExtent =
-        (position.maxScrollExtent + position.viewportDimension) /
-        widget.steps.length;
-    final targetOffset =
-        _initialCurrentIndex * itemExtent -
-        position.viewportDimension * _currentStepAlignment;
-
-    unawaited(
-      _scrollController.animateTo(
-        targetOffset
-            .clamp(position.minScrollExtent, position.maxScrollExtent)
-            .toDouble(),
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      ),
+    final currentStepOffset = _listLayout.stepOffset(
+      context,
+      _initialCurrentIndex,
     );
+    final targetOffset =
+        currentStepOffset - position.viewportDimension * _currentStepAlignment;
+
+    unawaited(_animateToInitialCurrent(targetOffset));
   }
 
-  SessionProgressStepTile _buildStepTile(
-    int index, {
-    required bool isCurrent,
-    required bool done,
-    VoidCallback? onSelect,
-  }) => SessionProgressStepTile(
-    step: widget.steps[index],
-    done: done,
-    isCurrent: isCurrent,
-    blinkController: widget.blinkController,
-    onSelect: onSelect ?? () => _confirmAndSelect(index),
-  );
+  Future<void> _animateToInitialCurrent(double targetOffset) async {
+    var position = _scrollController.position;
+    await _scrollController.animateTo(
+      targetOffset
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble(),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+
+    if (!mounted || !_scrollController.hasClients) return;
+
+    // Une liste à hauteurs variées affine son étendue maximale à mesure que
+    // de nouveaux éléments sont rendus. Une courte correction garantit donc
+    // la limite exacte en fin de très longue séance.
+    position = _scrollController.position;
+    final correctedOffset = targetOffset
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    if ((correctedOffset - position.pixels).abs() < 0.5) return;
+
+    await _scrollController.animateTo(
+      correctedOffset,
+      duration: const Duration(milliseconds: 100),
+      curve: Curves.easeOut,
+    );
+  }
 
   Future<void> _confirmAndSelect(int index) async {
     if (index == widget.currentIndexProvider()) return;
@@ -153,27 +162,14 @@ class _SessionProgressScreenState extends State<SessionProgressScreen> {
       appBar: AppBar(
         title: Text("Progression ($doneCount/${widget.steps.length})"),
       ),
-      body: ListView.builder(
-        controller: _scrollController,
-        prototypeItem: widget.steps.isEmpty
-            ? null
-            : _buildStepTile(
-                _initialCurrentIndex >= 0 &&
-                        _initialCurrentIndex < widget.steps.length
-                    ? _initialCurrentIndex
-                    : 0,
-                done: false,
-                isCurrent: false,
-                onSelect: () {},
-              ),
-        itemCount: widget.steps.length,
-        itemBuilder: (context, index) {
-          return _buildStepTile(
-            index,
-            done: widget.completed[index],
-            isCurrent: index == currentIndex,
-          );
-        },
+      body: SessionProgressList(
+        layout: _listLayout,
+        steps: widget.steps,
+        completed: widget.completed,
+        currentIndex: currentIndex,
+        blinkController: widget.blinkController,
+        scrollController: _scrollController,
+        onSelectStep: _confirmAndSelect,
       ),
     );
   }
