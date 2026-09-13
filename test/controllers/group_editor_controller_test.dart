@@ -298,6 +298,16 @@ void main() {
     controller.dispose();
   });
 
+  test('nomme le premier effort Tabata vide uniquement à la sauvegarde', () {
+    final controller = GroupEditorController(ExerciseGroup.tabata(id: 'g'));
+    controller.configureNewTabataExerciseName(prefill: false);
+
+    expect(controller.group.tabataConfig!.exercises.first.name, isEmpty);
+    expect(controller.save().tabataConfig!.exercises.first.name, 'Effort 1');
+
+    controller.dispose();
+  });
+
   test('refuse les bornes Tabata invalides dans le contrôleur', () {
     final group = ExerciseGroup.tabata(id: 'g')..rounds = 999;
     final controller = GroupEditorController(group);

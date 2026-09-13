@@ -146,6 +146,10 @@ class GroupEditorController extends ChangeNotifier
   }
 
   ExerciseGroup save() {
+    final tabata = group.tabataConfig;
+    if (tabata != null && tabata.exercises.first.name.trim().isEmpty) {
+      tabata.exercises.first.name = 'Effort 1';
+    }
     group.name = name;
     return group;
   }

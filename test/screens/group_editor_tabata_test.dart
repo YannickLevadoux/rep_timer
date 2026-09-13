@@ -151,20 +151,22 @@ void main() {
     ExerciseGroup? savedGroup;
     await _pumpEditor(
       tester,
-      ExerciseGroup.tabata(id: 'tabata'),
+      ExerciseGroup(id: 'new', name: '', items: []),
+      mode: GroupEditorMode.add,
       onSubmit: (group) async => savedGroup = group,
     );
+    await _selectTabata(tester);
 
     await tester.tap(find.byTooltip('Augmenter Nombre de cycles par tour'));
     await tester.pump();
-    final saveButton = find.text('Enregistrer');
+    final saveButton = find.text('Ajouter à la séance');
     await tester.ensureVisible(saveButton);
     await tester.tap(saveButton);
     await tester.pump();
 
     expect(savedGroup, isNotNull);
     expect(savedGroup!.tabataConfig!.exercises.map((item) => item.name), [
-      'Effort',
+      'Effort 1',
       'Effort 2',
     ]);
     expect(find.text('Ce champ est obligatoire.'), findsNothing);
