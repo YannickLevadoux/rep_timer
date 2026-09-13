@@ -25,7 +25,7 @@ final class RestorePending extends BackupImportOutcome {
   final bool localDataWarning;
 }
 
-/// Données v2 ou v3 entièrement décodées et validées avant restauration.
+/// Données v2, v3 ou v4 entièrement décodées et validées avant restauration.
 @immutable
 class BackupRestorePlan extends BackupImportPlan {
   const BackupRestorePlan({

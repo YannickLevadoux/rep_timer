@@ -42,7 +42,7 @@ class BackupImportParser {
 
     return switch (version) {
       1 => _v1Adapter.prepareV1(decoded),
-      2 || 3 => _parseFullBackup(decoded, version),
+      2 || 3 || 4 => _parseFullBackup(decoded, version),
       _ => throw BackupImportException(
         BackupImportFailureKind.unsupportedVersion,
         version: version,

@@ -9,8 +9,8 @@ toute modification.
 | --- | --- | --- |
 | Exporter des séances | Crée un export v1 | Partage uniquement les séances sélectionnées |
 | Importer des séances | Accepte un export v1 | Ajoute les séances sans remplacer les données locales |
-| Sauvegarder les données | Crée une sauvegarde v3 | Partage toutes les données couvertes par la sauvegarde complète |
-| Restaurer les données | Accepte une sauvegarde v2 ou v3 | Remplace les données locales après confirmation |
+| Sauvegarder les données | Crée une sauvegarde v4 | Partage toutes les données couvertes par la sauvegarde complète |
+| Restaurer les données | Accepte une sauvegarde v2, v3 ou v4 | Remplace les données locales après confirmation |
 
 ## Partager des séances
 
@@ -31,14 +31,14 @@ export v1 vide est refusé.
 
 ## Sauvegarder et restaurer toutes les données
 
-**Exporter > Sauvegarder les données** crée exclusivement une sauvegarde v3
+**Exporter > Sauvegarder les données** crée exclusivement une sauvegarde v4
 contenant toutes les séances, tout l'historique, les préférences exportables et
 les métadonnées du format. Le checkpoint d'une séance en cours, les permissions
 Android et les réglages techniques internes restent exclus.
 
-**Importer > Restaurer les données** accepte les sauvegardes v3 ainsi que les
-anciennes sauvegardes v2, conservées uniquement pour la compatibilité en
-lecture. RepTimer ne crée plus de sauvegarde v2. Après validation complète, un
+**Importer > Restaurer les données** accepte les sauvegardes v4 ainsi que les
+anciennes sauvegardes v2 et v3, conservées uniquement pour la compatibilité en
+lecture. RepTimer ne crée plus de sauvegarde v2 ou v3. Après validation complète, un
 dialogue résume la date, les séances, l'historique et les préférences avant de
 proposer la restauration destructive.
 
@@ -66,4 +66,5 @@ application, une version inconnue ou un format utilisé dans le mauvais parcours
 est refusé sans mutation ni partage. Après une erreur, l'écran courant reste
 ouvert afin de permettre une nouvelle tentative.
 
-Le schéma complet v3 est décrit dans le [contrat de sauvegarde v3](backup-v3.md).
+Le schéma produit est décrit dans le [contrat de sauvegarde v4](backup-v4.md).
+Le [contrat v3](backup-v3.md) reste documenté pour la restauration historique.

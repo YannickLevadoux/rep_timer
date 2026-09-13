@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 const String backupAppIdentifier = 'RepTimer';
-const int backupExportFormatVersion = 3;
+const int backupExportFormatVersion = 4;
 
 /// Enveloppe canonique de la version de sauvegarde écrite par l'application.
 @immutable

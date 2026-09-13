@@ -75,7 +75,7 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 
 ### Import / Export
 - Deux parcours de partage de séances : **Exporter des séances** crée un fichier v1 à partir des séances sélectionnées et **Importer des séances** les ajoute avec de nouveaux identifiants, sans remplacer les données locales.
-- Deux parcours distincts pour les données complètes : **Sauvegarder les données** crée une sauvegarde v3 et **Restaurer les données** accepte les sauvegardes v2/v3 après présentation d'un résumé et confirmation explicite.
+- Deux parcours distincts pour les données complètes : **Sauvegarder les données** crée une sauvegarde v4 et **Restaurer les données** accepte les sauvegardes v2/v3/v4 après présentation d'un résumé et confirmation explicite.
 - Un fichier choisi dans le mauvais parcours est refusé avant toute mutation. L'import de séances reste strictement additif, tandis que la restauration complète remplace les séances, l'historique et les préférences couverts par la sauvegarde.
 - Lecture défensive du stockage local : les données récupérables restent consultables, les erreurs sont signalées sans exposer leur contenu et les mutations susceptibles d'écraser des données illisibles sont bloquées.
 
@@ -142,7 +142,7 @@ releases](docs/release.md).
   compte à rebours de préparation.
 - [Contrats des cinq types de groupes](docs/group-types-1.4.0.md) : structures,
   bornes, transitions, checkpoints et historique.
-- [Importer, exporter et restaurer](docs/import-export.md) : sauvegarde v3,
+- [Importer, exporter et restaurer](docs/import-export.md) : sauvegarde v4,
   compatibilité v1 et précautions avant une restauration.
 - [Contribuer au projet](CONTRIBUTING.md) : environnement de développement,
   structure du projet, branches, issues et mises à jour Renovate.

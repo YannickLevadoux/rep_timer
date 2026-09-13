@@ -8,7 +8,7 @@ import 'json_prefs_storage.dart';
 import 'training_history_storage.dart';
 import 'training_storage.dart';
 
-/// Lit toutes les données exportables avant de construire la sauvegarde v3.
+/// Lit toutes les données exportables avant de construire la sauvegarde v4.
 class BackupExportService {
   BackupExportService({
     TrainingStorage? trainingStorage,

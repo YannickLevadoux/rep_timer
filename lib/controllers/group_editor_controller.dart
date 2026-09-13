@@ -88,11 +88,15 @@ class GroupEditorController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setEffortDuration(Duration value) =>
-      _mutate(() => group.items.first.duration = value);
+  void setEffortDuration(Duration value) => _mutate(() {
+    group.items.first.duration = value;
+    group.tabataConfig?.setEffortDuration(value);
+  });
 
-  void setRequiredRestDuration(Duration value) =>
-      _mutate(() => group.items[1].duration = value);
+  void setRequiredRestDuration(Duration value) => _mutate(() {
+    group.items[1].duration = value;
+    group.tabataConfig?.restDuration = value;
+  });
 
   void setFinalRestEnabled(bool enabled) {
     group.finalRestDuration = enabled ? ExerciseGroup.defaultTabataRest : null;
@@ -130,13 +134,19 @@ class GroupEditorController extends ChangeNotifier {
 
   void updateTimedExercise(TrainingItem result) {
     final duration = group.items.first.duration;
-    group.items[0] = TrainingItem(
+    final updated = TrainingItem(
       type: ItemType.exercise,
       name: result.name,
       duration: duration,
       comment: result.comment,
       iconName: result.iconName,
     );
+    final tabata = group.tabataConfig;
+    if (tabata == null) {
+      group.items[0] = updated;
+    } else {
+      tabata.applySharedExerciseMetadata(updated);
+    }
     notifyListeners();
   }
 

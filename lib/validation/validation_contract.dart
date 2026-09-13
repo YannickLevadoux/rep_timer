@@ -5,6 +5,7 @@ abstract final class BusinessLimits {
   static const Duration minimumDuration = Duration(seconds: 1);
   static const Duration maximumDuration = Duration(hours: 2, seconds: 59);
   static const int maximumSessionSteps = 10000;
+  static const int maximumTabataRounds = 99;
   static const int maximumEmomMinutes = 60;
   static const int maximumAmrapLaps = 999;
   static const Duration minimumAmrapDuration = Duration(minutes: 1);
@@ -23,6 +24,9 @@ enum BusinessField {
   groupName,
   exerciseName,
   groupRounds,
+  tabataRounds,
+  tabataCycles,
+  tabataRestDuration,
   groupRepetitionSequence,
   groupRepetitionValue,
   repetitions,

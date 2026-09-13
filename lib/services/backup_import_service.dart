@@ -10,7 +10,7 @@ import 'training_history_storage.dart';
 import 'training_import_service.dart';
 import 'training_storage.dart';
 
-/// Coordonne l'import v1 et la restauration complète des sauvegardes v2/v3.
+/// Coordonne l'import v1 et la restauration complète v2, v3 et v4.
 class BackupImportService {
   BackupImportService({
     TrainingImportService? v1Adapter,

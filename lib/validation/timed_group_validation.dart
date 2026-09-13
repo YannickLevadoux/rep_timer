@@ -2,6 +2,7 @@ import '../models/exercise_group.dart';
 import '../models/group_type.dart';
 import '../models/training_item.dart';
 import 'numeric_validation.dart';
+import 'tabata_validation.dart';
 import 'validation_contract.dart';
 
 /// Contrats structurels propres aux groupes temporisés de la version 1.4.0.
@@ -10,32 +11,11 @@ abstract final class TimedGroupValidation {
     ExerciseGroup group, {
     String? location,
   }) => switch (group.type) {
-    GroupType.tabata => _validateTabata(group, location),
+    GroupType.tabata => TabataValidation.validate(group, location: location),
     GroupType.amrap => _validateAmrap(group, location),
     GroupType.emom => _validateEmom(group, location),
     _ => const [],
   };
-
-  static List<BusinessValidationIssue> _validateTabata(
-    ExerciseGroup group,
-    String? location,
-  ) {
-    final issues = <BusinessValidationIssue>[];
-    _addCountIssue(issues, group.rounds, BusinessField.groupRounds, location);
-    if (group.items.length != 2 ||
-        !_isTimedExercise(group.items.firstOrNull) ||
-        !_isTimedRest(group.items.elementAtOrNull(1)) ||
-        group.postGroupRestDuration != null) {
-      issues.add(_structure(location));
-    }
-    _addOptionalDuration(
-      issues,
-      group.finalRestDuration,
-      BusinessField.finalRestDuration,
-      location,
-    );
-    return issues;
-  }
 
   static List<BusinessValidationIssue> _validateAmrap(
     ExerciseGroup group,
@@ -46,6 +26,7 @@ abstract final class TimedGroupValidation {
     if (group.rounds != 1 ||
         group.items.length != 1 ||
         !_isTimedExercise(item) ||
+        group.tabataConfig != null ||
         group.finalRestDuration != null) {
       issues.add(_structure(location));
     }
@@ -98,6 +79,7 @@ abstract final class TimedGroupValidation {
     if (group.items.length != 1 ||
         !_isTimedExercise(item) ||
         item?.duration != ExerciseGroup.defaultEmomInterval ||
+        group.tabataConfig != null ||
         group.finalRestDuration != null) {
       issues.add(_structure(location));
     }
@@ -115,22 +97,6 @@ abstract final class TimedGroupValidation {
       item?.duration != null &&
       item?.repetitions == null &&
       item?.isFreeDuration == false;
-
-  static bool _isTimedRest(TrainingItem? item) =>
-      item?.type == ItemType.rest &&
-      item?.duration != null &&
-      item?.repetitions == null &&
-      item?.isFreeDuration == false;
-
-  static void _addCountIssue(
-    List<BusinessValidationIssue> issues,
-    int value,
-    BusinessField field,
-    String? location,
-  ) {
-    final issue = NumericValidation.validateCount(value, field: field);
-    if (issue != null) issues.add(_located(issue, location));
-  }
 
   static void _addOptionalDuration(
     List<BusinessValidationIssue> issues,
@@ -159,15 +125,8 @@ abstract final class TimedGroupValidation {
         code: BusinessValidationCode.invalidGroupStructure,
         location: location,
       );
-
-  static BusinessValidationIssue _located(
-    BusinessValidationIssue issue,
-    String? location,
-  ) => location == null ? issue : issue.at(location);
 }
 
 extension<T> on List<T> {
   T? get firstOrNull => isEmpty ? null : first;
-
-  T? elementAtOrNull(int index) => index < length ? this[index] : null;
 }

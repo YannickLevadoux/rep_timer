@@ -21,7 +21,7 @@ void main() {
 
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  test('construit l’enveloppe v3 complète avec une date injectée', () async {
+  test('construit l’enveloppe v4 complète avec une date injectée', () async {
     final training = _trainingWithFreeAndVariableGroups();
     final history = _legacyHistory();
     SharedPreferences.setMockInitialValues({
@@ -45,7 +45,7 @@ void main() {
     final preferences = data['preferences'] as Map<String, dynamic>;
 
     expect(json['app'], 'RepTimer');
-    expect(json['exportFormatVersion'], 3);
+    expect(json['exportFormatVersion'], 4);
     expect(json['exportedAt'], exportedAt.toIso8601String());
     expect(data.keys, unorderedEquals(['trainings', 'history', 'preferences']));
     expect((data['trainings'] as List), hasLength(1));
@@ -58,7 +58,7 @@ void main() {
     });
 
     final encoded = BackupV2Encoder.encode(payload);
-    expect(encoded, contains('"exportFormatVersion": 3'));
+    expect(encoded, contains('"exportFormatVersion": 4'));
     expect(encoded, isNot(contains('"exportFormatVersion": 1')));
     expect(encoded, isNot(contains('session_checkpoint')));
     expect(encoded, isNot(contains('session_notification_explanation')));
@@ -244,7 +244,7 @@ void main() {
   );
 
   test(
-    'écrit un fichier v3 au nom Android sûr puis le transmet au partage',
+    'écrit un fichier v4 au nom Android sûr puis le transmet au partage',
     () async {
       final directory = await Directory.systemTemp.createTemp(
         'reptimer_backup_test_',
@@ -266,14 +266,14 @@ void main() {
       expect(sharedPath, isNotNull);
       expect(
         sharedPath!.split(Platform.pathSeparator).last,
-        'reptimer_backup_v3_20260805T142305123Z.json',
+        'reptimer_backup_v4_20260805T142305123Z.json',
       );
       expect(
         sharedPath!.split(Platform.pathSeparator).last,
         matches(RegExp(r'^[A-Za-z0-9_.]+$')),
       );
       final decoded = jsonDecode(await File(sharedPath!).readAsString());
-      expect((decoded as Map<String, dynamic>)['exportFormatVersion'], 3);
+      expect((decoded as Map<String, dynamic>)['exportFormatVersion'], 4);
     },
   );
 

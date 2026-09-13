@@ -1,4 +1,6 @@
 import '../models/exercise_group.dart';
+import '../models/group_type.dart';
+import '../models/tabata_config.dart';
 import '../models/training.dart';
 import '../models/training_item.dart';
 import 'exercise_group_validation.dart';
@@ -38,35 +40,7 @@ abstract final class TrainingValidation {
     id: training.id,
     name: TextValidation.normalizeName(training.name),
     createdAt: training.createdAt,
-    groups: training.groups
-        .map(
-          (group) => ExerciseGroup(
-            id: group.id,
-            name: TextValidation.normalizeName(group.name),
-            type: group.type,
-            expanded: group.expanded,
-            rounds: group.rounds,
-            repetitionSequence: List<int>.of(group.repetitionSequence),
-            finalRestDuration: group.finalRestDuration,
-            postGroupRestDuration: group.postGroupRestDuration,
-            items: group.items
-                .map(
-                  (item) => TrainingItem(
-                    type: item.type,
-                    name: item.type == ItemType.rest
-                        ? item.name
-                        : TextValidation.normalizeName(item.name),
-                    repetitions: item.repetitions,
-                    duration: item.duration,
-                    isFreeDuration: item.isFreeDuration,
-                    comment: TextValidation.normalizeComment(item.comment),
-                    iconName: item.iconName,
-                  ),
-                )
-                .toList(),
-          ),
-        )
-        .toList(),
+    groups: training.groups.map(_normalizedGroup).toList(),
   );
 
   /// Calcule la borne de sécurité sans développer la séance en mémoire.
@@ -77,10 +51,27 @@ abstract final class TrainingValidation {
     var total = 0;
     for (var index = 0; index < training.groups.length; index++) {
       final group = training.groups[index];
+      final hasFollowingGroup = index + 1 < training.groups.length;
+      if (group.type == GroupType.tabata && group.tabataConfig != null) {
+        final config = group.tabataConfig!;
+        final phaseCap = stopAfter + 1;
+        final phases = _cappedProduct(
+          _cappedProduct(config.rounds, config.exercises.length, phaseCap),
+          2,
+          phaseCap,
+        );
+        final contribution = hasFollowingGroup ? phases : phases - 1;
+        if (contribution > stopAfter - total) return stopAfter + 1;
+        if (contribution > 0) total += contribution;
+        continue;
+      }
       final rounds = group.executedRounds;
       if (rounds <= 0 || group.items.isEmpty) continue;
-      final hasFollowingGroup = index + 1 < training.groups.length;
-      var contribution = group.items.length * rounds;
+      var contribution = _cappedProduct(
+        group.items.length,
+        rounds,
+        stopAfter + 1,
+      );
       if (hasFollowingGroup && group.postGroupRestDuration != null) {
         contribution++;
       } else if (!hasFollowingGroup && group.items.last.type == ItemType.rest) {
@@ -90,6 +81,42 @@ abstract final class TrainingValidation {
       total += contribution;
     }
     return total;
+  }
+
+  static ExerciseGroup _normalizedGroup(ExerciseGroup group) {
+    final normalizedItems = group.items.map(_normalizedItem).toList();
+    final config = group.tabataConfig;
+    final normalizedTabata = config == null
+        ? null
+        : TabataConfig(
+            rounds: config.rounds,
+            exercises: config.exercises.map(_normalizedItem).toList(),
+            restDuration: config.restDuration,
+            finalRestDuration: config.finalRestDuration,
+          );
+    return group.copyWith(
+      name: TextValidation.normalizeName(group.name),
+      items: normalizedItems,
+      tabataConfig: normalizedTabata,
+    );
+  }
+
+  static TrainingItem _normalizedItem(TrainingItem item) => TrainingItem(
+    type: item.type,
+    name: item.type == ItemType.rest
+        ? item.name
+        : TextValidation.normalizeName(item.name),
+    repetitions: item.repetitions,
+    duration: item.duration,
+    isFreeDuration: item.isFreeDuration,
+    comment: TextValidation.normalizeComment(item.comment),
+    iconName: item.iconName,
+  );
+
+  static int _cappedProduct(int left, int right, int stopAfter) {
+    if (left <= 0 || right <= 0) return 0;
+    if (left > stopAfter ~/ right) return stopAfter + 1;
+    return left * right;
   }
 
   static BusinessValidationIssue? validateSessionStepLimit(Training training) {

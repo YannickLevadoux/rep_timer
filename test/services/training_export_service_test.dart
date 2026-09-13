@@ -112,7 +112,7 @@ void main() {
     );
   });
 
-  test('les noms de fichiers v1 et v3 sont distincts', () {
+  test('les noms de fichiers v1 et v4 sont distincts', () {
     final date = DateTime.parse('2026-08-20T12:34:56.789Z');
     expect(
       BackupFileWriter.trainingExportFileName(date),

@@ -72,10 +72,13 @@ abstract final class ExerciseGroupValidation {
     if (nameIssue != null) issues.add(_located(nameIssue, location));
     issues.addAll(_validateType(group, location));
 
-    for (var index = 0; index < group.items.length; index++) {
+    final items = group.type == GroupType.tabata
+        ? group.tabataConfig?.exercises ?? const <TrainingItem>[]
+        : group.items;
+    for (var index = 0; index < items.length; index++) {
       issues.addAll(
         validateItem(
-          group.items[index],
+          items[index],
           location: _childLocation(location, 'exercice ${index + 1}'),
         ),
       );
@@ -99,7 +102,8 @@ abstract final class ExerciseGroupValidation {
     ExerciseGroup group,
     String? location,
   ) {
-    if (group.finalRestDuration != null ||
+    if (group.tabataConfig != null ||
+        group.finalRestDuration != null ||
         group.postGroupRestDuration != null) {
       return [
         _located(
@@ -122,7 +126,8 @@ abstract final class ExerciseGroupValidation {
     ExerciseGroup group,
     String? location,
   ) {
-    if (group.finalRestDuration != null ||
+    if (group.tabataConfig != null ||
+        group.finalRestDuration != null ||
         group.postGroupRestDuration != null) {
       return [
         _located(
