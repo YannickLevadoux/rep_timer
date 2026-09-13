@@ -66,7 +66,7 @@ class ExerciseGroupCard extends StatelessWidget {
                       hasFollowingGroup: hasFollowingGroup,
                     )
                   : group.type == GroupType.variableRepetitions
-                  ? formatRepetitionSequenceSummary(group.repetitionSequence)
+                  ? formatRepetitionSequenceTourCount(group.repetitionSequence)
                   : 'Répétitions : ${group.rounds}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

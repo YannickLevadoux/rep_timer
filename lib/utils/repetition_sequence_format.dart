@@ -1,9 +1,14 @@
 String formatRepetitionSequence(List<int> values) => values.join(' → ');
 
+String formatRepetitionSequenceTourCount(List<int> values) {
+  final count = values.length;
+  return '$count ${count == 1 ? 'tour' : 'tours'}';
+}
+
 String formatRepetitionSequenceSummary(List<int> values) {
   return _formatRepetitionSequenceSummary(
     values,
-    tourCount: values.length == 1 ? '1 tour' : '${values.length} tours',
+    tourCount: formatRepetitionSequenceTourCount(values),
   );
 }
 

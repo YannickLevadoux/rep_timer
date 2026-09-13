@@ -27,6 +27,8 @@ void main() {
 
       await _pumpCard(tester, group);
 
+      expect(find.text('3 tours'), findsOneWidget);
+      expect(find.text('3 tours · 10 → 12 → 15'), findsNothing);
       expect(find.text('3 t. · 10 → 12 → 15'), findsNWidgets(2));
       expect(find.text('1 répétitions'), findsNothing);
       expect(find.text('6 répétitions'), findsNothing);
@@ -37,6 +39,7 @@ void main() {
   testWidgets('abrège aussi une suite variable à un seul tour', (tester) async {
     await _pumpCard(tester, _variableGroup(repetitionSequence: [8]));
 
+    expect(find.text('1 tour'), findsOneWidget);
     expect(find.text('1 t. · 8'), findsOneWidget);
   });
 
@@ -45,7 +48,8 @@ void main() {
   ) async {
     await _pumpCard(tester, _variableGroup(repetitionSequence: const []));
 
-    expect(find.text('Suite à définir'), findsNWidgets(2));
+    expect(find.text('0 tours'), findsOneWidget);
+    expect(find.text('Suite à définir'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
