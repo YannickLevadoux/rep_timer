@@ -1,23 +1,17 @@
 String formatRepetitionSequence(List<int> values) => values.join(' → ');
 
-String formatRepetitionSequenceSummary(List<int> values) {
-  return _formatRepetitionSequenceSummary(
-    values,
-    tourCount: values.length == 1 ? '1 tour' : '${values.length} tours',
-  );
+String formatRepetitionSequenceTourCount(List<int> values) {
+  final count = values.length;
+  return '$count ${count == 1 ? 'tour' : 'tours'}';
 }
 
-String formatCompactRepetitionSequenceSummary(List<int> values) {
-  return _formatRepetitionSequenceSummary(
-    values,
-    tourCount: '${values.length} t.',
-  );
-}
-
-String _formatRepetitionSequenceSummary(
-  List<int> values, {
-  required String tourCount,
-}) {
+String formatRepetitionSequenceValuesSummary(List<int> values) {
   if (values.isEmpty) return 'Suite à définir';
-  return '$tourCount · ${formatRepetitionSequence(values)}';
+  return formatRepetitionSequence(values);
+}
+
+String formatRepetitionSequenceSummary(List<int> values) {
+  if (values.isEmpty) return formatRepetitionSequenceValuesSummary(values);
+  return '${formatRepetitionSequenceTourCount(values)} · '
+      '${formatRepetitionSequenceValuesSummary(values)}';
 }

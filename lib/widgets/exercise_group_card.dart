@@ -31,7 +31,7 @@ class ExerciseGroupCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final exerciseValueOverride = group.type == GroupType.variableRepetitions
-        ? formatCompactRepetitionSequenceSummary(group.repetitionSequence)
+        ? formatRepetitionSequenceValuesSummary(group.repetitionSequence)
         : null;
 
     return Card(
@@ -66,7 +66,7 @@ class ExerciseGroupCard extends StatelessWidget {
                       hasFollowingGroup: hasFollowingGroup,
                     )
                   : group.type == GroupType.variableRepetitions
-                  ? formatRepetitionSequenceSummary(group.repetitionSequence)
+                  ? formatRepetitionSequenceTourCount(group.repetitionSequence)
                   : 'Répétitions : ${group.rounds}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
