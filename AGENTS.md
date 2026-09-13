@@ -51,13 +51,16 @@ https://github.com/YannickLevadoux/rep_timer
 
 ## File size
 
-When an issue explicitly requests reducing a file below a given size:
+The following is a repository-wide invariant for every issue:
 
-* Do not achieve the target by compressing formatting or reducing readability.
-* Extract coherent responsibilities into dedicated classes or files.
-* Do not create artificial wrappers solely to reduce line count.
-* Do not use `part` files or compressed formatting to circumvent a line limit.
-* The resulting architecture must remain understandable and maintainable.
+* Every tracked Dart file under `lib/` must contain at most 199 physical lines.
+* This limit applies even when the issue does not mention file size.
+* Before committing and pushing, run the same file-size check as the
+  `Report large files in lib` CI step.
+* If a change would make a file reach 200 lines, extract coherent
+  responsibilities into dedicated files before committing.
+* Do not satisfy the limit by compressing formatting, creating artificial
+  wrappers, using `part` files, or reducing readability.
 
 ## Scope
 
@@ -75,16 +78,16 @@ a required dependency is missing.
 
 ## Tests and validation
 
-Run focused tests during development. Before handing off a pull request, run
-the CI-equivalent checks unless the issue defines a different validation scope:
+Run focused tests during development. Unless the issue defines a different
+validation scope, before handing off a pull request, run:
 
-```bash
-flutter pub get
-dart format --output=none --set-exit-if-changed .
-flutter analyze --no-fatal-infos
-flutter test --coverage
-flutter build apk --debug
-```
+1. the tracked Dart file-size check from
+   `.github/workflows/flutter-validate.yml`;
+2. `flutter pub get`;
+3. `dart format --output=none --set-exit-if-changed .`;
+4. `flutter analyze --no-fatal-infos`;
+5. `flutter test --coverage`;
+6. `flutter build apk --debug`.
 
 Fix regressions introduced by the changes.
 

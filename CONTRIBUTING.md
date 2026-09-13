@@ -35,6 +35,16 @@ lib/
 Les workflows et leurs scripts sont regroupés sous `.github/`. Les outils
 destinés au développement local sont regroupés sous `tool/`.
 
+## Taille des fichiers Dart
+
+Chaque fichier Dart suivi sous `lib/` doit contenir au plus **199 lignes
+physiques**, quelle que soit l'issue traitée. Avant chaque commit et push,
+exécuter le même contrôle que l'étape `Report large files in lib` de
+`flutter-validate.yml`. Si une modification ferait atteindre 200 lignes à un
+fichier, extraire des responsabilités cohérentes dans des fichiers dédiés sans
+compresser le formatage, réduire la lisibilité, créer des wrappers artificiels
+ou utiliser des fichiers `part` pour contourner la limite.
+
 ## Convention de nommage des branches
 
 Chaque branche de développement doit être associée à une unique issue GitHub
@@ -112,10 +122,17 @@ d'exécution font échouer le job.
 
 Renovate crée des Pull Requests portant le label `dependencies` pour :
 
-- les dépendances Dart et Flutter, regroupées sous `Dart & Flutter packages` ;
-- les GitHub Actions, regroupées sous `GitHub Actions` ;
-- la version de Flutter déclarée dans les workflows, détectée par une règle
-  dédiée.
+- les dépendances des workflows et actions locales, dont les GitHub Actions et
+  la version de Flutter détectée par une règle dédiée, regroupées sous
+  **CI dependencies** ;
+- les packages Dart et Flutter ainsi que les dépendances de la chaîne Android,
+  regroupés sous **Application dependencies**.
+
+La recherche des mises à jour est hebdomadaire en heure `Europe/Paris`. Les
+versions majeures restent séparées des mises à jour mineures et correctives.
+Les alertes de vulnérabilité Renovate restent prioritaires, sous réserve de
+l'activation du graphe de dépendances et des alertes Dependabot dans les
+réglages GitHub du dépôt.
 
 Les Pull Requests Renovate ciblant `main` passent par les mêmes validations et
 le même build APK debug que les autres Pull Requests. Elles restent exclues de
