@@ -29,18 +29,21 @@ void main() {
 
       expect(find.text('3 tours'), findsOneWidget);
       expect(find.text('3 tours · 10 → 12 → 15'), findsNothing);
-      expect(find.text('3 t. · 10 → 12 → 15'), findsNWidgets(2));
+      expect(find.text('10 → 12 → 15'), findsNWidgets(2));
+      expect(find.text('3 t. · 10 → 12 → 15'), findsNothing);
       expect(find.text('1 répétitions'), findsNothing);
       expect(find.text('6 répétitions'), findsNothing);
       expect(find.text('00:30'), findsOneWidget);
     },
   );
 
-  testWidgets('abrège aussi une suite variable à un seul tour', (tester) async {
+  testWidgets('affiche seulement la valeur pour une suite à un seul tour', (
+    tester,
+  ) async {
     await _pumpCard(tester, _variableGroup(repetitionSequence: [8]));
 
     expect(find.text('1 tour'), findsOneWidget);
-    expect(find.text('1 t. · 8'), findsOneWidget);
+    expect(find.text('8'), findsOneWidget);
   });
 
   testWidgets('affiche le libellé de repli pour une suite vide', (
@@ -96,7 +99,7 @@ void main() {
     expect(tester.takeException(), isNull);
     final title = tester.widget<Text>(find.text(group.items.single.name));
     final summary = tester.widget<Text>(
-      find.text('6 t. · 10 → 12 → 15 → 20 → 25 → 30'),
+      find.text('10 → 12 → 15 → 20 → 25 → 30'),
     );
     expect(title.maxLines, 1);
     expect(title.overflow, TextOverflow.ellipsis);
