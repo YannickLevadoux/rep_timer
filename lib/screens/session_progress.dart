@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
 import '../models/session_step.dart';
-import '../widgets/section_divider.dart';
-import '../widgets/session_progress_step_tile.dart';
+import '../widgets/session_progress_list.dart';
 
 /// Vue détaillée de la progression d'une séance en cours : exercices
 /// terminés (coche verte) vs en attente. Poussé par-dessus l'écran de
@@ -45,17 +43,14 @@ class _SessionProgressScreenState extends State<SessionProgressScreen> {
   Timer? _refreshTimer;
   final ScrollController _scrollController = ScrollController();
   late final int _initialCurrentIndex;
-  late final List<_ProgressListEntry> _listEntries;
-  late final List<int> _stepListIndices;
+  late final SessionProgressListLayout _listLayout;
 
   @override
   void initState() {
     super.initState();
 
     _initialCurrentIndex = widget.currentIndexProvider();
-    final (listEntries, stepListIndices) = _buildListEntries(widget.steps);
-    _listEntries = listEntries;
-    _stepListIndices = stepListIndices;
+    _listLayout = SessionProgressListLayout(widget.steps);
 
     _refreshTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
@@ -83,12 +78,10 @@ class _SessionProgressScreenState extends State<SessionProgressScreen> {
     }
 
     final position = _scrollController.position;
-    final extents = _progressItemExtents(context);
-    final currentListIndex = _stepListIndices[_initialCurrentIndex];
-    final precedingSeparatorCount = currentListIndex - _initialCurrentIndex;
-    final currentStepOffset =
-        _initialCurrentIndex * extents.step +
-        precedingSeparatorCount * extents.separator;
+    final currentStepOffset = _listLayout.stepOffset(
+      context,
+      _initialCurrentIndex,
+    );
     final targetOffset =
         currentStepOffset - position.viewportDimension * _currentStepAlignment;
 
@@ -122,19 +115,6 @@ class _SessionProgressScreenState extends State<SessionProgressScreen> {
       curve: Curves.easeOut,
     );
   }
-
-  SessionProgressStepTile _buildStepTile(
-    int index, {
-    required bool isCurrent,
-    required bool done,
-    VoidCallback? onSelect,
-  }) => SessionProgressStepTile(
-    step: widget.steps[index],
-    done: done,
-    isCurrent: isCurrent,
-    blinkController: widget.blinkController,
-    onSelect: onSelect ?? () => _confirmAndSelect(index),
-  );
 
   Future<void> _confirmAndSelect(int index) async {
     if (index == widget.currentIndexProvider()) return;
@@ -177,109 +157,20 @@ class _SessionProgressScreenState extends State<SessionProgressScreen> {
   Widget build(BuildContext context) {
     final currentIndex = widget.currentIndexProvider();
     final doneCount = widget.completed.where((c) => c).length;
-    final extents = _progressItemExtents(context);
 
     return Scaffold(
       appBar: AppBar(
         title: Text("Progression ($doneCount/${widget.steps.length})"),
       ),
-      body: ListView.builder(
-        controller: _scrollController,
-        itemExtentBuilder: (index, _) =>
-            _listEntries[index].isSeparator ? extents.separator : extents.step,
-        itemCount: _listEntries.length,
-        itemBuilder: (context, index) {
-          final entry = _listEntries[index];
-          if (entry.isSeparator) {
-            return SectionDivider(
-              key: ValueKey('progress-group-separator-${entry.stepIndex}'),
-              label: widget.steps[entry.stepIndex].group.name,
-            );
-          }
-
-          final stepIndex = entry.stepIndex;
-          return _buildStepTile(
-            stepIndex,
-            done: widget.completed[stepIndex],
-            isCurrent: stepIndex == currentIndex,
-          );
-        },
+      body: SessionProgressList(
+        layout: _listLayout,
+        steps: widget.steps,
+        completed: widget.completed,
+        currentIndex: currentIndex,
+        blinkController: widget.blinkController,
+        scrollController: _scrollController,
+        onSelectStep: _confirmAndSelect,
       ),
     );
   }
-}
-
-typedef _ProgressItemExtents = ({double separator, double step});
-
-_ProgressItemExtents _progressItemExtents(BuildContext context) {
-  final theme = Theme.of(context);
-  final tileTheme = ListTileTheme.of(context);
-  final textScaler = MediaQuery.textScalerOf(context);
-  final textDirection = Directionality.of(context);
-
-  double lineHeight(TextStyle style, {TextScaler? scaler}) {
-    final painter = TextPainter(
-      text: TextSpan(text: 'Ag', style: style),
-      maxLines: 1,
-      textDirection: textDirection,
-      textScaler: scaler ?? textScaler,
-    )..layout();
-    final height = painter.height;
-    painter.dispose();
-    return height;
-  }
-
-  final titleStyle = tileTheme.titleTextStyle ?? theme.textTheme.bodyLarge!;
-  final subtitleStyle =
-      tileTheme.subtitleTextStyle ?? theme.textTheme.bodyMedium!;
-  final titleHeight = lineHeight(titleStyle);
-  final subtitleHeight = lineHeight(subtitleStyle);
-  final unscaledTitleHeight = lineHeight(
-    titleStyle,
-    scaler: TextScaler.noScaling,
-  );
-  final unscaledSubtitleHeight = lineHeight(
-    subtitleStyle,
-    scaler: TextScaler.noScaling,
-  );
-  final hasScaledText =
-      titleHeight > unscaledTitleHeight ||
-      subtitleHeight > unscaledSubtitleHeight;
-  final defaultStepExtent = 72.0 + theme.visualDensity.baseSizeAdjustment.dy;
-  final stepExtent = math.max(
-    tileTheme.minTileHeight ?? defaultStepExtent,
-    defaultStepExtent +
-        math.max(0, titleHeight - unscaledTitleHeight) +
-        2 * math.max(0, subtitleHeight - unscaledSubtitleHeight) +
-        (hasScaledText ? unscaledSubtitleHeight : 0),
-  );
-  final separatorLabelHeight = lineHeight(theme.textTheme.labelMedium!);
-
-  return (separator: math.max(16, separatorLabelHeight) + 32, step: stepExtent);
-}
-
-class _ProgressListEntry {
-  final int stepIndex;
-  final bool isSeparator;
-
-  const _ProgressListEntry.step(this.stepIndex) : isSeparator = false;
-  const _ProgressListEntry.separator(this.stepIndex) : isSeparator = true;
-}
-
-(List<_ProgressListEntry>, List<int>) _buildListEntries(
-  List<SessionStep> steps,
-) {
-  final entries = <_ProgressListEntry>[];
-  final stepListIndices = List<int>.filled(steps.length, 0);
-
-  for (var index = 0; index < steps.length; index++) {
-    final startsGroup =
-        index == 0 || steps[index - 1].group.id != steps[index].group.id;
-    if (startsGroup) entries.add(_ProgressListEntry.separator(index));
-
-    stepListIndices[index] = entries.length;
-    entries.add(_ProgressListEntry.step(index));
-  }
-
-  return (entries, stepListIndices);
 }
