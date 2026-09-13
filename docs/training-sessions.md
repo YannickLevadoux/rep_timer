@@ -12,7 +12,8 @@ lancement d'une séance :
 - les noms sont obligatoires, limités à 50 caractères visibles et à une ligne ;
 - les commentaires sont facultatifs, limités à 200 caractères visibles et à
   trois lignes ;
-- les nombres de tours et de répétitions sont compris entre 1 et 999 ;
+- les nombres de tours et de répétitions sont compris entre 1 et 999 ; un
+  Tabata accepte de 1 à 99 tours et de 1 à 999 cycles par tour ;
 - les exercices et pauses chronométrés durent de 1 seconde à 2 h 00 min 59 s ;
 - une séance ne peut pas dépasser 10 000 étapes après développement des tours.
 
@@ -29,7 +30,8 @@ modifier :
    ou toucher le crayon d'un groupe existant pour le modifier ;
 3. renseigner le nom et les paramètres propres au groupe ;
 4. pour un groupe Libre ou Répétitions variables, ajouter des exercices ou des
-   pauses puis les réordonner avec leur poignée ;
+   pauses puis les réordonner avec leur poignée ; pour un Tabata, configurer
+   les tours et ouvrir **Modifier les exercices** pour éditer ses cycles ;
 5. enregistrer le groupe, puis la séance.
 
 Avant le choix du type, aucun formulaire ni bouton d'ajout n'est affiché. Le
@@ -72,16 +74,29 @@ les changements du groupe restent transactionnels tant que celui-ci n'a pas
 
 ## Groupe Tabata
 
-Un Tabata alterne un exercice **Effort** et une **Pause** pendant 1 à 999
-cycles. L'effort dure 20 secondes et la pause 10 secondes par défaut. Le nom,
-l'icône et le commentaire de l'effort sont modifiables, ainsi que la durée des
-deux phases dans les limites habituelles.
+Un Tabata rejoue pendant 1 à 99 tours la même liste ordonnée de 1 à 999 cycles.
+Chaque cycle correspond à un exercice chronométré possédant son propre nom,
+son icône et son commentaire facultatif. La durée des efforts est commune à
+tous les exercices : elle vaut 20 secondes par défaut. La liste reste l'unique
+source du nombre et de l'ordre des cycles.
 
-Dans une séance enregistrée, une dernière pause différente peut être
-configurée. Elle remplace la pause normale du dernier cycle uniquement
-lorsqu'un autre groupe suit. Si le Tabata termine la séance, cette dernière
-pause est toujours retirée. Par exemple, huit cycles de 20 secondes d'effort et
-10 secondes de pause durent `03:50` lorsqu'ils terminent la séance.
+**Modifier les exercices** ouvre un brouillon permettant d'ajouter, supprimer
+et réordonner les cycles sans modifier le groupe avant **Valider**. Les
+nouveaux noms suivent la préférence de préremplissage. Les lignes compactes de
+pause ouvrent le même dialogue **Modifier la pause** : la pause entre cycles
+vaut 10 secondes par défaut et ne peut pas être supprimée.
+
+La pause de fin de tour remplace toujours la pause normale après le dernier
+cycle ; elle ne s'y ajoute jamais. Elle est facultative et supprimable avec un
+seul tour. À partir de deux tours, elle devient obligatoire et, si nécessaire,
+est initialisée avec la pause entre cycles. Sa valeur est conservée lors d'un
+retour à un tour.
+
+Après le dernier exercice du dernier tour, aucune pause n'est exécutée si le
+Tabata termine la séance ou constitue une Session rapide. Si un autre groupe
+suit, la pause de fin de tour résolue assure la transition. Par exemple, un
+tour de huit cycles avec 20 secondes d'effort et 10 secondes de pause dure
+`03:50` lorsqu'il termine la séance.
 
 ## Groupe AMRAP
 
@@ -116,9 +131,9 @@ secondes.
 ## Récupération après un groupe
 
 Une récupération facultative peut être ajoutée après un AMRAP ou un EMOM. Le
-Tabata peut, lui, personnaliser sa dernière pause. Ces transitions sont
-exécutées uniquement si un autre groupe suit et ne sont pas proposées en
-Session rapide.
+Tabata utilise sa pause de fin de tour, personnalisée ou repliée sur la pause
+entre cycles avec un seul tour. Ces transitions sont exécutées uniquement si
+un autre groupe suit et ne sont pas proposées en Session rapide.
 
 ## Changer le type sans perdre la configuration
 
@@ -146,9 +161,11 @@ d'entraînement dans **Mes entraînements** :
 2. configurer le groupe avec le même éditeur que dans une séance enregistrée ;
 3. toucher **Commencer**.
 
-La session est construite uniquement en mémoire. Aucune récupération finale
-n'est proposée puisqu'aucun groupe ne suit, mais une fin normale ou anticipée
-est toujours conservée dans l'historique.
+La session est construite uniquement en mémoire. Le Tabata rapide utilise le
+même modèle, les mêmes tours, la même liste d'exercices et le même moteur que
+le Tabata enregistré. Aucune récupération finale n'est proposée puisqu'aucun
+groupe ne suit, mais une fin normale ou anticipée est toujours conservée dans
+l'historique.
 
 ## Préparer le départ
 
@@ -167,11 +184,14 @@ séance interrompue.
 ## Exécuter et reprendre une séance
 
 L'écran de résumé présente le type et la durée estimée de chaque groupe. Pendant
-la séance, RepTimer affiche le tour, le cycle ou la minute correspondant au type
-du groupe courant.
+un Tabata à plusieurs tours, le runner et la Progression affichent par exemple
+**Tour 1/2 · Cycle 3/4** ; avec un seul tour, **Cycle 3/4** suffit. Les autres
+types conservent leur tour ou leur minute selon leur contrat.
 
 Les commentaires modifiés pendant l'exécution restent attachés à l'exercice
 d'origine. En cas d'interruption, le checkpoint permet de reprendre au bon
-groupe et à la bonne occurrence. Pour un AMRAP, il restaure aussi les tours, le
-tour courant, le temps restant et le délai du bouton. À la fin, l'historique
-conserve les répétitions, tours et minutes réellement exécutés.
+groupe et à la bonne occurrence, notamment au bon tour, au bon cycle et dans la
+bonne phase d'un Tabata. Pour un AMRAP, il restaure aussi les tours, le tour
+courant, le temps restant et le délai du bouton. À la fin, l'historique
+conserve les métadonnées de tour et de cycle Tabata ainsi que les répétitions,
+tours et minutes réellement exécutés.
