@@ -159,6 +159,11 @@ class _GroupEditorState extends State<GroupEditor> {
               _dialogs.editRepetitionSequence(context),
           onTypeChanged: _changeType,
           onEditTimedExercise: () => _dialogs.editTimedExercise(context),
+          onTabataCyclesChanged: (value) =>
+              _dialogs.changeTabataCycleCount(context, value),
+          onEditTabataExercises: () => _dialogs.editTabataExercises(context),
+          onEditTabataRest: () => _dialogs.editTabataRest(context),
+          onEditTabataFinalRest: () => _dialogs.editTabataFinalRest(context),
           hasFollowingGroup: widget.hasFollowingGroup,
           showQuickWarning: _showQuickWarning,
           onDismissQuickWarning: () =>

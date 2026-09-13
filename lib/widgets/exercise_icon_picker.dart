@@ -23,27 +23,32 @@ Future<String?> showExerciseIconPicker(
             children: availableExerciseIcons.entries.map((entry) {
               final isSelected = entry.key == currentIconName;
 
-              return InkWell(
-                borderRadius: BorderRadius.circular(32),
-                onTap: () => Navigator.pop(context, entry.key),
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : null,
-                    border: isSelected
-                        ? Border.all(
-                            color: Theme.of(context).colorScheme.primary,
-                            width: 2,
-                          )
-                        : null,
-                  ),
-                  child: Icon(
-                    entry.value,
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.onPrimaryContainer
-                        : null,
+              return Semantics(
+                button: true,
+                selected: isSelected,
+                label: 'Choisir l’icône ${entry.key}',
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(32),
+                  onTap: () => Navigator.pop(context, entry.key),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.primaryContainer
+                          : null,
+                      border: isSelected
+                          ? Border.all(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 2,
+                            )
+                          : null,
+                    ),
+                    child: Icon(
+                      entry.value,
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.onPrimaryContainer
+                          : null,
+                    ),
                   ),
                 ),
               );

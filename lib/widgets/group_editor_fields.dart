@@ -21,6 +21,10 @@ class GroupEditorFields extends StatelessWidget {
     required this.onSave,
     required this.onEditRepetitionSequence,
     required this.onEditTimedExercise,
+    required this.onTabataCyclesChanged,
+    required this.onEditTabataExercises,
+    required this.onEditTabataRest,
+    required this.onEditTabataFinalRest,
     required this.hasFollowingGroup,
     required this.isSubmitting,
   });
@@ -34,6 +38,10 @@ class GroupEditorFields extends StatelessWidget {
   final VoidCallback onSave;
   final VoidCallback onEditRepetitionSequence;
   final VoidCallback onEditTimedExercise;
+  final ValueChanged<int> onTabataCyclesChanged;
+  final VoidCallback onEditTabataExercises;
+  final VoidCallback onEditTabataRest;
+  final VoidCallback onEditTabataFinalRest;
   final bool hasFollowingGroup;
   final bool isSubmitting;
 
@@ -49,6 +57,10 @@ class GroupEditorFields extends StatelessWidget {
             quick: mode.isQuick,
             hasFollowingGroup: hasFollowingGroup,
             onEditEffort: onEditTimedExercise,
+            onTabataCyclesChanged: onTabataCyclesChanged,
+            onEditTabataExercises: onEditTabataExercises,
+            onEditTabataRest: onEditTabataRest,
+            onEditTabataFinalRest: onEditTabataFinalRest,
           )
         else ...[
           if (group.type == GroupType.free)

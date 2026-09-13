@@ -5,8 +5,11 @@ import 'package:rep_timer/models/group_editor_mode.dart';
 import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/screens/group_editor.dart';
 import 'package:rep_timer/widgets/type_selector.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   testWidgets('un groupe édite son nom depuis le titre', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

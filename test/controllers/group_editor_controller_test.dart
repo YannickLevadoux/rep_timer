@@ -259,4 +259,137 @@ void main() {
     expect(controller.group.items.single.duration, const Duration(seconds: 30));
     controller.dispose();
   });
+
+  test('synchronise les cycles Tabata avec leur liste unique', () {
+    final controller = GroupEditorController(ExerciseGroup.tabata(id: 'g'));
+
+    expect(controller.tabataCycleCount, 1);
+    expect(controller.addTabataExercise(prefill: true), isTrue);
+    expect(controller.group.rounds, 2);
+    expect(controller.group.tabataConfig!.exercises.map((item) => item.name), [
+      'Effort',
+      'Effort 2',
+    ]);
+    expect(
+      controller.group.items.first,
+      same(controller.group.tabataConfig!.exercises.first),
+    );
+
+    expect(controller.removeLastTabataExercise(), isTrue);
+    expect(controller.tabataCycleCount, 1);
+    expect(controller.removeLastTabataExercise(), isFalse);
+    controller.dispose();
+  });
+
+  test('préremplit ou laisse vide un nouveau cycle Tabata', () {
+    final controller = GroupEditorController(ExerciseGroup.tabata(id: 'g'));
+    controller.configureNewTabataExerciseName(prefill: true);
+    expect(controller.group.tabataConfig!.exercises.single.name, 'Effort 1');
+
+    controller.addTabataExercise(prefill: false);
+    expect(controller.group.tabataConfig!.exercises.last.name, isEmpty);
+    expect(controller.lastTabataExerciseIsCustomized, isFalse);
+    controller.group.tabataConfig!.exercises.last.name = 'Burpees';
+    expect(controller.lastTabataExerciseIsCustomized, isTrue);
+    controller.group.tabataConfig!.exercises.last
+      ..name = ''
+      ..iconName = 'rowing';
+    expect(controller.lastTabataExerciseIsCustomized, isTrue);
+    controller.dispose();
+  });
+
+  test('refuse les bornes Tabata invalides dans le contrôleur', () {
+    final group = ExerciseGroup.tabata(id: 'g')..rounds = 999;
+    final controller = GroupEditorController(group);
+
+    expect(controller.addTabataExercise(prefill: true), isFalse);
+    controller.setTabataRounds(0);
+    expect(controller.tabataRounds, 1);
+    controller.setTabataRounds(100);
+    expect(controller.tabataRounds, 1);
+    expect(
+      controller.replaceTabataExercises(
+        List.generate(
+          1000,
+          (index) => TrainingItem(
+            type: ItemType.exercise,
+            name: 'Effort ${index + 1}',
+            duration: const Duration(seconds: 20),
+          ),
+        ),
+      ),
+      isFalse,
+    );
+    expect(controller.tabataCycleCount, 999);
+    controller.dispose();
+  });
+
+  test('applique atomiquement une liste Tabata valide seulement', () {
+    final controller = GroupEditorController(ExerciseGroup.tabata(id: 'g'));
+    final valid = [
+      TrainingItem(
+        type: ItemType.exercise,
+        name: 'Squats',
+        duration: const Duration(seconds: 20),
+        comment: 'Lentement',
+        iconName: 'rowing',
+      ),
+      TrainingItem(
+        type: ItemType.exercise,
+        name: 'Burpees',
+        duration: const Duration(seconds: 20),
+      ),
+    ];
+
+    expect(controller.replaceTabataExercises(valid), isTrue);
+    expect(controller.tabataCycleCount, 2);
+    expect(controller.group.tabataConfig!.exercises.first.comment, 'Lentement');
+    expect(controller.group.tabataConfig!.exercises.first.iconName, 'rowing');
+    expect(
+      controller.replaceTabataExercises([
+        TrainingItem(
+          type: ItemType.exercise,
+          name: '',
+          duration: const Duration(seconds: 20),
+        ),
+      ]),
+      isFalse,
+    );
+    expect(controller.group.tabataConfig!.exercises.map((item) => item.name), [
+      'Squats',
+      'Burpees',
+    ]);
+    controller.dispose();
+  });
+
+  test('gère les tours et la pause de fin sans perte', () {
+    final controller = GroupEditorController(ExerciseGroup.tabata(id: 'g'));
+    controller.setRequiredRestDuration(const Duration(seconds: 17));
+    controller.setTabataRounds(2);
+    expect(controller.tabataRounds, 2);
+    expect(controller.group.finalRestDuration, const Duration(seconds: 17));
+    expect(controller.canDeleteTabataFinalRest, isFalse);
+
+    controller.setFinalRestEnabled(false);
+    expect(controller.group.finalRestDuration, const Duration(seconds: 17));
+    controller.setFinalRestDuration(const Duration(seconds: 23));
+    controller.setTabataRounds(1);
+    expect(controller.group.finalRestDuration, const Duration(seconds: 23));
+    expect(controller.canDeleteTabataFinalRest, isTrue);
+    controller.setFinalRestEnabled(false);
+    expect(controller.group.finalRestDuration, isNull);
+    controller.dispose();
+  });
+
+  test('modifie la durée commune de tous les efforts Tabata', () {
+    final controller = GroupEditorController(ExerciseGroup.tabata(id: 'g'));
+    controller.addTabataExercise(prefill: true);
+    controller.setEffortDuration(const Duration(seconds: 45));
+
+    expect(
+      controller.group.tabataConfig!.exercises.map((item) => item.duration),
+      everyElement(const Duration(seconds: 45)),
+    );
+    controller.dispose();
+  });
 }

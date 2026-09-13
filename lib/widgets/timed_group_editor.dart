@@ -4,8 +4,10 @@ import '../controllers/group_editor_controller.dart';
 import '../models/group_type.dart';
 import '../services/group_duration_estimator.dart';
 import '../validation/business_validation.dart';
+import 'compact_duration_tile.dart';
 import 'estimated_duration_card.dart';
 import 'rounds_editor.dart';
+import 'tabata_effort_section.dart';
 import 'timed_exercise_minutes_row.dart';
 import 'timed_inline_duration_row.dart';
 import 'timed_item_section.dart';
@@ -17,12 +19,20 @@ class TimedGroupEditor extends StatelessWidget {
     required this.quick,
     required this.hasFollowingGroup,
     required this.onEditEffort,
+    required this.onTabataCyclesChanged,
+    required this.onEditTabataExercises,
+    required this.onEditTabataRest,
+    required this.onEditTabataFinalRest,
   });
 
   final GroupEditorController controller;
   final bool quick;
   final bool hasFollowingGroup;
   final VoidCallback onEditEffort;
+  final ValueChanged<int> onTabataCyclesChanged;
+  final VoidCallback onEditTabataExercises;
+  final VoidCallback onEditTabataRest;
+  final VoidCallback onEditTabataFinalRest;
 
   @override
   Widget build(BuildContext context) {
@@ -45,34 +55,48 @@ class TimedGroupEditor extends StatelessWidget {
 
   List<Widget> _tabata(BuildContext context) => [
     RoundsEditor(
-      rounds: controller.group.rounds,
-      label: 'Nombre de cycles',
-      onChanged: controller.setRounds,
+      key: const Key('tabata-rounds-editor'),
+      rounds: controller.tabataRounds,
+      label: 'Nombre de tours',
+      maximum: BusinessLimits.maximumTabataRounds,
+      onChanged: controller.setTabataRounds,
     ),
-    TimedExerciseDurationRow(
-      key: const Key('tabata-effort-row'),
-      item: controller.group.items.first,
-      onEdit: onEditEffort,
+    RoundsEditor(
+      key: const Key('tabata-cycles-editor'),
+      rounds: controller.tabataCycleCount,
+      label: 'Nombre de cycles par tour',
+      maximum: BusinessLimits.maximumCount,
+      onChanged: onTabataCyclesChanged,
+    ),
+    TabataEffortSection(
+      value: controller.group.tabataConfig!.effortDuration!,
       onChanged: controller.setEffortDuration,
+      onEditExercises: onEditTabataExercises,
+    ),
+    CompactDurationTile(
+      key: const Key('tabata-rest-row'),
+      title: 'Pause entre les cycles',
+      value: controller.group.items[1].duration!,
+      onEdit: onEditTabataRest,
     ),
     const Divider(),
-    TimedRestDurationRow(
-      key: const Key('tabata-rest-row'),
-      title: 'Pause',
-      value: controller.group.items[1].duration!,
-      onChanged: controller.setRequiredRestDuration,
-    ),
-    if (!quick) ...[
-      const Divider(),
-      _OptionalRest(
-        title: 'Dernière pause',
-        addLabel: 'Personnaliser la dernière pause',
-        value: controller.group.finalRestDuration,
-        onEnabled: controller.setFinalRestEnabled,
-        onChanged: controller.setFinalRestDuration,
-        inline: true,
+    if (controller.group.finalRestDuration == null)
+      OutlinedButton.icon(
+        key: const Key('add-tabata-final-rest'),
+        onPressed: onEditTabataFinalRest,
+        icon: const Icon(Icons.add),
+        label: const Text('Personnaliser la dernière pause'),
+      )
+    else
+      CompactDurationTile(
+        key: const Key('tabata-final-rest-row'),
+        title: 'Pause de fin de tour',
+        value: controller.group.finalRestDuration!,
+        onEdit: onEditTabataFinalRest,
+        onDelete: controller.canDeleteTabataFinalRest
+            ? () => controller.setFinalRestEnabled(false)
+            : null,
       ),
-    ],
   ];
 
   List<Widget> _amrap(BuildContext context) => [

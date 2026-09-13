@@ -48,9 +48,16 @@ void main() {
         home: GroupEditor(group: ExerciseGroup.tabata(id: 't')),
       ),
     );
-    var rounds = tester.widget<RoundsEditor>(find.byType(RoundsEditor));
-    expect(rounds.minimum, 1);
-    expect(rounds.maximum, 999);
+    final tours = tester.widget<RoundsEditor>(
+      find.byKey(const Key('tabata-rounds-editor')),
+    );
+    final cycles = tester.widget<RoundsEditor>(
+      find.byKey(const Key('tabata-cycles-editor')),
+    );
+    expect(tours.minimum, 1);
+    expect(tours.maximum, 99);
+    expect(cycles.minimum, 1);
+    expect(cycles.maximum, 999);
 
     await tester.pumpWidget(
       MaterialApp(

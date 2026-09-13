@@ -6,8 +6,10 @@ import '../models/exercise_group.dart';
 import '../models/group_type.dart';
 import '../models/training_item.dart';
 import 'group_editor_draft_factory.dart';
+import 'group_editor_tabata_actions.dart';
 
-class GroupEditorController extends ChangeNotifier {
+class GroupEditorController extends ChangeNotifier
+    with GroupEditorTabataActions {
   GroupEditorController(
     ExerciseGroup source, {
     bool requiresInitialTypeSelection = false,
@@ -25,10 +27,12 @@ class GroupEditorController extends ChangeNotifier {
   late final TextEditingController nameController;
   late final String _initialSnapshot;
   final Map<GroupType, ExerciseGroup> _drafts = {};
+  @override
   ExerciseGroup get group =>
       _group ?? (throw StateError('Type non sélectionné'));
   GroupType? get selectedType => _group?.type;
   bool get hasSelectedType => _group != null;
+  bool hasDraft(GroupType type) => _drafts.containsKey(type);
   String get name => nameController.text.trim();
   bool get hasUnsavedChanges => _currentSnapshot() != _initialSnapshot;
   String _currentSnapshot() => jsonEncode({
@@ -71,8 +75,6 @@ class GroupEditorController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setRounds(int rounds) => _mutate(() => group.rounds = rounds);
-
   void setRepetitionSequence(List<int> values) {
     group.repetitionSequence = List<int>.of(values);
     notifyListeners();
@@ -88,30 +90,12 @@ class GroupEditorController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setEffortDuration(Duration value) => _mutate(() {
-    group.items.first.duration = value;
-    group.tabataConfig?.setEffortDuration(value);
-  });
-
-  void setRequiredRestDuration(Duration value) => _mutate(() {
-    group.items[1].duration = value;
-    group.tabataConfig?.restDuration = value;
-  });
-
-  void setFinalRestEnabled(bool enabled) {
-    group.finalRestDuration = enabled ? ExerciseGroup.defaultTabataRest : null;
-    notifyListeners();
-  }
-
   void setPostGroupRestEnabled(bool enabled) {
     group.postGroupRestDuration = enabled
         ? ExerciseGroup.defaultPostGroupRest
         : null;
     notifyListeners();
   }
-
-  void setFinalRestDuration(Duration value) =>
-      _mutate(() => group.finalRestDuration = value);
 
   void setPostGroupRestDuration(Duration value) =>
       _mutate(() => group.postGroupRestDuration = value);
