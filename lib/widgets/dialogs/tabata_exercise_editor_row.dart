@@ -63,7 +63,7 @@ class TabataExerciseEditorRow extends StatelessWidget {
                   maxLengthEnforcement: MaxLengthEnforcement.none,
                   decoration: InputDecoration(
                     isDense: true,
-                    labelText: "Nom de l'exercice",
+                    counterText: '',
                     errorText: entry.nameError,
                   ),
                 ),

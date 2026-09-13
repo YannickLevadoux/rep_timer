@@ -102,6 +102,25 @@ void main() {
     expect(find.text('Modifier la pause'), findsOneWidget);
   });
 
+  testWidgets('les pauses reprennent l’encadré gris des autres groupes', (
+    tester,
+  ) async {
+    final theme = ThemeData.light();
+    await _pumpEditor(tester, ExerciseGroup.tabata(id: 'tabata'), theme: theme);
+
+    final restContainer = tester.widget<Container>(
+      find
+          .ancestor(
+            of: find.text('Pause entre les cycles'),
+            matching: find.byType(Container),
+          )
+          .first,
+    );
+    final decoration = restContainer.decoration! as BoxDecoration;
+    expect(decoration.color, theme.colorScheme.surfaceContainerHighest);
+    expect(decoration.borderRadius, BorderRadius.circular(8));
+  });
+
   testWidgets('préremplit selon la préférence lors de la sélection Tabata', (
     tester,
   ) async {
@@ -121,6 +140,34 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Valider'));
     await tester.pump();
     expect(find.text('Ce champ est obligatoire.'), findsOneWidget);
+  });
+
+  testWidgets('nomme silencieusement un cycle ajouté depuis le compteur', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      AppSettingsStorage.prefillExerciseNameKey: false,
+    });
+    ExerciseGroup? savedGroup;
+    await _pumpEditor(
+      tester,
+      ExerciseGroup.tabata(id: 'tabata'),
+      onSubmit: (group) async => savedGroup = group,
+    );
+
+    await tester.tap(find.byTooltip('Augmenter Nombre de cycles par tour'));
+    await tester.pump();
+    final saveButton = find.text('Enregistrer');
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton);
+    await tester.pump();
+
+    expect(savedGroup, isNotNull);
+    expect(savedGroup!.tabataConfig!.exercises.map((item) => item.name), [
+      'Effort',
+      'Effort 2',
+    ]);
+    expect(find.text('Ce champ est obligatoire.'), findsNothing);
   });
 
   for (final mode in GroupEditorMode.values) {
@@ -193,15 +240,17 @@ Future<void> _pumpEditor(
   GroupEditorMode mode = GroupEditorMode.edit,
   Brightness brightness = Brightness.light,
   double textScale = 1,
+  ThemeData? theme,
+  Future<void> Function(ExerciseGroup group)? onSubmit,
 }) => tester.pumpWidget(
   MaterialApp(
-    theme: ThemeData(brightness: brightness),
+    theme: theme ?? ThemeData(brightness: brightness),
     builder: (context, child) => MediaQuery(
       data: MediaQuery.of(
         context,
       ).copyWith(textScaler: TextScaler.linear(textScale)),
       child: child!,
     ),
-    home: GroupEditor(group: group, mode: mode),
+    home: GroupEditor(group: group, mode: mode, onSubmit: onSubmit),
   ),
 );

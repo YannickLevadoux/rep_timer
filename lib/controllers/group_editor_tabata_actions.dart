@@ -50,11 +50,11 @@ mixin GroupEditorTabataActions on ChangeNotifier {
     notifyListeners();
   }
 
-  bool addTabataExercise({required bool prefill}) {
+  bool addTabataExercise() {
     if (tabataCycleCount >= BusinessLimits.maximumCount) return false;
     final exercise = TrainingItem(
       type: ItemType.exercise,
-      name: prefill ? 'Effort ${tabataCycleCount + 1}' : '',
+      name: 'Effort ${tabataCycleCount + 1}',
       duration: _tabata.effortDuration,
       iconName: defaultExerciseIconName,
     );

@@ -264,7 +264,7 @@ void main() {
     final controller = GroupEditorController(ExerciseGroup.tabata(id: 'g'));
 
     expect(controller.tabataCycleCount, 1);
-    expect(controller.addTabataExercise(prefill: true), isTrue);
+    expect(controller.addTabataExercise(), isTrue);
     expect(controller.group.rounds, 2);
     expect(controller.group.tabataConfig!.exercises.map((item) => item.name), [
       'Effort',
@@ -281,13 +281,13 @@ void main() {
     controller.dispose();
   });
 
-  test('préremplit ou laisse vide un nouveau cycle Tabata', () {
+  test('préremplit le brouillon et sécurise un ajout depuis le compteur', () {
     final controller = GroupEditorController(ExerciseGroup.tabata(id: 'g'));
     controller.configureNewTabataExerciseName(prefill: true);
     expect(controller.group.tabataConfig!.exercises.single.name, 'Effort 1');
 
-    controller.addTabataExercise(prefill: false);
-    expect(controller.group.tabataConfig!.exercises.last.name, isEmpty);
+    controller.addTabataExercise();
+    expect(controller.group.tabataConfig!.exercises.last.name, 'Effort 2');
     expect(controller.lastTabataExerciseIsCustomized, isFalse);
     controller.group.tabataConfig!.exercises.last.name = 'Burpees';
     expect(controller.lastTabataExerciseIsCustomized, isTrue);
@@ -302,7 +302,7 @@ void main() {
     final group = ExerciseGroup.tabata(id: 'g')..rounds = 999;
     final controller = GroupEditorController(group);
 
-    expect(controller.addTabataExercise(prefill: true), isFalse);
+    expect(controller.addTabataExercise(), isFalse);
     controller.setTabataRounds(0);
     expect(controller.tabataRounds, 1);
     controller.setTabataRounds(100);
@@ -383,7 +383,7 @@ void main() {
 
   test('modifie la durée commune de tous les efforts Tabata', () {
     final controller = GroupEditorController(ExerciseGroup.tabata(id: 'g'));
-    controller.addTabataExercise(prefill: true);
+    controller.addTabataExercise();
     controller.setEffortDuration(const Duration(seconds: 45));
 
     expect(

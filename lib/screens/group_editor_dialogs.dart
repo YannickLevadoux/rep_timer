@@ -78,10 +78,7 @@ class GroupEditorDialogs {
   Future<void> changeTabataCycleCount(BuildContext context, int target) async {
     final current = controller.tabataCycleCount;
     if (target == current + 1) {
-      final prefill = await _settings.loadPrefillExerciseName();
-      if (context.mounted) {
-        controller.addTabataExercise(prefill: prefill);
-      }
+      controller.addTabataExercise();
       return;
     }
     if (target != current - 1 || current <= BusinessLimits.minimumCount) {

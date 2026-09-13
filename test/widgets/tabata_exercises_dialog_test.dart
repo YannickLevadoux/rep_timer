@@ -171,6 +171,7 @@ void main() {
 
     await tester.tap(find.text('Ouvrir'));
     await tester.pumpAndSettle();
+    expect(find.text("Nom de l'exercice"), findsNothing);
     expect(tester.takeException(), isNull);
     expect(find.text('Ajouter un cycle'), findsOneWidget);
     expect(find.byTooltip('Réordonner le cycle'), findsWidgets);
