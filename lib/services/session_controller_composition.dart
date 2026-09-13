@@ -13,6 +13,7 @@ import 'session_comment_updater.dart';
 import 'session_completion_service.dart';
 import 'session_notification_bridge.dart';
 import 'session_notification_service.dart';
+import 'session_plan_signature.dart';
 import 'session_progress_state.dart';
 import 'session_timed_group_state.dart';
 import 'step_end_notification_service.dart';
@@ -162,6 +163,7 @@ class SessionControllerComposition {
     stepElapsed: clock.stepElapsed,
     paused: clock.paused,
     stepActualDurations: progress.stepActualDurations,
+    planSignature: sessionPlanSignature(progress.steps),
     amrapStates: timedGroups.checkpoints(
       index: progress.currentIndex,
       stepElapsed: clock.stepElapsed,

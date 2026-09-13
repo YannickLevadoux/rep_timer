@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../controllers/pre_session_preparation_controller.dart';
 import '../models/exercise_group.dart';
 import '../models/training.dart';
-import '../models/training_item.dart';
 import '../services/app_settings_storage.dart';
 import '../services/session_notification_permission_service.dart';
 import '../services/session_start_permission_gate.dart';
+import '../services/training_summary_counts.dart';
 import '../utils/snack.dart';
 import '../utils/validation_messages.dart';
 import '../validation/business_validation.dart';
@@ -105,19 +105,9 @@ class _TrainingSummaryScreenState extends State<TrainingSummaryScreen> {
   Widget build(BuildContext context) {
     final training = widget.training;
     final validationIssues = BusinessValidation.validateTraining(training);
-    final totalItems = training.groups.fold<int>(
-      0,
-      (sum, group) => sum + group.items.length * _roundsOf(group),
-    );
-
-    final exerciseCount = training.groups.fold<int>(
-      0,
-      (sum, group) =>
-          sum +
-          group.items.where((i) => i.type == ItemType.exercise).length *
-              _roundsOf(group),
-    );
-
+    final counts = countTrainingSummaryItems(training);
+    final totalItems = counts.total;
+    final exerciseCount = counts.exercises;
     final restCount = totalItems - exerciseCount;
     final canStart =
         validationIssues.isEmpty &&

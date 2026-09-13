@@ -2,9 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
 import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/session_checkpoint.dart';
+import 'package:rep_timer/models/session_step.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/services/session_progress_state.dart';
+import 'package:rep_timer/services/session_plan_signature.dart';
 
 void main() {
   test('la progression, les durées et les occurrences restent cohérentes', () {
@@ -69,6 +71,34 @@ void main() {
     expect(state.restoredFromCheckpoint, isFalse);
     expect(state.currentIndex, 0);
     expect(state.completed, <bool>[false, false]);
+  });
+
+  test('ignore un checkpoint si le plan a changé à longueur identique', () {
+    final training = _training();
+    final signature = sessionPlanSignature(buildSessionSteps(training));
+    final checkpoint = SessionCheckpoint(
+      trainingId: training.id,
+      currentIndex: 1,
+      completed: <bool>[true, false],
+      globalElapsed: const Duration(seconds: 10),
+      stepElapsed: const Duration(seconds: 2),
+      paused: true,
+      savedAt: DateTime(2026),
+      stepActualDurations: <Duration>[
+        const Duration(seconds: 10),
+        Duration.zero,
+      ],
+      planSignature: signature,
+    );
+    training.groups.single.items.last.name = 'Exercice remplacé';
+
+    final state = SessionProgressState(
+      training: training,
+      checkpoint: checkpoint,
+    );
+
+    expect(state.restoredFromCheckpoint, isFalse);
+    expect(state.currentIndex, 0);
   });
 
   test(

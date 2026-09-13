@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
 import 'package:rep_timer/models/group_type.dart';
+import 'package:rep_timer/models/tabata_config.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/screens/training_session.dart';
@@ -332,6 +333,46 @@ void main() {
     await _pumpSummary(tester, _training(groups: [tabata, _group('Suite')]));
 
     expect(find.text('Tabata · 8 cycles · 04:07'), findsOneWidget);
+  });
+
+  testWidgets('compte les occurrences réelles d’un Tabata multi-tour', (
+    tester,
+  ) async {
+    final tabata = ExerciseGroup.withTabataConfig(
+      id: 'tabata',
+      name: 'Tabata',
+      config: TabataConfig(
+        rounds: 2,
+        exercises: [
+          for (final name in ['Burpees', 'Gainage'])
+            TrainingItem(
+              type: ItemType.exercise,
+              name: name,
+              duration: const Duration(seconds: 20),
+            ),
+        ],
+        restDuration: const Duration(seconds: 10),
+        finalRestDuration: const Duration(seconds: 17),
+      ),
+    );
+
+    await _pumpSummary(tester, _training(groups: [tabata]));
+
+    expect(find.text('Tabata · 2 tours × 2 cycles · 01:57'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('summary-exercises-badge')),
+        matching: find.text('4'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('summary-rests-badge')),
+        matching: find.text('3'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('résume l’AMRAP et sa récupération selon sa position', (

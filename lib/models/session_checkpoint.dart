@@ -12,6 +12,7 @@ class SessionCheckpoint {
   final Duration stepElapsed;
   final bool paused;
   final DateTime savedAt;
+  final String? planSignature;
 
   // Temps réellement passé sur chaque étape déjà quittée (utilisé pour
   // l'historique détaillé) ; l'étape courante n'y figure pas encore tant
@@ -31,6 +32,7 @@ class SessionCheckpoint {
     required this.paused,
     required this.savedAt,
     required List<Duration> stepActualDurations,
+    this.planSignature,
     AmrapCheckpointState? amrapState,
     Map<int, AmrapCheckpointState> amrapStates = const {},
   }) : completed = List.unmodifiable(completed),
@@ -49,6 +51,7 @@ class SessionCheckpoint {
     'stepElapsedSeconds': stepElapsed.inSeconds,
     'paused': paused,
     'savedAt': savedAt.toIso8601String(),
+    'planSignature': planSignature,
     'stepActualDurationsSeconds': stepActualDurations
         .map((d) => d.inSeconds)
         .toList(),
@@ -69,6 +72,7 @@ class SessionCheckpoint {
       stepElapsed: Duration(seconds: json['stepElapsedSeconds'] as int),
       paused: json['paused'] as bool,
       savedAt: DateTime.parse(json['savedAt'] as String),
+      planSignature: json['planSignature'] as String?,
       // Rétro-compatible : absent dans un checkpoint sauvegardé par une
       // version antérieure de l'app.
       stepActualDurations:

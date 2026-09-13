@@ -9,9 +9,18 @@ import '../validation/business_validation.dart';
 /// d'occurrences de chacun de ses items, dans l'ordre.
 class SessionStep {
   final ExerciseGroup group;
-  final int roundIndex; // 1-based : numéro du tour courant dans le groupe
+
+  /// Dimension historique : cycle Tabata, minute EMOM ou tour des autres
+  /// groupes. Les champs Tabata ci-dessous distinguent désormais les tours.
+  final int roundIndex;
   final int totalRounds;
   final TrainingItem item;
+
+  /// Position explicite de toute phase Tabata ; null pour les autres groupes.
+  final int? tabataRoundIndex;
+  final int? tabataRoundTotal;
+  final int? tabataCycleIndex;
+  final int? tabataCycleTotal;
 
   /// Élément du modèle édité à l'origine de cette étape. Pour un exercice à
   /// répétitions variables, [item] est une copie portant la valeur résolue du
@@ -25,6 +34,10 @@ class SessionStep {
     required this.totalRounds,
     required this.item,
     TrainingItem? sourceItem,
+    this.tabataRoundIndex,
+    this.tabataRoundTotal,
+    this.tabataCycleIndex,
+    this.tabataCycleTotal,
   }) : sourceItem = sourceItem ?? item;
 }
 
@@ -39,46 +52,11 @@ List<SessionStep> buildSessionSteps(Training training) {
 
   for (var groupIndex = 0; groupIndex < training.groups.length; groupIndex++) {
     final group = training.groups[groupIndex];
-    final rounds = group.executedRounds;
-
-    for (var round = 1; round <= rounds; round++) {
-      for (final item in group.items) {
-        final resolvedItem =
-            group.type == GroupType.variableRepetitions &&
-                item.type == ItemType.exercise &&
-                item.repetitions != null
-            ? item.copyWith(repetitions: group.repetitionSequence[round - 1])
-            : item;
-        steps.add(
-          SessionStep(
-            group: group,
-            roundIndex: round,
-            totalRounds: rounds,
-            item: resolvedItem,
-            sourceItem: item,
-          ),
-        );
-      }
-    }
-
     final hasFollowingGroup = groupIndex + 1 < training.groups.length;
-    if (hasFollowingGroup &&
-        group.type == GroupType.tabata &&
-        group.finalRestDuration != null &&
-        steps.isNotEmpty &&
-        steps.last.group == group &&
-        steps.last.item.type == ItemType.rest) {
-      final last = steps.removeLast();
-      final finalRest = last.item.copyWith(duration: group.finalRestDuration);
-      steps.add(
-        SessionStep(
-          group: group,
-          roundIndex: last.roundIndex,
-          totalRounds: last.totalRounds,
-          item: finalRest,
-          sourceItem: last.sourceItem,
-        ),
-      );
+    if (group.type == GroupType.tabata && group.tabataConfig != null) {
+      _addTabataSteps(steps, group, hasFollowingGroup: hasFollowingGroup);
+    } else {
+      _addStandardSteps(steps, group);
     }
     if (hasFollowingGroup && group.postGroupRestDuration != null) {
       final rest = TrainingItem(
@@ -89,8 +67,8 @@ List<SessionStep> buildSessionSteps(Training training) {
       steps.add(
         SessionStep(
           group: group,
-          roundIndex: rounds,
-          totalRounds: rounds,
+          roundIndex: group.executedRounds,
+          totalRounds: group.executedRounds,
           item: rest,
         ),
       );
@@ -108,6 +86,87 @@ List<SessionStep> buildSessionSteps(Training training) {
 
   return steps;
 }
+
+void _addStandardSteps(List<SessionStep> steps, ExerciseGroup group) {
+  final rounds = group.executedRounds;
+  for (var round = 1; round <= rounds; round++) {
+    for (final item in group.items) {
+      final resolvedItem =
+          group.type == GroupType.variableRepetitions &&
+              item.type == ItemType.exercise &&
+              item.repetitions != null
+          ? item.copyWith(repetitions: group.repetitionSequence[round - 1])
+          : item;
+      steps.add(
+        SessionStep(
+          group: group,
+          roundIndex: round,
+          totalRounds: rounds,
+          item: resolvedItem,
+          sourceItem: item,
+        ),
+      );
+    }
+  }
+}
+
+void _addTabataSteps(
+  List<SessionStep> steps,
+  ExerciseGroup group, {
+  required bool hasFollowingGroup,
+}) {
+  final config = group.tabataConfig!;
+  final cycleTotal = config.exercises.length;
+  for (var round = 1; round <= config.rounds; round++) {
+    for (var cycle = 1; cycle <= cycleTotal; cycle++) {
+      final exercise = config.exercises[cycle - 1];
+      steps.add(
+        _tabataStep(group, exercise, round, config.rounds, cycle, cycleTotal),
+      );
+      final isLastCycle = cycle == cycleTotal;
+      final endsSession =
+          !hasFollowingGroup && round == config.rounds && isLastCycle;
+      if (endsSession) continue;
+      final sourceRest = config.legacyRestItem;
+      final rest = isLastCycle
+          ? sourceRest.copyWith(
+              duration: config.finalRestDuration ?? config.restDuration,
+            )
+          : sourceRest;
+      steps.add(
+        _tabataStep(
+          group,
+          rest,
+          round,
+          config.rounds,
+          cycle,
+          cycleTotal,
+          sourceItem: sourceRest,
+        ),
+      );
+    }
+  }
+}
+
+SessionStep _tabataStep(
+  ExerciseGroup group,
+  TrainingItem item,
+  int round,
+  int roundTotal,
+  int cycle,
+  int cycleTotal, {
+  TrainingItem? sourceItem,
+}) => SessionStep(
+  group: group,
+  roundIndex: cycle,
+  totalRounds: cycleTotal,
+  item: item,
+  sourceItem: sourceItem,
+  tabataRoundIndex: round,
+  tabataRoundTotal: roundTotal,
+  tabataCycleIndex: cycle,
+  tabataCycleTotal: cycleTotal,
+);
 
 /// Calcule la durée programmée d'une séance à partir de la séquence exacte
 /// produite par [buildSessionSteps].

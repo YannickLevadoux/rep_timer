@@ -102,6 +102,26 @@ void main() {
     expect(find.text('Circuit · répétition 2/2 · 15 s'), findsOneWidget);
   });
 
+  testWidgets('affiche les mêmes tours et cycles Tabata que le runner', (
+    tester,
+  ) async {
+    final group = ExerciseGroup.tabata(id: 'tabata');
+    final step = SessionStep(
+      group: group,
+      roundIndex: 3,
+      totalRounds: 4,
+      item: group.items.first,
+      tabataRoundIndex: 1,
+      tabataRoundTotal: 2,
+      tabataCycleIndex: 3,
+      tabataCycleTotal: 4,
+    );
+
+    await _openProgress(tester, steps: [step], completed: [false]);
+
+    expect(find.text('Tabata · Tour 1/2 · Cycle 3/4 · 20 s'), findsOneWidget);
+  });
+
   testWidgets(
     'affiche un seul séparateur avant chaque groupe dans le bon ordre',
     (tester) async {

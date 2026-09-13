@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
 import 'package:rep_timer/models/notification_mode.dart';
 import 'package:rep_timer/models/session_step.dart';
+import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/services/amrap_execution_state.dart';
 import 'package:rep_timer/widgets/session_running_body.dart';
 
@@ -70,19 +71,71 @@ void main() {
     await _pump(tester, step: _step(tabata, round: 2, total: 3));
     expect(find.text('Cycle 2/3'), findsOneWidget);
 
+    await _pump(
+      tester,
+      step: _step(
+        tabata,
+        round: 3,
+        total: 4,
+        tabataRound: 1,
+        tabataRoundTotal: 2,
+      ),
+    );
+    expect(find.text('Tour 1/2 · Cycle 3/4'), findsOneWidget);
+
     final emom = ExerciseGroup.emom(id: 'emom')..rounds = 10;
     await _pump(tester, step: _step(emom, round: 4, total: 10));
     expect(find.text('Minute 4/10'), findsOneWidget);
   });
+
+  testWidgets('affiche le vrai nom et la vraie icône du cycle Tabata', (
+    tester,
+  ) async {
+    final group = ExerciseGroup.tabata(id: 'tabata');
+    final exercise = TrainingItem(
+      type: ItemType.exercise,
+      name: 'Burpees',
+      duration: const Duration(seconds: 20),
+      iconName: 'local_fire_department',
+    );
+
+    await _pump(
+      tester,
+      step: SessionStep(
+        group: group,
+        roundIndex: 2,
+        totalRounds: 2,
+        item: exercise,
+        sourceItem: exercise,
+        tabataRoundIndex: 1,
+        tabataRoundTotal: 1,
+        tabataCycleIndex: 2,
+        tabataCycleTotal: 2,
+      ),
+    );
+
+    expect(find.text('Burpees'), findsOneWidget);
+    expect(find.byIcon(Icons.local_fire_department), findsOneWidget);
+    expect(find.text('Cycle 2/2'), findsOneWidget);
+  });
 }
 
-SessionStep _step(ExerciseGroup group, {int round = 1, int total = 1}) =>
-    SessionStep(
-      group: group,
-      roundIndex: round,
-      totalRounds: total,
-      item: group.items.first,
-    );
+SessionStep _step(
+  ExerciseGroup group, {
+  int round = 1,
+  int total = 1,
+  int? tabataRound,
+  int? tabataRoundTotal,
+}) => SessionStep(
+  group: group,
+  roundIndex: round,
+  totalRounds: total,
+  item: group.items.first,
+  tabataRoundIndex: tabataRound,
+  tabataRoundTotal: tabataRoundTotal,
+  tabataCycleIndex: tabataRound == null ? null : round,
+  tabataCycleTotal: tabataRound == null ? null : total,
+);
 
 Future<void> _pump(
   WidgetTester tester, {

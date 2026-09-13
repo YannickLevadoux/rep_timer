@@ -4,6 +4,7 @@ import '../models/session_step.dart';
 import '../models/group_type.dart';
 import '../models/training_item.dart';
 import '../utils/exercise_icons.dart';
+import '../utils/tabata_step_label.dart';
 
 String formatSessionStepDetail(SessionStep step) {
   final item = step.item;
@@ -73,7 +74,7 @@ class SessionProgressStepTile extends StatelessWidget {
   }
 
   String _occurrenceLabel(SessionStep step) => switch (step.group.type) {
-    GroupType.tabata => 'cycle ${step.roundIndex}/${step.totalRounds}',
+    GroupType.tabata => formatTabataStepLabel(step),
     GroupType.emom => 'minute ${step.roundIndex}/${step.totalRounds}',
     GroupType.amrap => 'AMRAP',
     _ => 'répétition ${step.roundIndex}/${step.totalRounds}',

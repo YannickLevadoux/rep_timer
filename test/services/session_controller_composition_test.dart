@@ -44,6 +44,7 @@ void main() {
       await composition.saveCheckpoint();
       expect(checkpoints.saved!.currentIndex, 1);
       expect(checkpoints.saved!.stepElapsed, const Duration(seconds: 3));
+      expect(checkpoints.saved!.planSignature, isNotNull);
 
       await composition.completeSession();
       expect(history.entries.single.status, TrainingSessionStatus.incomplete);

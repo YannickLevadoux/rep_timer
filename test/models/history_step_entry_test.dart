@@ -32,5 +32,51 @@ void main() {
     });
 
     expect(decoded.repetitions, isNull);
+    expect(decoded.iconName, isNull);
+    expect(decoded.hasTabataMetadata, isFalse);
+  });
+
+  test('conserve icône, tour et cycle Tabata dans le snapshot JSON', () {
+    final entry = HistoryStepEntry(
+      groupId: 'tabata',
+      groupName: 'Tabata',
+      itemType: ItemType.exercise,
+      itemName: 'Burpees',
+      comment: 'Explosif',
+      iconName: 'local_fire_department',
+      actualDuration: const Duration(seconds: 20),
+      completed: false,
+      tabataRoundIndex: 2,
+      tabataRoundTotal: 3,
+      tabataCycleIndex: 4,
+      tabataCycleTotal: 5,
+    );
+
+    final decoded = HistoryStepEntry.fromJson(entry.toJson());
+
+    expect(decoded.iconName, 'local_fire_department');
+    expect(decoded.tabataRoundIndex, 2);
+    expect(decoded.tabataRoundTotal, 3);
+    expect(decoded.tabataCycleIndex, 4);
+    expect(decoded.tabataCycleTotal, 5);
+  });
+
+  test('refuse des métadonnées Tabata partielles ou hors bornes', () {
+    HistoryStepEntry invalid({int? roundTotal = 2}) => HistoryStepEntry(
+      groupId: 'tabata',
+      groupName: 'Tabata',
+      itemType: ItemType.exercise,
+      itemName: 'Burpees',
+      comment: null,
+      actualDuration: const Duration(seconds: 20),
+      completed: true,
+      tabataRoundIndex: 2,
+      tabataRoundTotal: roundTotal,
+      tabataCycleIndex: 1,
+      tabataCycleTotal: 1,
+    );
+
+    expect(() => invalid(roundTotal: null), throwsFormatException);
+    expect(() => invalid(roundTotal: 1), throwsFormatException);
   });
 }

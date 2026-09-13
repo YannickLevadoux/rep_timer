@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
 import 'package:rep_timer/models/session_step.dart';
+import 'package:rep_timer/models/tabata_config.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/validation/business_validation.dart';
@@ -42,6 +43,105 @@ void main() {
     expect(steps[3].sourceItem, same(sourceRest));
     expect(steps[3].item, isNot(same(sourceRest)));
     expect(sourceRest.duration, const Duration(seconds: 10));
+  });
+
+  test('Tabata développe exactement les plans 1×1, 1×4 et 2×1', () {
+    expect(
+      buildSessionSteps(
+        _training([
+          _tabata(1, ['A']),
+        ]),
+      ),
+      hasLength(1),
+    );
+    expect(
+      buildSessionSteps(
+        _training([
+          _tabata(1, ['A', 'B', 'C', 'D']),
+        ]),
+      ).map((step) => step.item.type),
+      [
+        ItemType.exercise,
+        ItemType.rest,
+        ItemType.exercise,
+        ItemType.rest,
+        ItemType.exercise,
+        ItemType.rest,
+        ItemType.exercise,
+      ],
+    );
+    final twoByOne = buildSessionSteps(
+      _training([
+        _tabata(2, ['A']),
+      ]),
+    );
+    expect(twoByOne.map((step) => step.item.name), ['A', 'Pause', 'A']);
+    expect(twoByOne[1].item.duration, const Duration(seconds: 17));
+  });
+
+  test('Tabata 2×4 conserve ordre, identité, pauses et métadonnées', () {
+    final group = _tabata(2, ['A', 'B', 'C', 'D']);
+    final config = group.tabataConfig!;
+    final before = group.toJson();
+    final steps = buildSessionSteps(_training([group]));
+
+    expect(steps, hasLength(15));
+    expect(
+      steps
+          .where((step) => step.item.type == ItemType.exercise)
+          .map((step) => step.item.name),
+      ['A', 'B', 'C', 'D', 'A', 'B', 'C', 'D'],
+    );
+    expect(
+      steps.indexed.every(
+        (entry) =>
+            entry.$1 == 0 ||
+            entry.$2.item.type != steps[entry.$1 - 1].item.type ||
+            entry.$2.item.type == ItemType.exercise,
+      ),
+      isTrue,
+    );
+    expect(steps[7].item.duration, const Duration(seconds: 17));
+    expect(steps[7].sourceItem, same(config.legacyRestItem));
+    expect(steps[7].item, isNot(same(config.legacyRestItem)));
+    expect(steps.last.item, same(config.exercises.last));
+    expect(group.toJson(), before);
+
+    final lastEffort = steps.last;
+    expect(lastEffort.roundIndex, 4);
+    expect(lastEffort.totalRounds, 4);
+    expect(lastEffort.tabataRoundIndex, 2);
+    expect(lastEffort.tabataRoundTotal, 2);
+    expect(lastEffort.tabataCycleIndex, 4);
+    expect(lastEffort.tabataCycleTotal, 4);
+    expect(
+      steps.every(
+        (step) =>
+            step.tabataRoundIndex != null && step.tabataCycleIndex != null,
+      ),
+      isTrue,
+    );
+  });
+
+  test('Tabata 2×4 ajoute la pause finale seulement avant une suite', () {
+    final group = _tabata(2, ['A', 'B', 'C', 'D']);
+    final alone = buildSessionSteps(_training([group]));
+    final followed = buildSessionSteps(
+      _training([group, _followingGroup()]),
+    ).where((step) => step.group.id == group.id);
+
+    expect(alone, hasLength(15));
+    expect(followed, hasLength(16));
+    expect(followed.last.item.type, ItemType.rest);
+    expect(followed.last.item.duration, const Duration(seconds: 17));
+    expect(
+      alone.fold(Duration.zero, (sum, step) => sum + step.item.duration!),
+      const Duration(minutes: 3, seconds: 57),
+    );
+    expect(
+      followed.fold(Duration.zero, (sum, step) => sum + step.item.duration!),
+      const Duration(minutes: 4, seconds: 14),
+    );
   });
 
   test(
@@ -118,6 +218,25 @@ void main() {
     );
   });
 }
+
+ExerciseGroup _tabata(int rounds, List<String> names) =>
+    ExerciseGroup.withTabataConfig(
+      id: 'tabata-$rounds-${names.length}',
+      name: 'Tabata',
+      config: TabataConfig(
+        rounds: rounds,
+        exercises: [
+          for (final name in names)
+            TrainingItem(
+              type: ItemType.exercise,
+              name: name,
+              duration: const Duration(seconds: 20),
+            ),
+        ],
+        restDuration: const Duration(seconds: 10),
+        finalRestDuration: rounds > 1 ? const Duration(seconds: 17) : null,
+      ),
+    );
 
 ExerciseGroup _followingGroup() => ExerciseGroup(
   id: 'following',

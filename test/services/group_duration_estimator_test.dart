@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
 import 'package:rep_timer/models/group_type.dart';
+import 'package:rep_timer/models/tabata_config.dart';
 import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/services/group_duration_estimator.dart';
 import 'package:rep_timer/utils/group_summary.dart';
@@ -22,6 +23,39 @@ void main() {
     expect(
       formatGroupSummary(group, hasFollowingGroup: false),
       'Tabata · 8 cycles · 03:50',
+    );
+  });
+
+  test('Tabata multi-tour utilise le plan réel et le résumé dédié', () {
+    final group = ExerciseGroup.withTabataConfig(
+      id: 'tabata-multi',
+      name: 'Tabata',
+      config: TabataConfig(
+        rounds: 2,
+        exercises: List.generate(
+          4,
+          (index) => TrainingItem(
+            type: ItemType.exercise,
+            name: 'Exercice ${index + 1}',
+            duration: const Duration(seconds: 20),
+          ),
+        ),
+        restDuration: const Duration(seconds: 10),
+        finalRestDuration: const Duration(seconds: 17),
+      ),
+    );
+
+    expect(
+      estimateGroupDuration(group, hasFollowingGroup: false),
+      const Duration(minutes: 3, seconds: 57),
+    );
+    expect(
+      estimateGroupDuration(group, hasFollowingGroup: true),
+      const Duration(minutes: 4, seconds: 14),
+    );
+    expect(
+      formatGroupSummary(group, hasFollowingGroup: false),
+      'Tabata · 2 tours × 4 cycles · 03:57',
     );
   });
 

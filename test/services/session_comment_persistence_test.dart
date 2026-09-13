@@ -4,6 +4,7 @@ import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/notification_mode.dart';
 import 'package:rep_timer/models/notification_sound.dart';
 import 'package:rep_timer/models/session_checkpoint.dart';
+import 'package:rep_timer/models/tabata_config.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_history_entry.dart';
 import 'package:rep_timer/models/training_item.dart';
@@ -136,6 +137,67 @@ void main() {
     expect(trainingStorage.savedTrainings, [training]);
     expect(controller.steps.map((step) => step.item.repetitions), [10, 12]);
   });
+
+  test(
+    'un commentaire Tabata suit le même exercice dans chaque tour',
+    () async {
+      final trainingStorage = _FakeTrainingStorage();
+      final config = TabataConfig(
+        rounds: 2,
+        exercises: [
+          TrainingItem(
+            type: ItemType.exercise,
+            name: 'Burpees',
+            duration: const Duration(seconds: 20),
+          ),
+          TrainingItem(
+            type: ItemType.exercise,
+            name: 'Gainage',
+            duration: const Duration(seconds: 20),
+          ),
+        ],
+        restDuration: const Duration(seconds: 10),
+        finalRestDuration: const Duration(seconds: 17),
+      );
+      final training = Training(
+        id: 'tabata-training',
+        name: 'Tabata',
+        groups: [
+          ExerciseGroup.withTabataConfig(
+            id: 'tabata',
+            name: 'Tabata',
+            config: config,
+          ),
+        ],
+        createdAt: DateTime(2026),
+      );
+      final controller = SessionController(
+        training: training,
+        trainingStorage: trainingStorage,
+        checkpointStorage: _FakeCheckpointStorage(),
+        historyStorage: _FakeHistoryStorage(),
+        settingsStorage: _FakeSettingsStorage(),
+        notificationService: _FakeStepEndNotifier(),
+        foregroundNotificationService: _FakeNotificationService(),
+        enableWakelock: () async {},
+        disableWakelock: () async {},
+      );
+      addTearDown(controller.dispose);
+      await _flushInitialization();
+
+      await controller.updateComment('Rester explosif');
+
+      expect(config.exercises.first.comment, 'Rester explosif');
+      expect(config.exercises.last.comment, isNull);
+      expect(
+        controller.steps
+            .where((step) => step.item.name == 'Burpees')
+            .map((step) => step.item.comment),
+        everyElement('Rester explosif'),
+      );
+      expect(trainingStorage.savedTrainings, [training]);
+    },
+  );
 }
 
 SessionController _buildController({

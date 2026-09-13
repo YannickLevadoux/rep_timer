@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
 import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/notification_mode.dart';
+import 'package:rep_timer/models/tabata_config.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_history_entry.dart';
 import 'package:rep_timer/models/training_item.dart';
@@ -413,6 +414,77 @@ void main() {
       expect(harness.notifier.vibrationCalls, 4);
     },
   );
+
+  test(
+    'navigation et checkpoint ciblent une occurrence Tabata multi-tour',
+    () async {
+      final harness = TimedSessionHarness(_multiTabataTraining());
+      final controller = harness.build();
+      await _flush();
+
+      for (final seconds in [20, 10, 20]) {
+        harness.advance(Duration(seconds: seconds));
+        await _flush();
+      }
+      expect(controller.currentStep.item.type, ItemType.rest);
+      expect(controller.currentStep.tabataRoundIndex, 1);
+      expect(controller.currentStep.tabataCycleIndex, 2);
+
+      harness.advance(const Duration(seconds: 5));
+      controller.togglePause();
+      await _flush();
+      final checkpoint = harness.checkpoints.saved.last;
+      controller.dispose();
+
+      final restored = harness.build(checkpoint: checkpoint);
+      addTearDown(restored.dispose);
+      expect(restored.stepElapsed, const Duration(seconds: 5));
+      expect(restored.currentStep.item.duration, const Duration(seconds: 17));
+      expect(restored.currentStep.tabataRoundIndex, 1);
+      expect(restored.currentStep.tabataCycleIndex, 2);
+      expect(restored.goToNext(), isTrue);
+      expect(restored.currentStep.item.name, 'Burpees');
+      expect(restored.currentStep.tabataRoundIndex, 2);
+      expect(restored.goToPrevious(), isTrue);
+      expect(restored.currentStep.item.type, ItemType.rest);
+      expect(restored.stepElapsed, Duration.zero);
+    },
+  );
+
+  test(
+    'Tabata multi-tour notifie chaque phase et historise les exercices',
+    () async {
+      final harness = TimedSessionHarness(
+        _multiTabataTraining(),
+        mode: NotificationMode.vibration,
+      );
+      final controller = harness.build();
+      addTearDown(controller.dispose);
+      await _flush();
+
+      for (final seconds in [20, 10, 20, 17, 20, 10, 20]) {
+        harness.advance(Duration(seconds: seconds));
+        await _flush();
+      }
+      await _flush();
+
+      expect(controller.finished, isTrue);
+      expect(harness.notifier.vibrationCalls, 7);
+      final history = harness.history.entries.single.steps;
+      expect(history.map((step) => step.itemName), [
+        'Burpees',
+        'Pause',
+        'Gainage',
+        'Pause',
+        'Burpees',
+        'Pause',
+        'Gainage',
+      ]);
+      expect(history.last.tabataRoundIndex, 2);
+      expect(history.last.tabataCycleIndex, 2);
+      expect(history.last.iconName, 'self_improvement');
+    },
+  );
 }
 
 Future<void> _flush() => Future<void>.delayed(Duration.zero);
@@ -476,3 +548,34 @@ Training _tabataTraining({bool followed = false, int? finalRestSeconds}) {
     createdAt: DateTime(2026),
   );
 }
+
+Training _multiTabataTraining() => Training(
+  id: 'multi-tabata-training',
+  name: 'Tabata multi-tour',
+  groups: [
+    ExerciseGroup.withTabataConfig(
+      id: 'tabata',
+      name: 'Tabata',
+      config: TabataConfig(
+        rounds: 2,
+        exercises: [
+          TrainingItem(
+            type: ItemType.exercise,
+            name: 'Burpees',
+            duration: const Duration(seconds: 20),
+            iconName: 'local_fire_department',
+          ),
+          TrainingItem(
+            type: ItemType.exercise,
+            name: 'Gainage',
+            duration: const Duration(seconds: 20),
+            iconName: 'self_improvement',
+          ),
+        ],
+        restDuration: const Duration(seconds: 10),
+        finalRestDuration: const Duration(seconds: 17),
+      ),
+    ),
+  ],
+  createdAt: DateTime(2026),
+);
