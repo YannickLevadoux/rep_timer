@@ -22,6 +22,10 @@ class GroupEditorView extends StatelessWidget {
     required this.onEditRepetitionSequence,
     required this.onTypeChanged,
     required this.onEditTimedExercise,
+    required this.onTabataCyclesChanged,
+    required this.onEditTabataExercises,
+    required this.onEditTabataRest,
+    required this.onEditTabataFinalRest,
     required this.hasFollowingGroup,
     required this.showQuickWarning,
     required this.onDismissQuickWarning,
@@ -43,6 +47,10 @@ class GroupEditorView extends StatelessWidget {
   final VoidCallback onEditRepetitionSequence;
   final ValueChanged<GroupType> onTypeChanged;
   final VoidCallback onEditTimedExercise;
+  final ValueChanged<int> onTabataCyclesChanged;
+  final VoidCallback onEditTabataExercises;
+  final VoidCallback onEditTabataRest;
+  final VoidCallback onEditTabataFinalRest;
   final bool hasFollowingGroup;
   final bool showQuickWarning;
   final VoidCallback onDismissQuickWarning;
@@ -133,6 +141,10 @@ class GroupEditorView extends StatelessWidget {
                 onSave: onSave,
                 onEditRepetitionSequence: onEditRepetitionSequence,
                 onEditTimedExercise: onEditTimedExercise,
+                onTabataCyclesChanged: onTabataCyclesChanged,
+                onEditTabataExercises: onEditTabataExercises,
+                onEditTabataRest: onEditTabataRest,
+                onEditTabataFinalRest: onEditTabataFinalRest,
                 hasFollowingGroup: hasFollowingGroup,
                 isSubmitting: isSubmitting,
               ),

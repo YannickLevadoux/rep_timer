@@ -59,18 +59,16 @@ void main() {
 
     expect(find.textContaining('ne sera pas enregistrée'), findsOneWidget);
     expect(find.text('Tabata'), findsWidgets);
-    expect(find.text('Effort'), findsOneWidget);
-    expect(find.text('Pause'), findsOneWidget);
-    expect(find.text('Nombre de cycles'), findsOneWidget);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Durée des efforts'), findsOneWidget);
+    expect(find.text('Pause entre les cycles'), findsOneWidget);
+    expect(find.text('Nombre de tours'), findsOneWidget);
+    expect(find.text('Nombre de cycles par tour'), findsOneWidget);
+    expect(find.text('1'), findsNWidgets(2));
     expect(
       _duration(tester, const Key('tabata-effort-row')).value,
       const Duration(seconds: 20),
     );
-    expect(
-      _duration(tester, const Key('tabata-rest-row')).value,
-      const Duration(seconds: 10),
-    );
+    expect(find.text('00:10'), findsOneWidget);
     expect(find.text('00:20'), findsOneWidget);
     expect(find.text('Commencer'), findsOneWidget);
   });
@@ -85,20 +83,20 @@ void main() {
     }
   });
 
-  testWidgets('Tabata estime huit cycles à 03:50 sans dernière pause', (
+  testWidgets('Tabata estime huit cycles à 03:50 en Session rapide', (
     tester,
   ) async {
     await _pumpScreen(tester);
     await _selectType(tester, GroupType.tabata);
 
     for (var index = 1; index < 8; index++) {
-      await tester.tap(find.byTooltip('Augmenter Nombre de cycles'));
+      await tester.tap(find.byTooltip('Augmenter Nombre de cycles par tour'));
       await tester.pump();
     }
 
     expect(find.text('8'), findsOneWidget);
     expect(find.text('03:50'), findsOneWidget);
-    expect(find.text('Personnaliser la dernière pause'), findsNothing);
+    expect(find.text('Personnaliser la dernière pause'), findsOneWidget);
   });
 
   testWidgets('ferme l’avertissement et le réaffiche à la session suivante', (
@@ -292,26 +290,30 @@ void main() {
     });
   }
 
-  testWidgets('l’effort temporisé réutilise le formulaire contraint partagé', (
+  testWidgets('Tabata réutilise l’éditeur de liste en Session rapide', (
     tester,
   ) async {
     await _pumpScreen(tester);
     await _selectType(tester, GroupType.tabata);
-    await tester.tap(find.byTooltip("Modifier l'effort"));
+    await tester.tap(find.text('Modifier les exercices'));
     await tester.pumpAndSettle();
 
-    expect(find.text("Toucher pour changer l'icône"), findsOneWidget);
-    expect(find.text('Commentaire (optionnel)'), findsOneWidget);
+    expect(find.text('Éditer les exercices'), findsOneWidget);
+    expect(find.text('Cycle 1'), findsOneWidget);
     final fields = find.descendant(
       of: find.byType(AlertDialog),
       matching: find.byType(TextField),
     );
     await tester.enterText(fields.first, 'Burpees');
-    await tester.enterText(fields.last, 'Intensité élevée');
     await tester.tap(find.text('Valider'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Burpees'), findsOneWidget);
+    await tester.tap(find.text('Modifier les exercices'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      'Burpees',
+    );
   });
 
   testWidgets('Préparation bloque un double lancement', (tester) async {

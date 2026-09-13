@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
 import 'package:rep_timer/widgets/exercise_group_card.dart';
+import 'package:rep_timer/widgets/group_card_subtitle.dart';
 
 void main() {
   testWidgets('la carte Tabata résume sa position sans Mono', (tester) async {
@@ -11,19 +12,22 @@ void main() {
 
     await _pumpCard(tester, group, hasFollowingGroup: false);
 
-    expect(find.text('Tabata · 8 cycles · 03:50'), findsOneWidget);
+    expect(_subtitleText('Tabata'), findsOneWidget);
+    expect(find.text('8 cycles · 03:50'), findsOneWidget);
     expect(find.textContaining('Mono'), findsNothing);
 
     await _pumpCard(tester, group, hasFollowingGroup: true);
 
-    expect(find.text('Tabata · 8 cycles · 04:07'), findsOneWidget);
+    expect(_subtitleText('Tabata'), findsOneWidget);
+    expect(find.text('8 cycles · 04:07'), findsOneWidget);
 
     final multi = ExerciseGroup.tabata(id: 'multi')
       ..rounds = 4
       ..tabataConfig!.rounds = 2
       ..finalRestDuration = const Duration(seconds: 17);
     await _pumpCard(tester, multi);
-    expect(find.text('Tabata · 2 tours × 4 cycles · 03:57'), findsOneWidget);
+    expect(_subtitleText('Tabata'), findsOneWidget);
+    expect(find.text('2 tours × 4 cycles · 03:57'), findsOneWidget);
   });
 
   testWidgets('les actions de la carte gardent une cible de 48 dp', (
@@ -71,9 +75,17 @@ void main() {
     await _pumpCard(tester, group, theme: ThemeData.dark(), textScale: 2);
 
     expect(tester.takeException(), isNull);
-    expect(find.textContaining('Tabata · 999 cycles'), findsOneWidget);
+    expect(_subtitleText('Tabata'), findsOneWidget);
+    final details = find.textContaining('999 cycles');
+    expect(details, findsOneWidget);
+    expect(tester.widget<Text>(details).maxLines, isNull);
   });
 }
+
+Finder _subtitleText(String text) => find.descendant(
+  of: find.byType(GroupCardSubtitle),
+  matching: find.text(text),
+);
 
 Future<void> _pumpCard(
   WidgetTester tester,

@@ -9,6 +9,7 @@ import '../widgets/dialogs/confirm_dialog.dart';
 import '../widgets/dialogs/exercise_dialog.dart';
 import '../widgets/dialogs/rest_dialog.dart';
 import '../widgets/dialogs/repetition_sequence_dialog.dart';
+import '../widgets/dialogs/tabata_exercises_dialog.dart';
 
 class GroupEditorDialogs {
   GroupEditorDialogs(this.controller);
@@ -74,6 +75,59 @@ class GroupEditorDialogs {
     if (result != null) controller.updateTimedExercise(result);
   }
 
+  Future<void> changeTabataCycleCount(BuildContext context, int target) async {
+    final current = controller.tabataCycleCount;
+    if (target == current + 1) {
+      controller.addTabataExercise();
+      return;
+    }
+    if (target != current - 1 || current <= BusinessLimits.minimumCount) {
+      return;
+    }
+    if (controller.lastTabataExerciseIsCustomized) {
+      final exercise = controller.group.tabataConfig!.exercises.last;
+      final confirmed = await showConfirmDialog(
+        context,
+        title: 'Supprimer le dernier cycle ?',
+        content: 'Supprimer "${exercise.name}" et ses informations ?',
+        confirmLabel: 'Supprimer',
+      );
+      if (!confirmed || !context.mounted) return;
+    }
+    controller.removeLastTabataExercise();
+  }
+
+  Future<void> editTabataExercises(BuildContext context) async {
+    FocusScope.of(context).unfocus();
+    await _settings.loadPrefillExerciseName();
+    if (!context.mounted) return;
+    final config = controller.group.tabataConfig!;
+    final result = await showTabataExercisesDialog(
+      context,
+      initialExercises: config.exercises,
+      effortDuration: config.effortDuration!,
+      loadPrefill: _settings.loadPrefillExerciseName,
+    );
+    if (result != null) controller.replaceTabataExercises(result);
+  }
+
+  Future<void> editTabataRest(BuildContext context) async {
+    final duration = await showRestDialog(
+      context,
+      initial: controller.group.tabataConfig!.restDuration,
+    );
+    if (duration != null) controller.setRequiredRestDuration(duration);
+  }
+
+  Future<void> editTabataFinalRest(BuildContext context) async {
+    final config = controller.group.tabataConfig!;
+    final duration = await showRestDialog(
+      context,
+      initial: controller.group.finalRestDuration ?? config.restDuration,
+    );
+    if (duration != null) controller.setFinalRestDuration(duration);
+  }
+
   Future<void> changeType(BuildContext context, GroupType target) async {
     FocusScope.of(context).unfocus();
     if (controller.requiresReplacementConfirmation(target)) {
@@ -86,7 +140,16 @@ class GroupEditorDialogs {
       );
       if (!confirmed || !context.mounted) return;
     }
+    final createsTabata =
+        target == GroupType.tabata && !controller.hasDraft(target);
+    final prefill = createsTabata
+        ? await _settings.loadPrefillExerciseName()
+        : null;
+    if (!context.mounted) return;
     controller.switchType(target);
+    if (prefill != null) {
+      controller.configureNewTabataExerciseName(prefill: prefill);
+    }
   }
 
   Future<void> editRepetitionSequence(BuildContext context) async {
@@ -114,7 +177,8 @@ class GroupEditorDialogs {
 
   String _replacementMessage(GroupType target) => switch (target) {
     GroupType.tabata =>
-      'Les éléments affichés seront remplacés par Effort 20 s et Pause 10 s.',
+      'Les éléments affichés seront remplacés par un Tabata de 1 tour, '
+          '1 cycle, effort 20 s et pause 10 s.',
     GroupType.amrap =>
       'Les éléments affichés seront remplacés par AMRAP, Effort et 02:00.',
     GroupType.emom =>

@@ -5,7 +5,6 @@ import 'package:rep_timer/models/group_editor_mode.dart';
 import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/screens/group_editor.dart';
 import 'package:rep_timer/widgets/duration_minutes_seconds_picker.dart';
-import 'package:rep_timer/widgets/exercise_form_controller.dart';
 import 'package:rep_timer/widgets/number_wheel_field.dart';
 import 'package:rep_timer/widgets/type_selector.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,133 +22,80 @@ void main() {
     expect(find.text('Enregistrer'), findsOneWidget);
   });
 
-  testWidgets('Tabata personnalise seulement la dernière pause persistante', (
-    tester,
-  ) async {
-    await _pumpEditor(
-      tester,
-      ExerciseGroup.tabata(id: 'tabata')..rounds = 2,
-      hasFollowingGroup: true,
-    );
-
-    expect(find.text('Temps total estimé'), findsOneWidget);
-    expect(find.text('01:00'), findsOneWidget);
-    final customize = find.text('Personnaliser la dernière pause');
-    await tester.ensureVisible(customize);
-    await tester.tap(customize);
-    await tester.pump();
-    expect(find.text('Dernière pause'), findsOneWidget);
-    expect(find.byTooltip('Supprimer'), findsOneWidget);
-    expect(find.byIcon(Icons.drag_handle), findsNothing);
-  });
-
-  testWidgets('Tabata aligne exercice et pauses avec leur durée', (
+  testWidgets('Tabata affiche les contrôles dans l’ordre attendu', (
     tester,
   ) async {
     await _pumpEditor(tester, ExerciseGroup.tabata(id: 'tabata'));
 
+    final tours = find.text('Nombre de tours');
+    final cycles = find.text('Nombre de cycles par tour');
     final effortRow = find.byKey(const Key('tabata-effort-row'));
     final effortIcon = find.descendant(
       of: effortRow,
       matching: find.byIcon(Icons.fitness_center),
     );
-    final effortName = find.descendant(
-      of: effortRow,
-      matching: find.text('Effort'),
-    );
-    final edit = find.descendant(
-      of: effortRow,
-      matching: find.byTooltip("Modifier l'effort"),
-    );
     final effortPicker = find.descendant(
       of: effortRow,
       matching: find.byType(DurationMinutesSecondsPicker),
     );
-    expect(effortIcon, findsOneWidget);
-    expect(effortName, findsOneWidget);
-    expect(edit, findsOneWidget);
-    expect(effortPicker, findsOneWidget);
-    final effortNameText = tester.widget<Text>(effortName);
-    expect(effortNameText.maxLines, 1);
-    expect(effortNameText.overflow, TextOverflow.ellipsis);
-    expect(
-      tester.getTopLeft(effortIcon).dx,
-      lessThan(tester.getTopLeft(effortName).dx),
-    );
-    expect(
-      tester.getTopRight(effortName).dx,
-      lessThan(tester.getTopLeft(edit).dx),
-    );
-    expect(
-      tester.getTopRight(edit).dx,
-      lessThan(tester.getTopLeft(effortPicker).dx),
-    );
-    _expectSameVerticalCenter(tester, [
-      effortIcon,
-      effortName,
-      edit,
-      effortPicker,
-    ]);
-    expect(
-      tester.getTopRight(effortPicker).dx,
-      closeTo(tester.getTopRight(effortRow).dx, 0.1),
-    );
-
     final restRow = find.byKey(const Key('tabata-rest-row'));
-    final restName = find.descendant(of: restRow, matching: find.text('Pause'));
-    final restPicker = find.descendant(
-      of: restRow,
-      matching: find.byType(DurationMinutesSecondsPicker),
-    );
-    _expectSameVerticalCenter(tester, [restName, restPicker]);
-    expect(
-      tester.getTopRight(restPicker).dx,
-      closeTo(tester.getTopRight(restRow).dx, 0.1),
-    );
-    expect(find.byType(Divider), findsNWidgets(2));
+    final finalRest = find.text('Personnaliser la dernière pause');
+    final estimate = find.text('Temps total estimé');
 
-    final addFinalRest = find.widgetWithText(
-      OutlinedButton,
-      'Personnaliser la dernière pause',
-    );
+    expect(tours, findsOneWidget);
+    expect(cycles, findsOneWidget);
+    expect(effortIcon, findsOneWidget);
+    expect(find.text('Durée des efforts'), findsOneWidget);
+    expect(find.text('Modifier les exercices'), findsOneWidget);
+    expect(effortPicker, findsOneWidget);
     expect(
-      tester.getSize(addFinalRest).width,
-      closeTo(tester.getSize(effortRow).width, 0.1),
+      find.descendant(
+        of: restRow,
+        matching: find.byType(DurationMinutesSecondsPicker),
+      ),
+      findsNothing,
     );
-    await tester.ensureVisible(addFinalRest);
-    await tester.tap(addFinalRest);
-    await tester.pump();
+    expect(find.text('Pause entre les cycles'), findsOneWidget);
+    expect(find.text('00:10'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: restRow,
+        matching: find.byTooltip('Modifier Pause entre les cycles'),
+      ),
+      findsOneWidget,
+    );
+
+    final ordered = [tours, cycles, effortRow, restRow, finalRest, estimate];
+    for (var index = 1; index < ordered.length; index++) {
+      expect(
+        tester.getTopLeft(ordered[index - 1]).dy,
+        lessThan(tester.getTopLeft(ordered[index]).dy),
+      );
+    }
+  });
+
+  testWidgets('Tabata personnalise la pause de fin de tour avec un tour', (
+    tester,
+  ) async {
+    await _pumpEditor(tester, ExerciseGroup.tabata(id: 'tabata'));
+    final customize = find.text('Personnaliser la dernière pause');
+    await tester.ensureVisible(customize);
+    await tester.tap(customize);
+    await tester.pumpAndSettle();
+    expect(find.text('Modifier la pause'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Valider'));
+    await tester.pumpAndSettle();
 
     final finalRestRow = find.byKey(const Key('tabata-final-rest-row'));
-    final finalRestName = find.descendant(
-      of: finalRestRow,
-      matching: find.text('Dernière pause'),
-    );
-    final delete = find.descendant(
-      of: finalRestRow,
-      matching: find.byTooltip('Supprimer'),
-    );
-    final finalRestPicker = find.descendant(
-      of: finalRestRow,
-      matching: find.byType(DurationMinutesSecondsPicker),
-    );
-    expect(finalRestName, findsOneWidget);
-    expect(delete, findsOneWidget);
-    expect(finalRestPicker, findsOneWidget);
+    expect(find.text('Pause de fin de tour'), findsOneWidget);
     expect(
-      tester.getTopRight(finalRestName).dx,
-      lessThan(tester.getTopLeft(delete).dx),
+      find.descendant(
+        of: finalRestRow,
+        matching: find.byTooltip('Supprimer Pause de fin de tour'),
+      ),
+      findsOneWidget,
     );
-    expect(
-      tester.getTopRight(delete).dx,
-      lessThan(tester.getTopLeft(finalRestPicker).dx),
-    );
-    _expectSameVerticalCenter(tester, [finalRestName, delete, finalRestPicker]);
-    expect(
-      tester.getTopRight(finalRestPicker).dx,
-      closeTo(tester.getTopRight(finalRestRow).dx, 0.1),
-    );
-    expect(find.byType(Divider), findsNWidgets(2));
+    expect(find.byIcon(Icons.drag_handle), findsNothing);
   });
 
   testWidgets('Tabata masque les actions génériques et explique l’estimation', (
@@ -413,21 +359,14 @@ void main() {
     expect(find.text('Nombre de cycles'), findsNothing);
   });
 
-  testWidgets('le crayon temporisé masque mode et durée du dialogue', (
-    tester,
-  ) async {
+  testWidgets('Tabata ouvre l’éditeur atomique des exercices', (tester) async {
+    SharedPreferences.setMockInitialValues({});
     await _pumpEditor(tester, ExerciseGroup.tabata(id: 'tabata'));
-    await tester.tap(find.byTooltip("Modifier l'effort"));
+    await tester.tap(find.text('Modifier les exercices'));
     await tester.pumpAndSettle();
 
     final dialog = find.byType(AlertDialog);
-    expect(
-      find.descendant(
-        of: dialog,
-        matching: find.byType(DropdownButton<ExerciseInputMode>),
-      ),
-      findsNothing,
-    );
+    expect(find.text('Éditer les exercices'), findsOneWidget);
     expect(
       find.descendant(
         of: dialog,
@@ -435,7 +374,9 @@ void main() {
       ),
       findsNothing,
     );
-    expect(find.text('Commentaire (optionnel)'), findsOneWidget);
+    expect(find.text('Cycle 1'), findsOneWidget);
+    expect(find.text('Commentaire'), findsOneWidget);
+    expect(find.text('Ajouter un cycle'), findsOneWidget);
   });
 
   testWidgets('l’éditeur partagé ajoute exercice et pause en mode Libre', (

@@ -5,8 +5,8 @@ import '../models/group_type.dart';
 import '../models/training_item.dart';
 import '../utils/exercise_icons.dart';
 import '../utils/formatters.dart';
-import '../utils/group_summary.dart';
 import '../utils/repetition_sequence_format.dart';
+import 'group_card_subtitle.dart';
 
 class ExerciseGroupCard extends StatelessWidget {
   final ExerciseGroup group;
@@ -46,33 +46,9 @@ class ExerciseGroupCard extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        subtitle: Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            if (!group.type.isTimed)
-              Text(
-                group.type.label,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Theme.of(context).colorScheme.outline,
-                ),
-              ),
-            Text(
-              group.type.isTimed
-                  ? formatGroupSummary(
-                      group,
-                      hasFollowingGroup: hasFollowingGroup,
-                    )
-                  : group.type == GroupType.variableRepetitions
-                  ? formatRepetitionSequenceTourCount(group.repetitionSequence)
-                  : 'Répétitions : ${group.rounds}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: Theme.of(context).colorScheme.outline),
-            ),
-          ],
+        subtitle: GroupCardSubtitle(
+          group: group,
+          hasFollowingGroup: hasFollowingGroup,
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
