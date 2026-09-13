@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rep_timer/models/exercise_group.dart';
 import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/session_step.dart';
+import 'package:rep_timer/models/tabata_config.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_item.dart';
 import 'package:rep_timer/validation/business_validation.dart';
@@ -134,6 +135,11 @@ void main() {
       postGroupRestDuration: const Duration(seconds: 30),
     );
     expect(_hasStructureIssue(free), isTrue);
+
+    final amrapWithTabata = ExerciseGroup.amrap(
+      id: 'mixed',
+    ).copyWith(tabataConfig: TabataConfig.defaults());
+    expect(_hasStructureIssue(amrapWithTabata), isTrue);
   });
 
   test('développe les pauses de transition sans modifier les groupes', () {

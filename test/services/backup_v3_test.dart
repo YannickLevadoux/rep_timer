@@ -16,7 +16,7 @@ import 'package:rep_timer/services/backup_import_parser.dart';
 import 'package:rep_timer/services/backup_builder.dart';
 
 void main() {
-  test('écrit v3 et fait un round-trip des trois nouveaux groupes', () {
+  test('écrit v4 et fait un round-trip des groupes', () {
     final groups = [
       ExerciseGroup.tabata(id: 'tabata')
         ..rounds = 8
@@ -34,10 +34,10 @@ void main() {
       exportedAt: DateTime(2026),
     ).toJson();
 
-    expect(payload['exportFormatVersion'], 3);
+    expect(payload['exportFormatVersion'], 4);
     final plan =
         BackupImportParser().parse(jsonEncode(payload)) as BackupV2RestorePlan;
-    expect(plan.formatVersion, 3);
+    expect(plan.formatVersion, 4);
     expect(plan.settings.preSessionCountdownSeconds, 15);
     expect(plan.trainings.single.toJson(), _training(groups).toJson());
   });
@@ -130,7 +130,7 @@ void main() {
   });
 
   test('refuse un groupe v3 incomplet ou contraire à son type', () {
-    final valid = ExerciseGroup.tabata(id: 'tabata').toJson();
+    final valid = _legacyTabataJson();
     final missingField = Map<String, dynamic>.of(valid)
       ..remove('finalRestDurationSeconds');
     final wrongOrder = Map<String, dynamic>.of(valid)
@@ -149,7 +149,7 @@ void main() {
   test('refuse tout format futur avant de produire un plan', () {
     expect(
       () => BackupImportParser().parse(
-        jsonEncode(_payload(version: 4, countdown: 0)),
+        jsonEncode(_payload(version: 5, countdown: 0)),
       ),
       throwsA(
         isA<BackupImportException>().having(
@@ -207,3 +207,25 @@ Training _training(List<dynamic> groups) => Training(
   }).toList(),
   createdAt: DateTime(2026),
 );
+
+Map<String, dynamic> _legacyTabataJson() => {
+  'id': 'tabata',
+  'name': 'Tabata',
+  'type': 'tabata',
+  'rounds': 1,
+  'repetitionSequence': <int>[],
+  'finalRestDurationSeconds': null,
+  'postGroupRestDurationSeconds': null,
+  'items': [
+    TrainingItem(
+      type: ItemType.exercise,
+      name: 'Effort',
+      duration: const Duration(seconds: 20),
+    ).toJson(),
+    TrainingItem(
+      type: ItemType.rest,
+      name: 'Pause',
+      duration: const Duration(seconds: 10),
+    ).toJson(),
+  ],
+};

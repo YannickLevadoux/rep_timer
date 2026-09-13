@@ -6,7 +6,7 @@ import 'app_settings_storage.dart';
 import 'backup_export_exception.dart';
 import 'pre_session_countdown_storage.dart';
 
-/// Construction pure du payload v3 à partir de données déjà lues.
+/// Construction pure du payload v4 à partir de données déjà lues.
 abstract final class BackupBuilder {
   static BackupPayload build({
     required List<Training> trainings,

@@ -34,7 +34,7 @@ class BackupFileWriter {
   }
 
   static String fileName(DateTime exportedAt) {
-    return 'reptimer_backup_v3_${_timestamp(exportedAt)}.json';
+    return 'reptimer_backup_v4_${_timestamp(exportedAt)}.json';
   }
 
   static String trainingExportFileName(DateTime exportedAt) {

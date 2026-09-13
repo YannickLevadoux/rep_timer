@@ -11,15 +11,19 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('la lecture locale rejette un groupe temporisé incomplet', () async {
-    final invalid = ExerciseGroup.tabata(id: 'tabata')..items.removeLast();
     final training = Training(
       id: 'training',
       name: 'Séance',
-      groups: [invalid],
+      groups: [ExerciseGroup.tabata(id: 'tabata')],
       createdAt: DateTime(2026),
     );
+    final rawTraining = training.toJson();
+    final rawGroup =
+        (rawTraining['groups'] as List).single as Map<String, dynamic>;
+    final config = rawGroup['tabata'] as Map<String, dynamic>;
+    config['exercises'] = <dynamic>[];
     SharedPreferences.setMockInitialValues({
-      TrainingStorage.storageKey: jsonEncode([training.toJson()]),
+      TrainingStorage.storageKey: jsonEncode([rawTraining]),
     });
 
     final result = await TrainingStorage().loadTrainings();
