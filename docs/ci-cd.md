@@ -169,13 +169,45 @@ flutter build apk --debug
 
 Le build debug ne démarre pas si le job de validation échoue.
 
+## Mises à jour Renovate
+
+La configuration `renovate.json` étend `config:recommended`, applique le label
+`dependencies` et recherche les mises à jour chaque semaine, le lundi avant
+4 h, dans le fuseau `Europe/Paris`. Elle conserve la séparation recommandée
+entre les versions majeures et les mises à jour mineures ou correctives : un
+groupe peut donc produire plusieurs Pull Requests lorsque leurs niveaux de
+version diffèrent.
+
+Les mises à jour sont réparties par sujet :
+
+- **CI dependencies** (`ci`) regroupe toutes les dépendances détectées dans
+  `.github/workflows/**` et `.github/actions/**`, notamment les GitHub Actions
+  et la version de Flutter extraite des workflows par le gestionnaire regex ;
+- **Application dependencies** (`application`) regroupe les gestionnaires
+  `pub`, `gradle` et `gradle-wrapper`, donc les packages Dart et Flutter ainsi
+  que Kotlin, Android Gradle Plugin et Gradle Wrapper.
+
+Le Flutter plugin loader fourni par le SDK local reste exclu des mises à jour
+Gradle. Le preset `:enableVulnerabilityAlerts` active les Pull Requests de
+correction de vulnérabilités ; Renovate les traite sans attendre la fenêtre
+hebdomadaire. Cette fonction suppose que le graphe de dépendances et les
+alertes Dependabot sont activés dans les réglages GitHub du dépôt. Lors de la
+finalisation 1.5.1, l'API GitHub signale les alertes de vulnérabilité comme
+désactivées et ne permet pas de confirmer le graphe de dépendances : ces deux
+réglages restent donc un prérequis avant de considérer les alertes Renovate
+comme opérationnelles.
+
 ## Reproductibilité
 
 Les jobs Flutter utilisent les mêmes versions et paramètres :
 
-- Flutter `3.44.9`, explicitement épinglé avec le cache activé ;
+- Flutter `3.47.4`, explicitement épinglé avec le cache activé ;
 - Java `17`, distribution Temurin ;
-- versions épinglées des GitHub Actions utilisées par les workflows ;
+- Android Gradle Plugin `9.4.0`, Kotlin `2.4.20` et Gradle Wrapper `9.7.1` ;
+- GitHub Actions épinglées : `actions/checkout` `7.0.1`,
+  `actions/github-script` `9.0.0`, `actions/setup-java` `6.0.1`,
+  `actions/upload-artifact` `7.0.1`, `subosito/flutter-action` `2.23.0` et
+  `softprops/action-gh-release` `3.0.3` ;
 - fichier `pubspec.lock` suivi dans le dépôt.
 
 Les workflows CI et Release utilisent des groupes de concurrence distincts.

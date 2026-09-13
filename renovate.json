@@ -2,8 +2,12 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
 
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    "schedule:weekly",
+    ":enableVulnerabilityAlerts"
   ],
+
+  "timezone": "Europe/Paris",
 
   "labels": [
     "dependencies"
@@ -21,12 +25,19 @@
       "enabled": false
     },
     {
-      "matchManagers": ["github-actions"],
-      "groupName": "GitHub Actions"
+      "description": "Group dependencies used by CI and repository automation",
+      "matchFileNames": [
+        ".github/workflows/**",
+        ".github/actions/**"
+      ],
+      "groupName": "CI dependencies",
+      "groupSlug": "ci"
     },
     {
-      "matchManagers": ["pub"],
-      "groupName": "Dart & Flutter packages"
+      "description": "Group application and Android build dependencies",
+      "matchManagers": ["pub", "gradle", "gradle-wrapper"],
+      "groupName": "Application dependencies",
+      "groupSlug": "application"
     }
   ],
 

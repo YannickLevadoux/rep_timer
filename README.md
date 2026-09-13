@@ -150,6 +150,9 @@ releases](docs/release.md).
   authentification, validations et reproductibilité.
 - [Builds et releases](docs/release.md) : distributions DEV et officielles,
   métadonnées, signature, dialogue « À propos » et publication.
+- [Notes de version 1.5.1](docs/release-notes-1.5.1.md) : correctifs
+  d'affichage et de navigation, maintenance de la chaîne technique et
+  regroupement des mises à jour Renovate.
 - [Notes de version 1.5.0](docs/release-notes-1.5.0.md) : préparation au
   lancement, édition des noms, actions de la Home, audio et nouveaux parcours
   de partage et de sauvegarde.
