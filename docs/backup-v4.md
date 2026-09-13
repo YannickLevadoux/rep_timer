@@ -1,8 +1,9 @@
 # Contrat de sauvegarde RepTimer v4
 
-Tout nouvel export complet RepTimer utilise le format v4. L'enveloppe, les
-préférences et l'historique conservent le contrat v3 ; la version évolue pour
-porter la nouvelle représentation Tabata.
+Tout nouvel export complet RepTimer utilise le format v4. L'enveloppe et les
+préférences conservent le contrat v3 ; la version évolue pour porter la nouvelle
+représentation Tabata. L'historique reste rétrocompatible et peut aussi
+conserver le tour et le cycle des occurrences Tabata récentes.
 
 ```json
 {
@@ -66,6 +67,19 @@ Un groupe Tabata v4 remplace les anciens champs `rounds`, `items` et
 Les quatre autres types de groupe conservent exactement leur représentation
 v3. La sauvegarde contient toujours les agrégats éditables et jamais les
 `SessionStep` développées.
+
+## Historique Tabata
+
+Les instantanés d'étapes récents peuvent inclure les quatre champs facultatifs
+`tabataRoundIndex`, `tabataRoundTotal`, `tabataCycleIndex` et
+`tabataCycleTotal`. Lorsqu'ils sont présents, ils forment un ensemble complet
+et cohérent : les index commencent à 1 et ne dépassent pas leur total. Le nom,
+le commentaire, l'icône, la durée réelle et le statut de l'exercice ou de la
+pause restent transportés par les champs historiques communs.
+
+Les anciens historiques dépourvus de ces métadonnées restent valides et
+lisibles. Ces champs ne modifient pas les agrégations hebdomadaires ou
+mensuelles.
 
 ## Compatibilité et restauration
 

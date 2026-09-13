@@ -8,8 +8,8 @@ void main() {
   final packageInfo = PackageInfo(
     appName: 'RepTimer Test',
     packageName: 'com.example.rep_timer',
-    version: '1.2.0',
-    buildNumber: '3',
+    version: '1.6.0',
+    buildNumber: '10',
   );
 
   testWidgets('un build DEV affiche le badge et la date injectée', (
@@ -32,7 +32,7 @@ void main() {
     expect(find.byType(Chip), findsOneWidget);
     expect(find.text('DEV'), findsOneWidget);
     expect(find.text(metadata.displayText!), findsOneWidget);
-    expect(find.text('1.2.0 (3)'), findsOneWidget);
+    expect(find.text('1.6.0 (10)'), findsOneWidget);
   });
 
   testWidgets('une release n’affiche ni badge ni date', (tester) async {
@@ -53,7 +53,7 @@ void main() {
     expect(find.byType(Chip), findsNothing);
     expect(find.text('DEV'), findsNothing);
     expect(find.textContaining('Build local'), findsNothing);
-    expect(find.text('1.2.0 (3)'), findsOneWidget);
+    expect(find.text('1.6.0 (10)'), findsOneWidget);
   });
 
   testWidgets('un build DEV sans timestamp conserve le badge', (tester) async {
@@ -97,8 +97,8 @@ void main() {
     PackageInfo.setMockInitialValues(
       appName: 'RepTimer plateforme',
       packageName: 'com.example.rep_timer',
-      version: '1.5.0',
-      buildNumber: '5',
+      version: '1.6.0',
+      buildNumber: '10',
       buildSignature: '',
       installerStore: null,
     );
@@ -109,7 +109,7 @@ void main() {
 
     expect(find.byType(RepTimerAboutDialog), findsOneWidget);
     expect(find.text('RepTimer plateforme'), findsOneWidget);
-    expect(find.text('1.5.0 (5)'), findsOneWidget);
+    expect(find.text('1.6.0 (10)'), findsOneWidget);
   });
 }
 

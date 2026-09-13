@@ -15,7 +15,7 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Séances composées de cinq types de **groupes d'exercices** :
   - un groupe libre répète tous ses éléments pendant un nombre de tours défini ;
   - un groupe à répétitions variables applique une suite ordonnée (par exemple `10, 12, 15, 12, 10`) aux exercices en mode Répétitions, sans modifier les exercices chronométrés, les durées libres ni les pauses ;
-  - un groupe Tabata alterne un effort chronométré et une pause pendant 1 à 999 cycles ;
+  - un groupe Tabata rejoue pendant 1 à 99 tours une liste ordonnée de 1 à 999 cycles, chacun associé à un exercice nommé, illustré et commentable ; tous les efforts partagent leur durée et les pauses restent communes ;
   - un groupe AMRAP enregistre les tours terminés pendant une durée de 1 à 60 minutes et conserve le tour partiel ;
   - un groupe EMOM redémarre automatiquement le même effort de 60 secondes pendant 1 à 60 minutes.
 - L'ajout d'un groupe commence par le choix explicite de son type. Les changements incompatibles demandent confirmation et les brouillons des types visités restent disponibles jusqu'à la fermeture de l'éditeur.
@@ -33,7 +33,7 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Icône personnalisable par exercice, parmi une liste prédéfinie.
 - Commentaire libre et optionnel par exercice (poids, intensité...), modifiable aussi bien à l'édition que pendant l'exécution de la séance.
 - Détection des modifications non enregistrées à la fermeture de l'écran d'édition (proposition d'enregistrer, d'abandonner ou d'annuler).
-- Validation explicite des saisies : noms et commentaires limités, tours et répétitions compris entre `1` et `999`, durées programmées comprises entre `1 s` et `2 h 00 min 59 s`, et séances limitées à `10 000` étapes développées. Une valeur invalide n'est jamais corrigée ou tronquée silencieusement.
+- Validation explicite des saisies : noms et commentaires limités, tours et répétitions compris entre `1` et `999` (`1` à `99` tours et `1` à `999` cycles par tour pour un Tabata), durées programmées comprises entre `1 s` et `2 h 00 min 59 s`, et séances limitées à `10 000` étapes développées. Une valeur invalide n'est jamais corrigée ou tronquée silencieusement.
 
 ### Exécution d'une séance
 - Écran de résumé avant le lancement : nom de la séance, compteurs de groupes, d'exercices et de pauses, puis aperçu des groupes, de leurs répétitions et de leurs exercices.
@@ -51,7 +51,7 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Les signaux sonores et leurs aperçus diminuent temporairement le volume d'une autre application audio au lieu d'interrompre sa lecture.
 - Notification Android persistante pendant qu'un chronomètre est actif (pause, exercice Temps ou Durée libre — jamais pour un exercice Répétitions) : icône Play/Pause dans la barre d'état, nom de l'exercice/de la pause et temps restant (ou écoulé en Durée libre), prochain élément de la séance et bouton **Pause** / **Reprendre**. Un appui sur la notification rouvre la séance. Repose sur un vrai Foreground Service Android (et non une simple notification), afin que la mise à jour du chronomètre ainsi que le son/la vibration de fin d'exercice restent fiables même lorsque l'application est en arrière-plan. Disparaît automatiquement à la fin, à l'abandon, ou à l'arrêt de la séance.
 - Exécution tour par tour des groupes à répétitions variables, avec la valeur résolue affichée et conservée dans l'historique. La reprise d'une séance interrompue restaure le bon tour et la bonne répétition.
-- Exécution des Tabata cycle par cycle, des AMRAP avec suivi et annulation du dernier tour, et des EMOM minute par minute. Les récupérations configurées après un groupe ne sont exécutées que lorsqu'un autre groupe suit.
+- Exécution des Tabata tour par tour et cycle par cycle, avec progression explicite et pause de fin de tour remplaçant la pause normale. Aucune double pause ni pause finale inutile n'est créée. Les AMRAP conservent le suivi et l'annulation du dernier tour, et les EMOM s'exécutent minute par minute. Les récupérations configurées après un groupe ne sont exécutées que lorsqu'un autre groupe suit.
 - Compte à rebours de préparation facultatif de 0 à 15 secondes, commun aux séances enregistrées et rapides. Il peut être mis en pause ou passé et n'est jamais inclus dans les chronos, checkpoints, estimations, historiques ou statistiques.
 - Avant chaque lancement, un contrôle permet d'activer ou de désactiver temporairement cette préparation. Si le réglage global vaut 0, une durée peut être choisie uniquement pour la séance à venir, sans modifier les Paramètres.
 
@@ -61,7 +61,7 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 
 ### Session rapide
 - Lancement d'un groupe Libre, à répétitions variables, Tabata, AMRAP ou EMOM sans créer d'entraînement enregistré (accessible via « Rapide » dans la barre de navigation).
-- Aucun type n'est présélectionné ; après le choix, Tabata utilise un effort de 20 secondes, une pause de 10 secondes et un cycle, et les cinq types réutilisent l'éditeur et les validations des groupes enregistrés.
+- Aucun type n'est présélectionné ; après le choix, Tabata utilise un tour, un cycle, un effort de 20 secondes et une pause de 10 secondes. Il propose les mêmes tours, exercices ordonnés et pauses compactes que dans une séance enregistrée, et les cinq types réutilisent leur éditeur et leurs validations habituels.
 - Temps total estimé recalculé en direct, sans récupération finale puisqu'un seul groupe est exécuté ; une aide contextuelle précise les éléments inclus dans ce calcul.
 - La séance est générée entièrement en mémoire et exécutée avec le même moteur qu'une séance classique (mêmes statistiques, même historique) — elle n'est jamais ajoutée à « Mes entraînements ».
 
@@ -71,7 +71,7 @@ RepTimer permet de créer ses propres séances (échauffement, circuits, séries
 - Bilan des séances terminées et incomplètes, ainsi que du temps global passé : détail quotidien en vue hebdomadaire et agrégation par semaine en vue mensuelle.
 - Suppression d'une entrée d'historique avec confirmation.
 - Détail d'une séance avec sa date et son heure, ses statistiques de réalisation, ses durées de travail et de pause, puis le temps passé sur chaque exercice ou pause, regroupé dans des groupes initialement repliés.
-- Détail des tours terminés et du tour partiel pour un AMRAP, ainsi que de chaque minute terminée ou incomplète pour un EMOM.
+- Détail du tour et du cycle de chaque occurrence Tabata, des tours terminés et du tour partiel pour un AMRAP, ainsi que de chaque minute terminée ou incomplète pour un EMOM.
 
 ### Import / Export
 - Deux parcours de partage de séances : **Exporter des séances** crée un fichier v1 à partir des séances sélectionnées et **Importer des séances** les ajoute avec de nouveaux identifiants, sans remplacer les données locales.
@@ -150,6 +150,8 @@ releases](docs/release.md).
   authentification, validations et reproductibilité.
 - [Builds et releases](docs/release.md) : distributions DEV et officielles,
   métadonnées, signature, dialogue « À propos » et publication.
+- [Notes de version 1.6.0](docs/release-notes-1.6.0.md) : Tabata à plusieurs
+  tours et exercices par cycle, progression détaillée et sauvegarde v4.
 - [Notes de version 1.5.1](docs/release-notes-1.5.1.md) : correctifs
   d'affichage et de navigation, maintenance de la chaîne technique et
   regroupement des mises à jour Renovate.
