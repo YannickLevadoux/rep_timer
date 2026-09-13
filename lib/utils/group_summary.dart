@@ -24,13 +24,19 @@ String formatGroupSummary(
       ? 'Non estimable'
       : formatDuration(duration);
   return switch (group.type) {
-    GroupType.tabata =>
-      'Tabata · ${group.rounds} '
-          '${group.rounds == 1 ? 'cycle' : 'cycles'} · $durationLabel',
+    GroupType.tabata => _tabataSummary(group, durationLabel),
     GroupType.amrap => 'AMRAP · Effort · $durationLabel',
     GroupType.emom =>
       'EMOM · ${group.items.isEmpty ? 'Effort' : group.items.first.name} · '
           '$durationLabel',
     _ => throw StateError('Type déjà traité'),
   };
+}
+
+String _tabataSummary(ExerciseGroup group, String durationLabel) {
+  final rounds = group.tabataConfig?.rounds ?? 1;
+  final cycles = group.tabataConfig?.exercises.length ?? group.rounds;
+  final cycleLabel = '$cycles ${cycles == 1 ? 'cycle' : 'cycles'}';
+  if (rounds == 1) return 'Tabata · $cycleLabel · $durationLabel';
+  return 'Tabata · $rounds tours × $cycleLabel · $durationLabel';
 }

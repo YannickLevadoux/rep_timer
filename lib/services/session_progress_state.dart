@@ -3,6 +3,7 @@ import '../models/session_step.dart';
 import '../models/training.dart';
 import '../models/group_type.dart';
 import '../models/training_item.dart';
+import 'session_plan_signature.dart';
 
 enum SessionStepCompletion { advanced, sessionCompleted, needsReview }
 
@@ -13,7 +14,7 @@ class SessionProgressState {
     required Training training,
     SessionCheckpoint? checkpoint,
   }) : steps = buildSessionSteps(training) {
-    restoredFromCheckpoint = _canRestore(checkpoint);
+    restoredFromCheckpoint = _canRestore(checkpoint, training.id);
     if (restoredFromCheckpoint) {
       currentIndex = checkpoint!.currentIndex;
       completed = List<bool>.of(checkpoint.completed);
@@ -94,10 +95,16 @@ class SessionProgressState {
       steps[index].group.type == GroupType.amrap &&
       steps[index].item.type == ItemType.exercise;
 
-  bool _canRestore(SessionCheckpoint? checkpoint) =>
+  bool _canRestore(SessionCheckpoint? checkpoint, String trainingId) =>
       checkpoint != null &&
+      checkpoint.trainingId == trainingId &&
+      _isCompatibleCheckpoint(checkpoint);
+
+  bool _isCompatibleCheckpoint(SessionCheckpoint checkpoint) =>
       checkpoint.completed.length == steps.length &&
       checkpoint.stepActualDurations.length == steps.length &&
       checkpoint.currentIndex >= 0 &&
-      checkpoint.currentIndex < steps.length;
+      checkpoint.currentIndex < steps.length &&
+      (checkpoint.planSignature == null ||
+          checkpoint.planSignature == sessionPlanSignature(steps));
 }

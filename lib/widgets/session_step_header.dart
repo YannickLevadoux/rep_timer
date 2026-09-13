@@ -4,6 +4,7 @@ import '../models/group_type.dart';
 import '../models/session_step.dart';
 import '../models/training_item.dart';
 import '../utils/exercise_icons.dart';
+import '../utils/tabata_step_label.dart';
 
 class SessionStepMetadata extends StatelessWidget {
   const SessionStepMetadata({super.key, required this.step});
@@ -33,7 +34,7 @@ class SessionStepMetadata extends StatelessWidget {
   );
 
   String get _progressLabel => switch (step.group.type) {
-    GroupType.tabata => 'Cycle ${step.roundIndex}/${step.totalRounds}',
+    GroupType.tabata => formatTabataStepLabel(step),
     GroupType.emom => 'Minute ${step.roundIndex}/${step.totalRounds}',
     _ => 'Tour ${step.roundIndex}/${step.totalRounds}',
   };

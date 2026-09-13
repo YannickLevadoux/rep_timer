@@ -4,6 +4,7 @@ import 'package:rep_timer/models/exercise_group.dart';
 import 'package:rep_timer/models/group_type.dart';
 import 'package:rep_timer/models/session_checkpoint.dart';
 import 'package:rep_timer/models/session_step.dart';
+import 'package:rep_timer/models/tabata_config.dart';
 import 'package:rep_timer/models/training.dart';
 import 'package:rep_timer/models/training_history_entry.dart';
 import 'package:rep_timer/models/training_item.dart';
@@ -248,6 +249,75 @@ void main() {
         history.steps.where((step) => step.itemType == ItemType.rest),
         isEmpty,
       );
+    },
+  );
+
+  test(
+    'historise chaque occurrence Tabata avec son exercice et sa position',
+    () async {
+      final historyStorage = _FakeHistoryStorage();
+      final training = Training(
+        id: 'tabata-training',
+        name: 'Tabata',
+        groups: [
+          ExerciseGroup.withTabataConfig(
+            id: 'tabata',
+            name: 'Tabata',
+            config: TabataConfig(
+              rounds: 2,
+              exercises: [
+                TrainingItem(
+                  type: ItemType.exercise,
+                  name: 'Burpees',
+                  duration: const Duration(seconds: 20),
+                  comment: 'Explosif',
+                  iconName: 'local_fire_department',
+                ),
+                TrainingItem(
+                  type: ItemType.exercise,
+                  name: 'Gainage',
+                  duration: const Duration(seconds: 20),
+                  iconName: 'self_improvement',
+                ),
+              ],
+              restDuration: const Duration(seconds: 10),
+              finalRestDuration: const Duration(seconds: 17),
+            ),
+          ),
+        ],
+        createdAt: DateTime(2026),
+      );
+      final steps = buildSessionSteps(training);
+      final service = SessionCompletionService(
+        checkpointStorage: _FakeCheckpointStorage(),
+        historyStorage: historyStorage,
+        now: () => DateTime(2026),
+      );
+
+      await service.completeSession(
+        training: training,
+        steps: steps,
+        completed: [true, true, true, true, false, false, false],
+        stepActualDurations: [
+          for (var index = 0; index < steps.length; index++)
+            index < 4 ? steps[index].item.duration! : Duration.zero,
+        ],
+        totalDuration: const Duration(seconds: 67),
+        status: TrainingSessionStatus.incomplete,
+      );
+
+      final history = historyStorage.entries.single.steps;
+      expect(history, hasLength(7));
+      expect(
+        history
+            .where((step) => step.itemName == 'Burpees')
+            .map((step) => step.tabataRoundIndex),
+        [1, 2],
+      );
+      expect(history.first.tabataCycleIndex, 1);
+      expect(history.first.iconName, 'local_fire_department');
+      expect(history.first.comment, 'Explosif');
+      expect(history.last.completed, isFalse);
     },
   );
 }

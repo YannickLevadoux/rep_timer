@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../models/history_step_entry.dart';
 import '../models/training_item.dart';
+import '../utils/exercise_icons.dart';
 import '../utils/formatters.dart';
 import 'training_history_amrap_rows.dart';
 import 'training_history_emom_row.dart';
+import 'training_history_tabata_row.dart';
 
 class TrainingHistoryGroupCard extends StatelessWidget {
   const TrainingHistoryGroupCard({
@@ -118,6 +120,7 @@ class _HistoryStepRow extends StatelessWidget {
     if (step.emomMinuteIndex != null) {
       return TrainingHistoryEmomRow(step: step, totalMinutes: emomMinuteTotal);
     }
+    if (step.hasTabataMetadata) return TrainingHistoryTabataRow(step: step);
     final firstCommentLine = step.comment?.trim().split('\n').first;
     final hasComment = firstCommentLine != null && firstCommentLine.isNotEmpty;
 
@@ -135,7 +138,7 @@ class _HistoryStepRow extends StatelessWidget {
                     Icon(
                       step.itemType == ItemType.rest
                           ? Icons.timer
-                          : Icons.fitness_center,
+                          : iconForExercise(step.iconName),
                       size: 16,
                       color: Theme.of(context).colorScheme.outline,
                     ),

@@ -12,10 +12,15 @@ class HistoryStepEntry {
   final String itemName;
   final int? repetitions;
   final String? comment;
+  final String? iconName;
   final Duration actualDuration;
   final bool completed;
   final int? emomMinuteIndex;
   final AmrapHistoryData? amrap;
+  final int? tabataRoundIndex;
+  final int? tabataRoundTotal;
+  final int? tabataCycleIndex;
+  final int? tabataCycleTotal;
 
   HistoryStepEntry({
     required this.groupId,
@@ -24,10 +29,15 @@ class HistoryStepEntry {
     required this.itemName,
     this.repetitions,
     required this.comment,
+    this.iconName,
     required this.actualDuration,
     required this.completed,
     this.emomMinuteIndex,
     this.amrap,
+    this.tabataRoundIndex,
+    this.tabataRoundTotal,
+    this.tabataCycleIndex,
+    this.tabataCycleTotal,
   }) {
     if (emomMinuteIndex != null && emomMinuteIndex! < 1) {
       throw const FormatException("L'index de minute EMOM doit être positif.");
@@ -35,7 +45,10 @@ class HistoryStepEntry {
     if (amrap != null && amrap!.completed != completed) {
       throw const FormatException('Les statuts AMRAP sont incohérents.');
     }
+    _validateTabataMetadata();
   }
+
+  bool get hasTabataMetadata => tabataRoundIndex != null;
 
   Map<String, dynamic> toJson() => {
     'groupId': groupId,
@@ -44,10 +57,15 @@ class HistoryStepEntry {
     'itemName': itemName,
     'repetitions': repetitions,
     'comment': comment,
+    'iconName': iconName,
     'actualDurationSeconds': actualDuration.inSeconds,
     'completed': completed,
     'emomMinuteIndex': emomMinuteIndex,
     'amrap': amrap?.toJson(),
+    'tabataRoundIndex': tabataRoundIndex,
+    'tabataRoundTotal': tabataRoundTotal,
+    'tabataCycleIndex': tabataCycleIndex,
+    'tabataCycleTotal': tabataCycleTotal,
   };
 
   factory HistoryStepEntry.fromJson(Map<String, dynamic> json) {
@@ -60,12 +78,34 @@ class HistoryStepEntry {
       // nombre de répétitions au snapshot de chaque étape.
       repetitions: json['repetitions'] as int?,
       comment: json['comment'] as String?,
+      iconName: json['iconName'] as String?,
       actualDuration: Duration(seconds: json['actualDurationSeconds'] as int),
       completed: json['completed'] as bool,
       emomMinuteIndex: json['emomMinuteIndex'] as int?,
       amrap: json['amrap'] == null
           ? null
           : AmrapHistoryData.fromJson(json['amrap'] as Map<String, dynamic>),
+      tabataRoundIndex: json['tabataRoundIndex'] as int?,
+      tabataRoundTotal: json['tabataRoundTotal'] as int?,
+      tabataCycleIndex: json['tabataCycleIndex'] as int?,
+      tabataCycleTotal: json['tabataCycleTotal'] as int?,
     );
+  }
+
+  void _validateTabataMetadata() {
+    final values = [
+      tabataRoundIndex,
+      tabataRoundTotal,
+      tabataCycleIndex,
+      tabataCycleTotal,
+    ];
+    if (values.every((value) => value == null)) return;
+    if (values.any((value) => value == null) ||
+        tabataRoundIndex! < 1 ||
+        tabataRoundIndex! > tabataRoundTotal! ||
+        tabataCycleIndex! < 1 ||
+        tabataCycleIndex! > tabataCycleTotal!) {
+      throw const FormatException('Métadonnées Tabata incohérentes.');
+    }
   }
 }

@@ -17,6 +17,13 @@ void main() {
     await _pumpCard(tester, group, hasFollowingGroup: true);
 
     expect(find.text('Tabata · 8 cycles · 04:07'), findsOneWidget);
+
+    final multi = ExerciseGroup.tabata(id: 'multi')
+      ..rounds = 4
+      ..tabataConfig!.rounds = 2
+      ..finalRestDuration = const Duration(seconds: 17);
+    await _pumpCard(tester, multi);
+    expect(find.text('Tabata · 2 tours × 4 cycles · 03:57'), findsOneWidget);
   });
 
   testWidgets('les actions de la carte gardent une cible de 48 dp', (

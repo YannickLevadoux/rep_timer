@@ -23,9 +23,10 @@ class EstimatedDurationCard extends StatelessWidget {
       tooltip: 'Informations sur la durée estimée',
       content: Text(
         "Cette estimation correspond à la durée programmée de "
-        "la séance. Les pauses intermédiaires sont incluses. La dernière "
-        "pause d'un groupe est incluse uniquement lorsqu'un autre groupe "
-        "suit ; la dernière pause de la séance n'est pas exécutée. "
+        "la séance. Les pauses entre cycles et les pauses de fin de tour "
+        "entre les tours sont incluses. La dernière pause d'un groupe est "
+        "incluse uniquement lorsqu'un autre groupe suit ; la dernière pause "
+        "de la séance n'est pas exécutée. "
         "Les pauses manuelles et la navigation pendant la séance "
         "ne sont pas incluses.",
       ),

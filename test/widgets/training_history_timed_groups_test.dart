@@ -75,6 +75,48 @@ void main() {
     expect(find.text('01:00'), findsOneWidget);
     expect(find.text('00:12'), findsOneWidget);
   });
+
+  testWidgets('distingue les occurrences Tabata et restitue leur icône', (
+    tester,
+  ) async {
+    await _pumpSteps(tester, [
+      HistoryStepEntry(
+        groupId: 'tabata',
+        groupName: 'Tabata',
+        itemType: ItemType.exercise,
+        itemName: 'Burpees',
+        comment: 'Explosif',
+        iconName: 'local_fire_department',
+        actualDuration: const Duration(seconds: 20),
+        completed: true,
+        tabataRoundIndex: 1,
+        tabataRoundTotal: 2,
+        tabataCycleIndex: 1,
+        tabataCycleTotal: 1,
+      ),
+      HistoryStepEntry(
+        groupId: 'tabata',
+        groupName: 'Tabata',
+        itemType: ItemType.exercise,
+        itemName: 'Burpees',
+        comment: null,
+        iconName: 'local_fire_department',
+        actualDuration: const Duration(seconds: 8),
+        completed: false,
+        tabataRoundIndex: 2,
+        tabataRoundTotal: 2,
+        tabataCycleIndex: 1,
+        tabataCycleTotal: 1,
+      ),
+    ]);
+
+    expect(find.text('Tour 1/2 · Cycle 1/1 · Burpees'), findsOneWidget);
+    expect(find.text('Tour 2/2 · Cycle 1/1 · Burpees'), findsOneWidget);
+    expect(find.byIcon(Icons.local_fire_department), findsNWidgets(2));
+    expect(find.text('Explosif'), findsOneWidget);
+    expect(find.text('Statut · Terminé'), findsOneWidget);
+    expect(find.text('Statut · Incomplet'), findsOneWidget);
+  });
 }
 
 HistoryStepEntry _emomMinute({

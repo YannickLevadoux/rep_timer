@@ -42,6 +42,7 @@ class SessionCompletionService {
     required Duration stepElapsed,
     required bool paused,
     required List<Duration> stepActualDurations,
+    String? planSignature,
     AmrapCheckpointState? amrapState,
     Map<int, AmrapCheckpointState> amrapStates = const {},
   }) {
@@ -54,6 +55,7 @@ class SessionCompletionService {
         stepElapsed: stepElapsed,
         paused: paused,
         savedAt: _now(),
+        planSignature: planSignature,
         stepActualDurations: List<Duration>.of(stepActualDurations),
         amrapState: amrapState,
         amrapStates: amrapStates,
@@ -89,6 +91,7 @@ class SessionCompletionService {
                 itemName: steps[i].item.name,
                 repetitions: steps[i].item.repetitions,
                 comment: steps[i].item.comment,
+                iconName: steps[i].item.iconName,
                 actualDuration:
                     amrapHistory[i]?.activeDuration ?? stepActualDurations[i],
                 completed: completed[i],
@@ -98,6 +101,10 @@ class SessionCompletionService {
                     ? steps[i].roundIndex
                     : null,
                 amrap: amrapHistory[i],
+                tabataRoundIndex: steps[i].tabataRoundIndex,
+                tabataRoundTotal: steps[i].tabataRoundTotal,
+                tabataCycleIndex: steps[i].tabataCycleIndex,
+                tabataCycleTotal: steps[i].tabataCycleTotal,
               ),
         ],
       );
