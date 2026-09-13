@@ -41,6 +41,29 @@ void main() {
     );
   });
 
+  group('formatLocalWeekLabel', () {
+    test('abrège le mois pour une semaine dans un même mois', () {
+      expect(
+        formatLocalWeekLabel(LocalWeek.containing(DateTime(2026, 9, 9))),
+        '7–13 sept. 2026',
+      );
+    });
+
+    test('abrège les deux mois pour une semaine à cheval', () {
+      expect(
+        formatLocalWeekLabel(LocalWeek.containing(DateTime(2026, 7, 29))),
+        '27 juil.–2 août 2026',
+      );
+    });
+
+    test('abrège les mois et conserve les années à cheval', () {
+      expect(
+        formatLocalWeekLabel(LocalWeek.containing(DateTime(2027, 1, 1))),
+        '28 déc. 2026–3 janv. 2027',
+      );
+    });
+  });
+
   group('aggregateHistoryWeek', () {
     test('attribue au jour de fin, compte les statuts et trie décroissant', () {
       final week = LocalWeek.containing(DateTime(2026, 8, 5));

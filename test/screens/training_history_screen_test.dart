@@ -43,6 +43,19 @@ void main() {
           .onPressed,
       isNull,
     );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('today-button')),
+        matching: find.byIcon(Icons.today),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<IconButton>(find.byKey(const Key('today-button')))
+          .onPressed,
+      isNull,
+    );
   });
 
   testWidgets(
@@ -91,7 +104,13 @@ void main() {
           .getSize(find.byKey(const Key('weekly-duration-value-2')))
           .height;
       expect(tuesdayHeight, greaterThan(wednesdayHeight));
-      expect(find.byIcon(Icons.today), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('today-button')),
+          matching: find.byIcon(Icons.today),
+        ),
+        findsOneWidget,
+      );
       expect(find.byIcon(Icons.schedule), findsNWidgets(4));
       expect(find.text('Séances de la semaine — 3'), findsOneWidget);
     },
@@ -112,7 +131,7 @@ void main() {
     await tester.pump();
     await _selectTimeSpent(tester);
 
-    expect(find.text('27 juillet–2 août 2026'), findsOneWidget);
+    expect(find.text('27 juil.–2 août 2026'), findsOneWidget);
     expect(find.text('précédente'), findsOneWidget);
     expect(find.text('courante'), findsNothing);
     expect(find.text('Temps total — 00:01:00'), findsOneWidget);
@@ -219,7 +238,7 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const Key('weekly-count-day-detail')), findsNothing);
-    expect(find.text('27 juillet–2 août 2026'), findsOneWidget);
+    expect(find.text('27 juil.–2 août 2026'), findsOneWidget);
   });
 
   testWidgets('navigue en mémoire vers la semaine précédente et revient', (
@@ -239,10 +258,15 @@ void main() {
     await tester.tap(find.byKey(const Key('previous-week-button')));
     await tester.pump();
 
-    expect(find.text('27 juillet–2 août 2026'), findsOneWidget);
+    expect(find.text('27 juil.–2 août 2026'), findsOneWidget);
     expect(find.text('courante'), findsNothing);
     expect(find.text('précédente'), findsOneWidget);
-    expect(find.text('Aujourd’hui'), findsOneWidget);
+    expect(
+      tester
+          .widget<IconButton>(find.byKey(const Key('today-button')))
+          .onPressed,
+      isNotNull,
+    );
     expect(
       tester
           .widget<IconButton>(find.byKey(const Key('next-week-button')))
@@ -256,9 +280,221 @@ void main() {
 
     expect(find.text('3–9 août 2026'), findsOneWidget);
     expect(find.text('courante'), findsOneWidget);
-    expect(find.text('Aujourd’hui'), findsNothing);
+    expect(
+      tester
+          .widget<IconButton>(find.byKey(const Key('today-button')))
+          .onPressed,
+      isNull,
+    );
     expect(storage.loadCalls, 1);
   });
+
+  testWidgets(
+    'aligne la navigation, expose aujourd’hui et conserve les hauteurs',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      final storage = _FakeHistoryStorage(const StorageNoData());
+
+      await _pumpHistory(tester, storage, now: now);
+
+      final previousWeek = find.byKey(const Key('previous-week-button'));
+      final weekLabel = find.byKey(const Key('selected-week-label'));
+      final weekToday = find.byKey(const Key('today-button'));
+      final nextWeek = find.byKey(const Key('next-week-button'));
+      final weekCard = tester.getRect(
+        find.byKey(const Key('weekly-history-count-card')),
+      );
+      final previousWeekRect = tester.getRect(previousWeek);
+      final weekLabelRect = tester.getRect(weekLabel);
+      final weekTodayRect = tester.getRect(weekToday);
+      final nextWeekRect = tester.getRect(nextWeek);
+
+      expect(previousWeekRect.center.dx, lessThan(weekLabelRect.center.dx));
+      expect(weekLabelRect.center.dx, lessThan(weekTodayRect.center.dx));
+      expect(weekTodayRect.center.dx, lessThan(nextWeekRect.center.dx));
+      expect(previousWeekRect.center.dy, weekTodayRect.center.dy);
+      expect(weekTodayRect.center.dy, nextWeekRect.center.dy);
+      expect(previousWeekRect.left - weekCard.left, lessThanOrEqualTo(8.1));
+      expect(weekCard.right - nextWeekRect.right, lessThanOrEqualTo(8.1));
+      for (final button in [previousWeek, weekToday, nextWeek]) {
+        final size = tester.getSize(button);
+        expect(size.width, greaterThanOrEqualTo(48));
+        expect(size.height, greaterThanOrEqualTo(48));
+      }
+      expect(
+        tester.widget<IconButton>(weekToday).tooltip,
+        "Revenir à aujourd'hui",
+      );
+      expect(tester.widget<IconButton>(weekToday).onPressed, isNull);
+      expect(find.bySemanticsLabel("Revenir à aujourd'hui"), findsOneWidget);
+
+      final currentWeeklyCountHeight = tester
+          .getSize(find.byKey(const Key('weekly-count-chart')))
+          .height;
+      await tester.tap(previousWeek);
+      await tester.pump();
+      expect(tester.widget<IconButton>(weekToday).onPressed, isNotNull);
+      expect(
+        tester.getSize(find.byKey(const Key('weekly-count-chart'))).height,
+        currentWeeklyCountHeight,
+      );
+
+      await tester.tap(weekToday);
+      await tester.pump();
+      await _selectTimeSpent(tester);
+      final currentWeeklyDurationHeight = tester
+          .getSize(find.byKey(const Key('weekly-duration-chart')))
+          .height;
+      await tester.tap(previousWeek);
+      await tester.pump();
+      expect(
+        tester.getSize(find.byKey(const Key('weekly-duration-chart'))).height,
+        currentWeeklyDurationHeight,
+      );
+
+      await tester.tap(weekToday);
+      await tester.pump();
+      await _selectMonth(tester);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('monthly-history-card')),
+        120,
+        scrollable: find.byType(Scrollable),
+      );
+      final monthToday = find.byKey(const Key('month-today-button'));
+      final currentMonthlyDurationHeight = tester
+          .getSize(find.byKey(const Key('monthly-history-chart')))
+          .height;
+      expect(
+        tester.widget<IconButton>(monthToday).tooltip,
+        "Revenir à aujourd'hui",
+      );
+      expect(tester.widget<IconButton>(monthToday).onPressed, isNull);
+      expect(
+        find.ancestor(
+          of: monthToday,
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Semantics &&
+                widget.properties.label == "Revenir à aujourd'hui",
+          ),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('previous-month-button')));
+      await tester.pump();
+      expect(tester.widget<IconButton>(monthToday).onPressed, isNotNull);
+      expect(
+        tester.getSize(find.byKey(const Key('monthly-history-chart'))).height,
+        currentMonthlyDurationHeight,
+      );
+
+      await tester.tap(monthToday);
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('history-metric-selector')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Nombre de séances').last);
+      await tester.pumpAndSettle();
+      final currentMonthlyCountHeight = tester
+          .getSize(find.byKey(const Key('monthly-history-chart')))
+          .height;
+      await tester.tap(find.byKey(const Key('previous-month-button')));
+      await tester.pump();
+      expect(
+        tester.getSize(find.byKey(const Key('monthly-history-chart'))).height,
+        currentMonthlyCountHeight,
+      );
+      expect(storage.loadCalls, 1);
+      semantics.dispose();
+    },
+  );
+
+  testWidgets(
+    'la navigation passée tient à 240 px avec un texte doublé dans les thèmes',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(240, 360));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      for (final brightness in [Brightness.light, Brightness.dark]) {
+        final scheme = ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: brightness,
+        );
+        await _pumpHistory(
+          tester,
+          _FakeHistoryStorage(const StorageNoData()),
+          now: now,
+          textScale: 2,
+          colorScheme: scheme,
+        );
+        await tester.scrollUntilVisible(
+          find.byKey(const Key('weekly-history-count-card')),
+          120,
+          scrollable: find.byType(Scrollable),
+        );
+        await tester.tap(find.byKey(const Key('previous-week-button')));
+        await tester.pump();
+
+        final weekLabel = tester.widget<Text>(
+          find.byKey(const Key('selected-week-label')),
+        );
+        expect(weekLabel.maxLines, 1);
+        expect(weekLabel.overflow, TextOverflow.ellipsis);
+        expect(tester.takeException(), isNull);
+        for (final key in [
+          'previous-week-button',
+          'today-button',
+          'next-week-button',
+        ]) {
+          final size = tester.getSize(find.byKey(Key(key)));
+          expect(size.width, greaterThanOrEqualTo(48));
+          expect(size.height, greaterThanOrEqualTo(48));
+        }
+
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, 500));
+        await tester.pump();
+        await _selectMonth(tester);
+        await tester.scrollUntilVisible(
+          find.byKey(const Key('monthly-history-card')),
+          120,
+          scrollable: find.byType(Scrollable),
+        );
+        final monthLabel = tester.widget<Text>(
+          find.byKey(const Key('selected-month-label')),
+        );
+        expect(monthLabel.maxLines, 1);
+        expect(monthLabel.overflow, TextOverflow.ellipsis);
+        expect(tester.takeException(), isNull);
+
+        final previousMonthRect = tester.getRect(
+          find.byKey(const Key('previous-month-button')),
+        );
+        final monthLabelRect = tester.getRect(
+          find.byKey(const Key('selected-month-label')),
+        );
+        final monthTodayRect = tester.getRect(
+          find.byKey(const Key('month-today-button')),
+        );
+        final nextMonthRect = tester.getRect(
+          find.byKey(const Key('next-month-button')),
+        );
+        expect(previousMonthRect.center.dx, lessThan(monthLabelRect.center.dx));
+        expect(monthLabelRect.center.dx, lessThan(monthTodayRect.center.dx));
+        expect(monthTodayRect.center.dx, lessThan(nextMonthRect.center.dx));
+        expect(previousMonthRect.center.dy, monthTodayRect.center.dy);
+        expect(monthTodayRect.center.dy, nextMonthRect.center.dy);
+        for (final key in [
+          'previous-month-button',
+          'month-today-button',
+          'next-month-button',
+        ]) {
+          final size = tester.getSize(find.byKey(Key(key)));
+          expect(size.width, greaterThanOrEqualTo(48));
+          expect(size.height, greaterThanOrEqualTo(48));
+        }
+        await tester.pumpWidget(const SizedBox.shrink());
+      }
+    },
+  );
 
   testWidgets('affiche le bilan par statut et toutes les séances triées', (
     tester,
@@ -756,6 +992,12 @@ void main() {
     expect(find.byKey(const Key('month-today-button')), findsOneWidget);
     expect(
       tester
+          .widget<IconButton>(find.byKey(const Key('month-today-button')))
+          .onPressed,
+      isNotNull,
+    );
+    expect(
+      tester
           .widget<IconButton>(find.byKey(const Key('next-month-button')))
           .onPressed,
       isNotNull,
@@ -764,7 +1006,13 @@ void main() {
     await tester.tap(find.byKey(const Key('month-today-button')));
     await tester.pump();
     expect(find.text('août 2026'), findsOneWidget);
-    expect(find.byKey(const Key('month-today-button')), findsNothing);
+    expect(find.byKey(const Key('month-today-button')), findsOneWidget);
+    expect(
+      tester
+          .widget<IconButton>(find.byKey(const Key('month-today-button')))
+          .onPressed,
+      isNull,
+    );
   });
 
   testWidgets('place hors de sa portion un compteur mensuel trop à l’étroit', (
@@ -965,7 +1213,7 @@ void main() {
     await tester.tap(find.byKey(const Key('monthly-week-bar-0')));
     await tester.pump();
 
-    expect(find.text('27 juillet–2 août 2026'), findsOneWidget);
+    expect(find.text('27 juil.–2 août 2026'), findsOneWidget);
     expect(find.text('Séances de la semaine — 2'), findsOneWidget);
     expect(find.text('voisine de juillet'), findsOneWidget);
     expect(find.text('dans août'), findsOneWidget);

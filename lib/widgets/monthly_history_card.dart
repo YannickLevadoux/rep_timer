@@ -35,22 +35,20 @@ class MonthlyHistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final minimumChartHeight = isCurrentMonth ? 128.0 : 120.0;
-    final maximumChartHeight = isCurrentMonth ? 168.0 : 120.0;
     final baseChartHeight = (MediaQuery.sizeOf(context).height * 0.24).clamp(
-      minimumChartHeight,
-      maximumChartHeight,
+      128.0,
+      168.0,
     );
 
     return Card(
       key: const Key('monthly-history-card'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            MonthlyHistoryMonthNavigation(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+            child: MonthlyHistoryMonthNavigation(
               month: summary.month,
               canGoNext: canGoNext,
               isCurrentMonth: isCurrentMonth,
@@ -58,47 +56,55 @@ class MonthlyHistoryCard extends StatelessWidget {
               onNext: onNext,
               onToday: onToday,
             ),
-            Text(
-              showDuration
-                  ? 'Temps total — ${formatLongDuration(summary.totalDuration)}'
-                  : formatMonthlyCountSummary(summary),
-              key: const Key('monthly-history-total'),
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleSmall,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  showDuration
+                      ? 'Temps total — ${formatLongDuration(summary.totalDuration)}'
+                      : formatMonthlyCountSummary(summary),
+                  key: const Key('monthly-history-total'),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final durationLabelHeight = _durationLabelHeight(
+                      context,
+                      constraints.maxWidth,
+                    );
+                    return Semantics(
+                      key: const Key('monthly-history-chart-semantics'),
+                      label: formatMonthlySemanticSummary(
+                        summary,
+                        showDuration: showDuration,
+                      ),
+                      container: true,
+                      child: SizedBox(
+                        height:
+                            baseChartHeight +
+                            (durationLabelHeight == 0
+                                ? 0
+                                : durationLabelHeight + 4),
+                        child: MonthlyHistoryChart(
+                          summary: summary,
+                          today: today,
+                          showDuration: showDuration,
+                          durationLabelHeight: durationLabelHeight,
+                          onOpenWeek: onOpenWeek,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final durationLabelHeight = _durationLabelHeight(
-                  context,
-                  constraints.maxWidth,
-                );
-                return Semantics(
-                  key: const Key('monthly-history-chart-semantics'),
-                  label: formatMonthlySemanticSummary(
-                    summary,
-                    showDuration: showDuration,
-                  ),
-                  container: true,
-                  child: SizedBox(
-                    height:
-                        baseChartHeight +
-                        (durationLabelHeight == 0
-                            ? 0
-                            : durationLabelHeight + 4),
-                    child: MonthlyHistoryChart(
-                      summary: summary,
-                      today: today,
-                      showDuration: showDuration,
-                      durationLabelHeight: durationLabelHeight,
-                      onOpenWeek: onOpenWeek,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

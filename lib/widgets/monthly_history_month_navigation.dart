@@ -22,42 +22,43 @@ class MonthlyHistoryMonthNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
       children: [
-        Row(
-          children: [
-            IconButton(
-              key: const Key('previous-month-button'),
-              tooltip: 'Mois précédent',
-              onPressed: onPrevious,
-              icon: const Icon(Icons.chevron_left),
-            ),
-            Expanded(
-              child: Text(
-                formatLocalMonthLabel(month),
-                key: const Key('selected-month-label'),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-            ),
-            IconButton(
-              key: const Key('next-month-button'),
-              tooltip: 'Mois suivant',
-              onPressed: canGoNext ? onNext : null,
-              icon: const Icon(Icons.chevron_right),
-            ),
-          ],
+        IconButton(
+          key: const Key('previous-month-button'),
+          tooltip: 'Mois précédent',
+          onPressed: onPrevious,
+          icon: const Icon(Icons.chevron_left),
         ),
-        if (!isCurrentMonth)
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              key: const Key('month-today-button'),
-              onPressed: onToday,
-              child: const Text('Aujourd’hui'),
-            ),
+        Expanded(
+          child: Text(
+            formatLocalMonthLabel(month),
+            key: const Key('selected-month-label'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleSmall,
           ),
+        ),
+        Semantics(
+          label: "Revenir à aujourd'hui",
+          button: true,
+          enabled: !isCurrentMonth,
+          excludeSemantics: true,
+          child: IconButton(
+            key: const Key('month-today-button'),
+            tooltip: "Revenir à aujourd'hui",
+            onPressed: isCurrentMonth ? null : onToday,
+            icon: const Icon(Icons.today),
+          ),
+        ),
+        IconButton(
+          key: const Key('next-month-button'),
+          tooltip: 'Mois suivant',
+          onPressed: canGoNext ? onNext : null,
+          icon: const Icon(Icons.chevron_right),
+        ),
       ],
     );
   }

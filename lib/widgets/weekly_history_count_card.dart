@@ -43,22 +43,21 @@ class _WeeklyHistoryCountCardState extends State<WeeklyHistoryCountCard> {
 
   @override
   Widget build(BuildContext context) {
-    final maximumChartHeight = widget.isCurrentWeek ? 168.0 : 120.0;
     final chartHeight = (MediaQuery.sizeOf(context).height * 0.3).clamp(
       120.0,
-      maximumChartHeight,
+      168.0,
     );
     final countSummary = formatWeeklyHistoryCountSummary(widget.summary);
 
     return Card(
       key: const Key('weekly-history-count-card'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            WeeklyHistoryWeekNavigation(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+            child: WeeklyHistoryWeekNavigation(
               week: widget.summary.week,
               canGoNext: widget.canGoNext,
               isCurrentWeek: widget.isCurrentWeek,
@@ -66,41 +65,52 @@ class _WeeklyHistoryCountCardState extends State<WeeklyHistoryCountCard> {
               onNext: widget.onNext,
               onToday: widget.onToday,
             ),
-            Semantics(
-              key: const Key('weekly-count-summary-semantics'),
-              label: formatWeeklyHistoryCountSemanticSummary(widget.summary),
-              container: true,
-              child: ExcludeSemantics(
-                child: Text(
-                  countSummary,
-                  key: const Key('weekly-history-text-summary'),
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleSmall,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Semantics(
+                  key: const Key('weekly-count-summary-semantics'),
+                  label: formatWeeklyHistoryCountSemanticSummary(
+                    widget.summary,
+                  ),
+                  container: true,
+                  child: ExcludeSemantics(
+                    child: Text(
+                      countSummary,
+                      key: const Key('weekly-history-text-summary'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: chartHeight,
-              child: WeeklyHistoryCountChart(
-                summary: widget.summary,
-                today: widget.today,
-                onSelectDay: (index) => setState(() => _selectedDay = index),
-              ),
-            ),
-            if (_selectedDay case final selected?) ...[
-              const SizedBox(height: 8),
-              Text(
-                formatWeeklyHistoryCountDayDetail(
-                  widget.summary.days[selected],
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: chartHeight,
+                  child: WeeklyHistoryCountChart(
+                    summary: widget.summary,
+                    today: widget.today,
+                    onSelectDay: (index) =>
+                        setState(() => _selectedDay = index),
+                  ),
                 ),
-                key: const Key('weekly-count-day-detail'),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
-          ],
-        ),
+                if (_selectedDay case final selected?) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    formatWeeklyHistoryCountDayDetail(
+                      widget.summary.days[selected],
+                    ),
+                    key: const Key('weekly-count-day-detail'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

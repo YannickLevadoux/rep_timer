@@ -1,4 +1,5 @@
 import '../models/training_history_entry.dart';
+import '../utils/formatters.dart';
 import 'weekly_history_aggregation.dart';
 
 /// Bornes calendaires locales d'un mois civil, début inclus et fin exclue.
@@ -147,23 +148,8 @@ MonthlyHistorySummary aggregateHistoryMonth(
   );
 }
 
-const _frenchMonths = [
-  'janvier',
-  'février',
-  'mars',
-  'avril',
-  'mai',
-  'juin',
-  'juillet',
-  'août',
-  'septembre',
-  'octobre',
-  'novembre',
-  'décembre',
-];
-
 String formatLocalMonthLabel(LocalMonth month) =>
-    '${_frenchMonths[month.start.month - 1]} ${month.start.year}';
+    '${frenchMonthName(month.start.month)} ${month.start.year}';
 
 String formatMonthlyBucketLabel(MonthlyHistoryWeekBucket bucket) {
   final last = DateTime(
@@ -178,4 +164,4 @@ String formatMonthlyBucketLabel(MonthlyHistoryWeekBucket bucket) {
 
 String formatMonthlyBucketPeriod(MonthlyHistoryWeekBucket bucket) =>
     '${formatMonthlyBucketLabel(bucket)} '
-    '${_frenchMonths[bucket.aggregationStart.month - 1]}';
+    '${frenchMonthName(bucket.aggregationStart.month)}';

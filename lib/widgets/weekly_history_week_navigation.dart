@@ -23,42 +23,43 @@ class WeeklyHistoryWeekNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
       children: [
-        Row(
-          children: [
-            IconButton(
-              key: const Key('previous-week-button'),
-              tooltip: 'Semaine précédente',
-              onPressed: onPrevious,
-              icon: const Icon(Icons.chevron_left),
-            ),
-            Expanded(
-              child: Text(
-                formatLocalWeekLabel(week),
-                key: const Key('selected-week-label'),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-            ),
-            IconButton(
-              key: const Key('next-week-button'),
-              tooltip: 'Semaine suivante',
-              onPressed: canGoNext ? onNext : null,
-              icon: const Icon(Icons.chevron_right),
-            ),
-          ],
+        IconButton(
+          key: const Key('previous-week-button'),
+          tooltip: 'Semaine précédente',
+          onPressed: onPrevious,
+          icon: const Icon(Icons.chevron_left),
         ),
-        if (!isCurrentWeek)
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              key: const Key('today-button'),
-              onPressed: onToday,
-              child: const Text('Aujourd’hui'),
-            ),
+        Expanded(
+          child: Text(
+            formatLocalWeekLabel(week),
+            key: const Key('selected-week-label'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleSmall,
           ),
+        ),
+        Semantics(
+          label: "Revenir à aujourd'hui",
+          button: true,
+          enabled: !isCurrentWeek,
+          excludeSemantics: true,
+          child: IconButton(
+            key: const Key('today-button'),
+            tooltip: "Revenir à aujourd'hui",
+            onPressed: isCurrentWeek ? null : onToday,
+            icon: const Icon(Icons.today),
+          ),
+        ),
+        IconButton(
+          key: const Key('next-week-button'),
+          tooltip: 'Semaine suivante',
+          onPressed: canGoNext ? onNext : null,
+          icon: const Icon(Icons.chevron_right),
+        ),
       ],
     );
   }
