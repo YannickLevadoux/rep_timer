@@ -69,7 +69,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2.23.0
         with:
-          flutter-version: 3.47.4
+          flutter-version: 3.47.7
           cache: true
 
       - name: Install dependencies
@@ -96,7 +96,7 @@ jobs:
 
       - name: Upload LCOV report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: test-coverage-lcov
           path: coverage/lcov.info
