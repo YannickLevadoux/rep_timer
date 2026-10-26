@@ -35,13 +35,13 @@ dependencies:
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^2.0.0
 
   # wakelock_plus is a Flutter plugin that allows you to keep the device screen awake
   # preventing it from going to sleep while your app is running. 
   # This can be useful for applications that require continuous user interaction or display important information without interruption.
   wakelock_plus: ^1.2.8
-  file_picker: ^12.0.0-beta.1
+  file_picker: ^13.0.0
   share_plus: ^13.2.0
   path_provider: ^2.1.6
   package_info_plus: ^10.2.0
